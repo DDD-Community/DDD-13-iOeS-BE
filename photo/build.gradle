@@ -1,0 +1,94 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.0.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.ioes'
+version = '0.0.1-SNAPSHOT'
+
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+// GHSA-72hv-8253-57qq: jackson-core async parser number-length constraint bypass (DoS) — fixed in 2.21.1 / 3.1.0
+// CVE-2026-29062:      tools.jackson UTF8DataInputJsonParser nesting depth bypass (DoS) — fixed in 3.1.0
+// Note: jackson-annotations:2.21.1 does NOT exist on Maven Central (only 2.21 was released).
+//       Explicitly pinning to 2.21 prevents tools.jackson:jackson-bom:3.1.0 from
+//       incorrectly constraining the version to the non-existent 2.21.1.
+dependencyManagement {
+	dependencies {
+		dependency 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+		dependency 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+		dependency 'com.fasterxml.jackson.core:jackson-annotations:2.21'
+		dependency 'tools.jackson.core:jackson-core:3.1.0'
+	}
+}
+
+dependencies {
+	implementation 'org.aspectj:aspectjweaver'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	compileOnly 'org.projectlombok:lombok'
+//	developmentOnly 'org.springframework.boot:spring-boot-docker-compose' 잠시 주석처리, 이후 다시 복구예정
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testRuntimeOnly 'com.h2database:h2:2.4.240'
+}
+
+// 테스트 실패때문에 임시로 처리한 사항 -> 이후 삭제할 수도 있음. @author 황제연
+// 한글 프로젝트 경로 @argfile 인코딩 문제 우회:
+// Windows + 비ASCII 경로인 경우에만 junction(C:\tmp-photo-build → build/)을 생성.
+// 다른 OS 또는 ASCII 경로에서는 표준 방식으로 동작.
+def buildDirPath = layout.buildDirectory.get().asFile.absolutePath
+def onWindows    = System.getProperty('os.name').toLowerCase().contains('windows')
+def hasNonAscii  = buildDirPath.chars().anyMatch { it > 127 }
+def needsJunction = onWindows && hasNonAscii
+
+tasks.register('setupBuildJunction', Exec) {
+	onlyIf { needsJunction }
+	def buildDir = layout.buildDirectory.get().asFile.absolutePath
+	commandLine 'cmd', '/c',
+		"if exist C:\\tmp-photo-build rmdir C:\\tmp-photo-build & mklink /J C:\\tmp-photo-build \"${buildDir}\""
+}
+
+tasks.named('test') {
+	dependsOn setupBuildJunction, 'testClasses'
+	if (needsJunction) {
+		def junctionBase = 'C:/tmp-photo-build'
+		testClassesDirs = files(
+			"${junctionBase}/classes/java/test"
+		)
+		classpath = files(
+			"${junctionBase}/classes/java/test",
+			"${junctionBase}/resources/test",
+			"${junctionBase}/classes/java/main",
+			"${junctionBase}/resources/main"
+		) + sourceSets.test.runtimeClasspath.filter { it.name.endsWith('.jar') }
+	}
+	useJUnitPlatform()
+}

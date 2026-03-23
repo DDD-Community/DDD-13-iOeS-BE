@@ -1,0 +1,10 @@
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+### OS ###
+.DS_Store
+Thumbs.db

@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: photo-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+  docker:
+    compose:
+      enabled: false
+
+app:
+  file:
+    upload-dir: uploads/test
+    max-size: 1048576
+    image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif
+
+  http-client:
+    connect-timeout: 5000
+    read-timeout: 30000
+
+  async:
+    core-pool-size: 2
+    max-pool-size: 4
+    queue-capacity: 50
+    thread-name-prefix: "async-test-"
+
+  security:
+    public-urls:
+      - /swagger-ui/**
+      - /api-docs/**
+      - /swagger-ui.html
+      - /actuator/health
+      - /auth/**
+
+  swagger:
+    title: "Photo API Test"
+    version: "v1.0.0"
+    description: "테스트용 API 명세"
+    security-scheme-name: "Bearer Authentication"
+
+  jwt:
+    secret:
+    expiration-ms: 3600000
+
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    max-age: 3600
+
+  mdc:
+    forwarded-ip-header: X-Forwarded-For
+    keys:
+      request-id: requestId
+      user-id: userId
+      request-uri: uri
+      method: method
+      client-ip: clientIp
+
+logging:
+  level:
+    root: WARN
+    com.ioes.photo: DEBUG
