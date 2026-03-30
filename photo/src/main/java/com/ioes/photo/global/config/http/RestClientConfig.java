@@ -11,8 +11,9 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /**
- * RestClient 설정 클래스
+ * RestClient 설정 클래스.
  *
+ * JSON(application/json)과 XML(application/xml, text/xml) 응답을 모두 처리할 수 있습니다
  *
  * @author 황제연
  */
@@ -23,7 +24,10 @@ public class RestClientConfig {
     /**
      * 타임아웃 및 에러 핸들러가 설정된 {@link RestClient} 빈을 생성합니다.
      *
-     * @param props HTTP 클라이언트 설정 프로퍼티
+     * RestClient.Builder를 주입받으므로 Spring Boot가 자동 구성한
+     * JSON / XML 메시지 컨버터가 모두 포함됩니다.
+     *
+     * @param props   HTTP 클라이언트 설정 프로퍼티
      * @return 설정된 RestClient 인스턴스
      */
     @Bean
@@ -35,7 +39,7 @@ public class RestClientConfig {
         return RestClient.builder()
             .requestFactory(factory)
             .defaultStatusHandler(
-                    HttpStatusCode::is4xxClientError,
+                HttpStatusCode::is4xxClientError,
                 (request, response) -> {
                     int code = response.getStatusCode().value();
                     log.warn("외부 API 4xx 오류: {} {}", code, request.getURI());
@@ -52,7 +56,7 @@ public class RestClientConfig {
                 }
             )
             .defaultStatusHandler(
-                    HttpStatusCode::is5xxServerError,
+                HttpStatusCode::is5xxServerError,
                 (request, response) -> {
                     int code = response.getStatusCode().value();
                     log.error("외부 API 5xx 오류: {} {}", code, request.getURI());
