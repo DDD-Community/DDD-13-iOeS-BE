@@ -3,6 +3,9 @@ package com.ioes.photo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 /**
  * 애플리케이션 컨텍스트 통합 테스트.
@@ -13,6 +16,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 @DisplayName("PhotoApplication 통합 테스트")
 class PhotoApplicationTests {
+
+    /**
+     * 실제 Redis 없이 컨텍스트 로드가 가능하도록 ConnectionFactory를 Mock 처리.
+     * Spring Boot는 LettuceConnectionFactory 하나로 두 타입을 모두 제공하므로
+     * 테스트에서도 각 타입별 별도 Mock이 필요합니다.
+     */
+    @MockitoBean
+    RedisConnectionFactory redisConnectionFactory;
+
+    @MockitoBean
+    ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
 
     @Test
     @DisplayName("Spring 애플리케이션 컨텍스트 정상 로드")
