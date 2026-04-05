@@ -7,7 +7,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.Getter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -26,22 +25,23 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
-    /**
-     * UUID 기반 기본 키 (자동 생성, 변경 불가) -> 추후 수정될 수도 있음
+    /*
+     * 내부 PK, FK 참조용
+     * Long타입 identity (DB의 Auto_increment 위임)
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(updatable = false, nullable = false)
-    private UUID id;
+    private Long id;
 
-    /**
-     * 엔티티 최초 생성 일시 (변경 불가)
+    /*
+     * 엔티티 최초 생성 일시
      */
     @CreatedDate
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
-    /**
+    /*
      * 엔티티 최종 수정 일시
      */
     @LastModifiedDate
