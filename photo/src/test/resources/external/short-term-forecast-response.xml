@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+    <header>
+        <resultCode>00</resultCode>
+        <resultMsg>NORMAL_SERVICE</resultMsg>
+    </header>
+    <body>
+        <dataType>XML</dataType>
+        <items>
+            <item>
+                <baseDate>20260406</baseDate>
+                <baseTime>0500</baseTime>
+                <category>TMP</category>
+                <fcstDate>20260406</fcstDate>
+                <fcstTime>0600</fcstTime>
+                <fcstValue>8</fcstValue>
+                <nx>60</nx>
+                <ny>127</ny>
+            </item>
+            <item>
+                <baseDate>20260406</baseDate>
+                <baseTime>0500</baseTime>
+                <category>SKY</category>
+                <fcstDate>20260406</fcstDate>
+                <fcstTime>0600</fcstTime>
+                <fcstValue>1</fcstValue>
+                <nx>60</nx>
+                <ny>127</ny>
+            </item>
+            <item>
+                <baseDate>20260406</baseDate>
+                <baseTime>0500</baseTime>
+                <category>POP</category>
+                <fcstDate>20260406</fcstDate>
+                <fcstTime>0600</fcstTime>
+                <fcstValue>20</fcstValue>
+                <nx>60</nx>
+                <ny>127</ny>
+            </item>
+        </items>
+        <numOfRows>1000</numOfRows>
+        <pageNo>1</pageNo>
+        <totalCount>3</totalCount>
+    </body>
+</response>
