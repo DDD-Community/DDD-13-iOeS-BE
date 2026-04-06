@@ -15,7 +15,6 @@ import java.util.Date;
 
 /**
  * JWT 토큰 생성·검증·파싱 유틸리티.
- *
  * HMAC-SHA256 알고리즘으로 서명합니다
  * 비밀 키는 Base64 디코딩하여 사용합니다.
  *
@@ -33,7 +32,7 @@ public class JwtProvider {
 
     @PostConstruct
     void init() {
-        this.cachedSecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
+        this.cachedSecretKey = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(jwtProperties.secret()));
     }
 
     /**
