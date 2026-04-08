@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+    <header>
+        <resultCode>00</resultCode>
+        <resultMsg>NORMAL SERVICE.</resultMsg>
+    </header>
+    <body>
+        <items>
+            <item>
+                <aste>1858  </aste>
+                <astm>0613  </astm>
+                <civile>1754  </civile>
+                <civilm>0718  </civilm>
+                <latitude>3734</latitude>
+                <latitudeNum>37.5666660</latitudeNum>
+                <location>서울</location>
+                <locdate>20260406</locdate>
+                <longitude>12659</longitude>
+                <longitudeNum>126.9833330</longitudeNum>
+                <moonrise>0904  </moonrise>
+                <moonset>1833  </moonset>
+                <moontransit>1346  </moontransit>
+                <naute>1826  </naute>
+                <nautm>0645  </nautm>
+                <sunrise>0747  </sunrise>
+                <sunset>1724  </sunset>
+                <suntransit>123536</suntransit>
+            </item>
+        </items>
+        <numOfRows>10</numOfRows>
+        <pageNo>1</pageNo>
+        <totalCount>1</totalCount>
+    </body>
+</response>
