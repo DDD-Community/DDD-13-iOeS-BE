@@ -1,15 +1,16 @@
 package com.ioes.photo.external.astronomy;
 
 import com.ioes.photo.external.astronomy.dto.SunMoonRiseSetResponse;
+import com.ioes.photo.external.common.DataGoKrResponseValidator;
 import com.ioes.photo.external.config.properties.ExternalApiProperties;
 import com.ioes.photo.external.error.ExternalApiErrorCode;
+import com.ioes.photo.global.common.util.HttpClientUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
@@ -26,10 +27,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequiredArgsConstructor
 public class AstronomyApiClient {
 
+    private static final String API_NAME = "출몰시각";
     private static final String RISE_SET_PATH =
         "/B090041/openapi/service/RiseSetInfoService/getAreaRiseSetInfo";
 
-    private final RestClient restClient;
+    private final HttpClientUtils httpClientUtils;
     private final ExternalApiProperties properties;
 
     /**
@@ -47,22 +49,17 @@ public class AstronomyApiClient {
 
         try {
             String url = buildRiseSetUrl(locdate, location);
-
-            SunMoonRiseSetResponse response = restClient.get()
-                .uri(url)
-                .retrieve()
-                .body(SunMoonRiseSetResponse.class);
-
-            validateDataGoKrResponse(response);
+            SunMoonRiseSetResponse response = httpClientUtils.get(url, SunMoonRiseSetResponse.class);
+            validateResponse(response);
             return response;
         } catch (ResourceAccessException e) {
-            log.error("출몰시각 API 타임아웃: {}", e.getMessage());
-            throw new BusinessException(ExternalApiErrorCode.API_TIMEOUT, "출몰시각 API 응답 시간 초과");
+            log.error("{} API 타임아웃: {}", API_NAME, e.getMessage());
+            throw new BusinessException(ExternalApiErrorCode.API_TIMEOUT, API_NAME + " API 응답 시간 초과");
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("출몰시각 API 호출 실패: {}", e.getMessage());
-            throw new BusinessException(ExternalApiErrorCode.API_CALL_FAILED, "출몰시각 API 호출 실패");
+            log.error("{} API 호출 실패: {}", API_NAME, e.getMessage());
+            throw new BusinessException(ExternalApiErrorCode.API_CALL_FAILED, API_NAME + " API 호출 실패");
         }
     }
 
@@ -77,27 +74,15 @@ public class AstronomyApiClient {
             .toUriString();
     }
 
-    private void validateDataGoKrResponse(SunMoonRiseSetResponse response) {
+    private void validateResponse(SunMoonRiseSetResponse response) {
         if (response == null || response.header() == null) {
             throw new BusinessException(ExternalApiErrorCode.API_RESPONSE_PARSE_FAILED,
-                "출몰시각 응답이 비어있습니다");
+                API_NAME + " 응답이 비어있습니다");
         }
-
-        String resultCode = response.header().resultCode();
-        if ("00".equals(resultCode)) {
-            return;
-        }
-
-        log.warn("출몰시각 API 오류 응답: code={}, msg={}", resultCode, response.header().resultMsg());
-
-        if ("30".equals(resultCode)) {
-            throw new BusinessException(ExternalApiErrorCode.API_RATE_LIMIT_EXCEEDED);
-        }
-        if ("31".equals(resultCode) || "32".equals(resultCode)) {
-            throw new BusinessException(ExternalApiErrorCode.API_SERVICE_KEY_INVALID);
-        }
-
-        throw new BusinessException(ExternalApiErrorCode.API_CALL_FAILED,
-            "출몰시각 오류: " + response.header().resultMsg());
+        DataGoKrResponseValidator.validate(
+            response.header().resultCode(),
+            response.header().resultMsg(),
+            API_NAME
+        );
     }
 }
