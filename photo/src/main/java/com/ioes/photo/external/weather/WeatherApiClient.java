@@ -1,15 +1,16 @@
 package com.ioes.photo.external.weather;
 
+import com.ioes.photo.external.common.DataGoKrResponseValidator;
 import com.ioes.photo.external.config.properties.ExternalApiProperties;
 import com.ioes.photo.external.error.ExternalApiErrorCode;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse;
+import com.ioes.photo.global.common.util.HttpClientUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
@@ -26,11 +27,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequiredArgsConstructor
 public class WeatherApiClient {
 
+    private static final String API_NAME = "기상청 단기예보";
     private static final String SHORT_TERM_FORECAST_PATH =
         "/1360000/VilageFcstInfoService_2.0/getVilageFcst";
     private static final int DEFAULT_NUM_OF_ROWS = 1000;
 
-    private final RestClient restClient;
+    private final HttpClientUtils httpClientUtils;
     private final ExternalApiProperties properties;
 
     /**
@@ -52,21 +54,17 @@ public class WeatherApiClient {
         log.debug("단기예보 API 호출: baseDate={}, baseTime={}, nx={}, ny={}", baseDate, baseTime, nx, ny);
 
         try {
-            ShortTermForecastResponse response = restClient.get()
-                .uri(url)
-                .retrieve()
-                .body(ShortTermForecastResponse.class);
-
-            validateDataGoKrResponse(response);
+            ShortTermForecastResponse response = httpClientUtils.get(url, ShortTermForecastResponse.class);
+            validateResponse(response);
             return response;
         } catch (ResourceAccessException e) {
-            log.error("단기예보 API 타임아웃: {}", e.getMessage());
-            throw new BusinessException(ExternalApiErrorCode.API_TIMEOUT, "기상청 단기예보 API 응답 시간 초과");
+            log.error("{} API 타임아웃: {}", API_NAME, e.getMessage());
+            throw new BusinessException(ExternalApiErrorCode.API_TIMEOUT, API_NAME + " API 응답 시간 초과");
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("단기예보 API 호출 실패: {}", e.getMessage());
-            throw new BusinessException(ExternalApiErrorCode.API_CALL_FAILED, "기상청 단기예보 API 호출 실패");
+            log.error("{} API 호출 실패: {}", API_NAME, e.getMessage());
+            throw new BusinessException(ExternalApiErrorCode.API_CALL_FAILED, API_NAME + " API 호출 실패");
         }
     }
 
@@ -85,27 +83,15 @@ public class WeatherApiClient {
             .toUriString();
     }
 
-    private void validateDataGoKrResponse(ShortTermForecastResponse response) {
+    private void validateResponse(ShortTermForecastResponse response) {
         if (response == null || response.header() == null) {
             throw new BusinessException(ExternalApiErrorCode.API_RESPONSE_PARSE_FAILED,
-                "기상청 단기예보 응답이 비어있습니다");
+                API_NAME + " 응답이 비어있습니다");
         }
-
-        String resultCode = response.header().resultCode();
-        if ("00".equals(resultCode)) {
-            return;
-        }
-
-        log.warn("단기예보 API 오류 응답: code={}, msg={}", resultCode, response.header().resultMsg());
-
-        if ("30".equals(resultCode)) {
-            throw new BusinessException(ExternalApiErrorCode.API_RATE_LIMIT_EXCEEDED);
-        }
-        if ("31".equals(resultCode) || "32".equals(resultCode)) {
-            throw new BusinessException(ExternalApiErrorCode.API_SERVICE_KEY_INVALID);
-        }
-
-        throw new BusinessException(ExternalApiErrorCode.API_CALL_FAILED,
-            "기상청 단기예보 오류: " + response.header().resultMsg());
+        DataGoKrResponseValidator.validate(
+            response.header().resultCode(),
+            response.header().resultMsg(),
+            API_NAME
+        );
     }
 }
