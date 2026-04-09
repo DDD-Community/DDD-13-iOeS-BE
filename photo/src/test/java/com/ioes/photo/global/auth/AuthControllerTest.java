@@ -183,6 +183,6 @@ class AuthControllerTest {
         TokenResponse.UserProfile profile = new TokenResponse.UserProfile(
             "user-id", "test@test.com", "테스터", null, provider
         );
-        return new TokenResponse("access-token", "refresh-token", profile, true);
+        return new TokenResponse("access-token", "refresh-token", profile);
     }
 }

@@ -105,7 +105,6 @@ class OAuthServiceTest {
             assertThat(response.accessToken()).isEqualTo("access-token");
             assertThat(response.refreshToken()).isEqualTo("refresh-token");
             assertThat(response.profile()).isNotNull();
-            assertThat(response.isNewUser()).isTrue();
         }
 
         @Test
@@ -122,7 +121,6 @@ class OAuthServiceTest {
             TokenResponse response = oAuthService.handleCallback(OAuthProvider.KAKAO, Map.of("code", "kakao-code"));
 
             then(userRepository).should(never()).save(any(User.class));
-            assertThat(response.isNewUser()).isFalse();
         }
 
         @Test
@@ -143,12 +141,11 @@ class OAuthServiceTest {
 
             assertThat(response.accessToken()).isEqualTo("access-token");
             assertThat(response.profile().provider()).isEqualTo(OAuthProvider.APPLE);
-            assertThat(response.isNewUser()).isFalse();
         }
 
         @Test
-        @DisplayName("Apple 신규 회원가입이면 isNewUser=true를 반환한다")
-        void shouldReturnIsNewUser_forAppleSignUp() {
+        @DisplayName("Apple 신규 회원가입이면 유저를 저장한다")
+        void shouldSaveUser_forAppleSignUp() {
             OAuthUserInfo appleUserInfo = new OAuthUserInfo(
                 "apple-new-sub", "new@apple.com", "새사용자", null,
                 OAuthProvider.APPLE
@@ -158,9 +155,9 @@ class OAuthServiceTest {
                 .willReturn(Optional.empty());
             given(userRepository.save(any(User.class))).willReturn(createTestUser(appleUserInfo));
 
-            TokenResponse response = oAuthService.handleCallback(OAuthProvider.APPLE, Map.of("code", "code"));
+            oAuthService.handleCallback(OAuthProvider.APPLE, Map.of("code", "code"));
 
-            assertThat(response.isNewUser()).isTrue();
+            then(userRepository).should().save(any(User.class));
         }
 
         @Test

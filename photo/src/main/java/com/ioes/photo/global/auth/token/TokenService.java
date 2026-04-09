@@ -32,13 +32,11 @@ public class TokenService {
         String accessToken  = jwtProvider.generateToken(userId);
         String refreshToken = generateRefreshToken();
         storeRefreshToken(refreshToken, userId);
-        return new String[]{
-                accessToken, refreshToken
-        };
+        return new String[]{accessToken, refreshToken};
     }
 
     public String[] refreshTokens(String refreshToken) {
-        String key    = tokenProperties.refreshKeyPrefix() + refreshToken;
+        String key = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
 
         if (userId == null) {
@@ -51,13 +49,15 @@ public class TokenService {
     }
 
     public void invalidateRefreshToken(String refreshToken) {
-        String key    = tokenProperties.refreshKeyPrefix() + refreshToken;
+        String key = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
         Boolean deleted = redisTemplate.delete(key);
         if (Boolean.TRUE.equals(deleted) && userId != null) {
             redisTemplate.opsForSet().remove(tokenProperties.userTokensKeyPrefix() + userId, refreshToken);
         }
-        log.debug("Refresh Token 무효화: {}", Boolean.TRUE.equals(deleted) ? "성공" : "이미 만료됨");
+        log.debug("Refresh Token 무효화: {}",
+                Boolean.TRUE.equals(deleted) ? "성공"
+                : "이미 만료됨");
     }
 
     public void invalidateAllUserTokens(String userId) {

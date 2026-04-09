@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * OAuth 로그인 통합 서비스.
@@ -50,21 +51,14 @@ public class OAuthService {
     }
 
     private TokenResponse processLogin(OAuthUserInfo userInfo) {
-        boolean[] isNew = {false};
+        Optional<User> existing = userRepository
+            .findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerId());
 
-        User user = userRepository
-            .findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerId())
-            .map(existing -> updateProfile(existing, userInfo))
-            .orElseGet(() -> {
-                isNew[0] = true;
-                return createUser(userInfo);
-            });
+        User user = existing.map(value -> updateProfile(value, userInfo))
+                .orElseGet(() -> createUser(userInfo));
 
-        String userId   = user.getId().toString();
+        String userId = user.getId().toString();
         String[] tokens = tokenService.issueTokens(userId);
-
-        log.info("OAuth {} 완료: provider={}, userId={}",
-            isNew[0] ? "회원가입" : "로그인", userInfo.provider(), userId);
 
         TokenResponse.UserProfile profile = new TokenResponse.UserProfile(
             userId,
@@ -73,7 +67,7 @@ public class OAuthService {
             user.getProfileImageUrl(),
             user.getProvider()
         );
-        return new TokenResponse(tokens[0], tokens[1], profile, isNew[0]);
+        return new TokenResponse(tokens[0], tokens[1], profile);
     }
 
     private User createUser(OAuthUserInfo info) {

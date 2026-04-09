@@ -13,12 +13,11 @@ import com.ioes.photo.global.auth.oauth.OAuthProvider;
 public record TokenResponse(
     String accessToken,
     String refreshToken,
-    UserProfile profile,
-    boolean isNewUser
+    UserProfile profile
 ) {
 
     public static TokenResponse ofTokenOnly(String accessToken, String refreshToken) {
-        return new TokenResponse(accessToken, refreshToken, null, false);
+        return new TokenResponse(accessToken, refreshToken, null);
     }
 
     public record UserProfile(
