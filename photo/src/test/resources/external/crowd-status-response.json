@@ -1,0 +1,36 @@
+{
+    "CITYDATA": {
+        "AREA_NM": "광화문·덕수궁",
+        "AREA_CD": "POI009",
+        "LIVE_PPLTN_STTS": [
+            {
+                "AREA_NM": "광화문·덕수궁",
+                "AREA_CD": "POI009",
+                "AREA_CONGEST_LVL": "여유",
+                "AREA_CONGEST_MSG": "사람이 몰려있을 가능성이 낮고 붐빔은 거의 느껴지지 않아요.",
+                "AREA_PPLTN_MIN": "12000",
+                "AREA_PPLTN_MAX": "14000",
+                "MALE_PPLTN_RATE": "46.8",
+                "FEMALE_PPLTN_RATE": "53.2",
+                "PPLTN_RATE_0": "0.6",
+                "PPLTN_RATE_10": "6.1",
+                "PPLTN_RATE_20": "28.4",
+                "PPLTN_RATE_30": "21.8",
+                "PPLTN_RATE_40": "16.1",
+                "PPLTN_RATE_50": "14.3",
+                "PPLTN_RATE_60": "8.4",
+                "PPLTN_RATE_70": "4.3",
+                "PPLTN_TIME": "2026-04-06 14:45",
+                "FCST_YN": "Y",
+                "FCST_PPLTN": [
+                    {
+                        "FCST_TIME": "2026-04-06 16:00",
+                        "FCST_CONGEST_LVL": "보통",
+                        "FCST_PPLTN_MIN": "24000",
+                        "FCST_PPLTN_MAX": "26000"
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
+
 /**
  * RestClient 설정 클래스.
  *
@@ -42,7 +44,7 @@ public class RestClientConfig {
                 HttpStatusCode::is4xxClientError,
                 (request, response) -> {
                     int code = response.getStatusCode().value();
-                    log.warn("외부 API 4xx 오류: {} {}", code, request.getURI());
+                    log.warn("외부 API 4xx 오류: {} {}", code, maskUri(request.getURI()));
                     throw switch (code) {
                         case 401 -> new BusinessException(CommonErrorCode.UNAUTHORIZED,
                             "외부 API 인증 실패");
@@ -59,11 +61,17 @@ public class RestClientConfig {
                 HttpStatusCode::is5xxServerError,
                 (request, response) -> {
                     int code = response.getStatusCode().value();
-                    log.error("외부 API 5xx 오류: {} {}", code, request.getURI());
+                    log.error("외부 API 5xx 오류: {} {}", code, maskUri(request.getURI()));
                     throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
                         "외부 API 서버 오류: " + code);
                 }
             )
             .build();
+    }
+
+    private static String maskUri(URI uri) {
+        String raw = uri.toString();
+        return raw.replaceAll("(?i)(serviceKey=)[^&]+", "$1****")
+                  .replaceAll("(openapi\\.seoul\\.go\\.kr:\\d+/)[^/]+(/)", "$1****$2");
     }
 }

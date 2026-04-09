@@ -14,6 +14,15 @@ app:
     max-size: 10485760          # 10MB (bytes)
     image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif,exif
 
+  # 외부 API
+  external-api:
+    data-go-kr:
+      base-url: https://apis.data.go.kr
+      service-key: ${DATA_GO_KR_SERVICE_KEY:}
+    seoul:
+      base-url: http://openapi.seoul.go.kr:8088
+      service-key: ${SEOUL_API_KEY:}
+
   # HTTP 클라이언트
   http-client:
     connect-timeout: 5000       # ms
