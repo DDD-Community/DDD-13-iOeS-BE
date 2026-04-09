@@ -30,13 +30,6 @@ public class OAuthClientRegistry {
         log.info("등록된 OAuth 공급자: {}", this.clients.keySet());
     }
 
-    /**
-     * 공급자에 해당하는 OAuthClient를 반환합니다.
-     *
-     * @param provider OAuth 공급자
-     * @return 해당 공급자의 OAuthClient
-     * @throws BusinessException 등록되지 않은 공급자인 경우
-     */
     public OAuthClient getClient(OAuthProvider provider) {
         OAuthClient client = clients.get(provider);
         if (client == null) {

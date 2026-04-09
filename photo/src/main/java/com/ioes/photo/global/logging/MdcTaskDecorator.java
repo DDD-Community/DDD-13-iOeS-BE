@@ -23,12 +23,6 @@ import org.springframework.core.task.TaskDecorator;
  */
 public class MdcTaskDecorator implements TaskDecorator {
 
-    /**
-     * 부모 스레드의 MDC 컨텍스트를 전파하도록 Runnable을 감쌉니다.
-     *
-     * @param runnable 실행할 원본 태스크
-     * @return MDC 컨텍스트 전파 로직이 추가된 Runnable
-     */
     @Override
     public Runnable decorate(Runnable runnable) {
         Map<String, String> contextMap = MDC.getCopyOfContextMap();

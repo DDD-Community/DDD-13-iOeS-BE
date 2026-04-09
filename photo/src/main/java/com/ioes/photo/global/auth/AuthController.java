@@ -29,12 +29,6 @@ public class AuthController {
     private final OAuthService oAuthService;
     private final TokenService tokenService;
 
-    /*
-     * OAuth 인증 URL을 반환합니다.
-     *
-     * @param provider OAuth 공급자 (apple, kakao - 대소문자 무관)
-     * @return 인증 페이지 URL을 담은 응답
-     */
     @GetMapping("/oauth/{provider}/authorize")
     public ApiResponse<Map<String, String>> getAuthorizationUrl(@PathVariable String provider) {
         OAuthProvider oAuthProvider = oAuthService.resolveProvider(provider);
@@ -42,15 +36,6 @@ public class AuthController {
         return ApiResponse.success(Map.of("authorizationUrl", url));
     }
 
-    /*
-     * GET 방식 OAuth 콜백을 처리합니다 (Kakao 등 표준 OAuth 공급자).
-     *
-     * 새로운 GET 기반 공급자(Google, Naver 등)를 추가해도 이 엔드포인트를 재사용합니다.
-     *
-     * @param provider OAuth 공급자 이름
-     * @param params 공급자가 전달한 콜백 파라미터 (code 등)
-     * @return 발급된 토큰 및 프로필 정보
-     */
     @GetMapping("/oauth/{provider}/callback")
     public ApiResponse<TokenResponse> oauthCallback(
         @PathVariable String provider,
@@ -60,19 +45,11 @@ public class AuthController {
         return ApiResponse.success(oAuthService.handleCallback(oAuthProvider, params));
     }
 
-    /*
-     * Apple 인증 콜백을 처리합니다 (POST, form_post 방식).
-     *
-     * <p>Apple은 response_mode=form_post로 인증 코드를 POST로 전송하므로 별도 엔드포인트를 유지합니다
-     */
     @PostMapping("/oauth/apple/callback")
     public ApiResponse<TokenResponse> appleCallback(@RequestParam Map<String, String> params) {
         return ApiResponse.success(oAuthService.handleCallback(OAuthProvider.APPLE, params));
     }
 
-    /*
-     * Refresh Token으로 새 Access Token과 Refresh Token을 발급합니다.
-     */
     @PostMapping("/refresh")
     public ApiResponse<TokenResponse> refresh(@RequestBody Map<String, String> body) {
         String refreshToken = body.get("refreshToken");
@@ -80,12 +57,6 @@ public class AuthController {
         return ApiResponse.success(TokenResponse.ofTokenOnly(tokens[0], tokens[1]));
     }
 
-    /*
-     * Refresh Token을 무효화합니다 (로그아웃).
-     *
-     * @param body {@code {"refreshToken": "..."}} 형태의 요청 바디
-     * @return 성공 응답
-     */
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestBody Map<String, String> body) {
         tokenService.invalidateRefreshToken(body.get("refreshToken"));

@@ -17,20 +17,10 @@ public record HttpClientProperties(
     int connectTimeout,
     int readTimeout
 ) {
-    /**
-     * 커넥션 타임아웃을 Duration으로 변환합니다.
-     *
-     * @return 커넥션 타임아웃 Duration
-     */
     public Duration connectTimeoutDuration() {
         return Duration.ofMillis(connectTimeout);
     }
 
-    /**
-     * 읽기 타임아웃을 Duration으로 변환합니다.
-     *
-     * @return 읽기 타임아웃 Duration
-     */
     public Duration readTimeoutDuration() {
         return Duration.ofMillis(readTimeout);
     }

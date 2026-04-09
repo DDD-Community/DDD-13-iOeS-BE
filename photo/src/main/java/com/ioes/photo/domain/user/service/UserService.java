@@ -22,12 +22,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final TokenService tokenService;
 
-    /*
-     * 회원탈퇴 처리
-     *
-     * @param userId 탈퇴할 사용자의 ID
-     * @throws BusinessException 사용자를 찾을 수 없는 경우
-     */
     @Transactional
     public void deleteAccount(Long userId) {
         if (!userRepository.existsById(userId)) {

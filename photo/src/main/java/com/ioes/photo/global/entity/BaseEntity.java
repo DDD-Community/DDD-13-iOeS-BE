@@ -25,25 +25,15 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
-    /*
-     * 내부 PK, FK 참조용
-     * Long타입 identity (DB의 Auto_increment 위임)
-     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(updatable = false, nullable = false)
     private Long id;
 
-    /*
-     * 엔티티 최초 생성 일시
-     */
     @CreatedDate
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
-    /*
-     * 엔티티 최종 수정 일시
-     */
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;

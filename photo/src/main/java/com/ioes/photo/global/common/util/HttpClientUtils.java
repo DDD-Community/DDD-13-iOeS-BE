@@ -52,14 +52,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 쿼리 파라미터 포함 GET
-     * @param urlTemplate
-     * @param uriVariables
-     * @param responseType
-     * @return
-     * @param <T>
-     */
     public <T> T get(String urlTemplate, Map<String, ?> uriVariables, Class<T> responseType) {
         return restClient.get()
             .uri(urlTemplate, uriVariables)
@@ -96,11 +88,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 POST (201 Created 등)
-     * @param url
-     * @param body
-     */
     public void post(String url, Object body) {
         restClient.post()
             .uri(url)
@@ -129,11 +116,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 PUT (204 No Content 등)
-     * @param url
-     * @param body
-     */
     public void put(String url, Object body) {
         restClient.put()
             .uri(url)
@@ -152,11 +134,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 PATCH
-     * @param url
-     * @param body
-     */
     public void patch(String url, Object body) {
         restClient.patch()
             .uri(url)
@@ -173,10 +150,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 DELETE (204 No Content 등)
-     * @param url
-     */
     public void delete(String url) {
         restClient.delete()
             .uri(url)
@@ -192,11 +165,6 @@ public class HttpClientUtils {
             .toBodilessEntity();
     }
 
-    /**
-     * Authorization: Bearer {token} 헤더 Consumer 생성
-     * @param token
-     * @return
-     */
     public static Consumer<HttpHeaders> bearer(String token) {
         return headers -> headers.setBearerAuth(token);
     }

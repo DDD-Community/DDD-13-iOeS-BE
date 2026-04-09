@@ -30,38 +30,16 @@ public class OAuthService {
     private final UserRepository       userRepository;
     private final TokenService         tokenService;
 
-    /**
-     * OAuth 로그인 인증 URL을 반환합니다.
-     *
-     * @param provider OAuth 공급자
-     * @return 인증 페이지 URL
-     */
     public String getAuthorizationUrl(OAuthProvider provider) {
         return registry.getClient(provider).getAuthorizationUrl();
     }
 
-    /**
-     * OAuth 콜백을 처리합니다.
-     *
-     * <p>공급자에 해당하는 {@link OAuthClient}에 사용자 정보 조회를 위임하고,
-     * 회원을 조회 또는 생성한 뒤 서버 자체 토큰을 발급합니다.
-     *
-     * @param provider OAuth 공급자
-     * @param params   공급자가 콜백으로 전달한 파라미터 (code, user 등)
-     * @return 발급된 토큰 및 프로필 정보
-     */
     @Transactional
     public TokenResponse handleCallback(OAuthProvider provider, Map<String, String> params) {
         OAuthUserInfo userInfo = registry.getClient(provider).getUserInfo(params);
         return processLogin(userInfo);
     }
 
-    /**
-     * provider 문자열을 {@link OAuthProvider} 열거형으로 변환합니다.
-     *
-     * @param provider 공급자 이름 문자열 (대소문자 무관)
-     * @throws BusinessException 지원하지 않는 공급자인 경우
-     */
     public OAuthProvider resolveProvider(String provider) {
         try {
             return OAuthProvider.valueOf(provider.toUpperCase());
@@ -70,8 +48,6 @@ public class OAuthService {
                 "지원하지 않는 OAuth 공급자입니다: " + provider);
         }
     }
-
-    // ── private ──────────────────────────────────────────────────────────────
 
     private TokenResponse processLogin(OAuthUserInfo userInfo) {
         boolean[] isNew = {false};

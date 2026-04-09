@@ -17,22 +17,10 @@ public record TokenResponse(
     boolean isNewUser
 ) {
 
-    /*
-     * 토큰 갱신 시 프로필 없이 생성합니다.
-     */
     public static TokenResponse ofTokenOnly(String accessToken, String refreshToken) {
         return new TokenResponse(accessToken, refreshToken, null, false);
     }
 
-    /*
-     * 사용자 프로필 정보
-     *
-     * @param userId 서버 내부 사용자 ID
-     * @param email 이메일
-     * @param nickname 닉네임
-     * @param profileImageUrl 프로필 이미지 URL
-     * @param provider OAuth 공급자
-     */
     public record UserProfile(
         String userId,
         String email,

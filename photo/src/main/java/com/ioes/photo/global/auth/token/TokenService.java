@@ -28,13 +28,6 @@ public class TokenService {
     private final JwtProvider jwtProvider;
     private final RedisTemplate<String, String> redisTemplate;
     private final TokenProperties tokenProperties;
-
-    /*
-     * 새 Access Token과 Refresh Token을 발급합니다.
-     *
-     * @param userId 서버 내부 사용자 ID
-     * @return 발급된 토큰 쌍
-     */
     public String[] issueTokens(String userId) {
         String accessToken  = jwtProvider.generateToken(userId);
         String refreshToken = generateRefreshToken();
@@ -44,13 +37,6 @@ public class TokenService {
         };
     }
 
-    /*
-     * Refresh Token으로 새 토큰 쌍을 발급합니다 (Rotation).
-     *
-     * @param refreshToken 기존 Refresh Token
-     * @return 새로 발급된 토큰 쌍 (accessToken, refreshToken)
-     * @throws BusinessException 유효하지 않거나 만료된 Refresh Token인 경우
-     */
     public String[] refreshTokens(String refreshToken) {
         String key    = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
@@ -64,11 +50,6 @@ public class TokenService {
         return issueTokens(userId);
     }
 
-    /*
-     * Refresh Token을 무효화합니다 (로그아웃).
-     *
-     * @param refreshToken 무효화할 Refresh Token
-     */
     public void invalidateRefreshToken(String refreshToken) {
         String key    = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
@@ -79,11 +60,6 @@ public class TokenService {
         log.debug("Refresh Token 무효화: {}", Boolean.TRUE.equals(deleted) ? "성공" : "이미 만료됨");
     }
 
-    /*
-     * 사용자의 모든 Refresh Token을 무효화합니다 (회원탈퇴).
-     *
-     * @param userId 사용자 ID
-     */
     public void invalidateAllUserTokens(String userId) {
         String userTokensKey = tokenProperties.userTokensKeyPrefix() + userId;
         Set<String> tokens   = redisTemplate.opsForSet().members(userTokensKey);
@@ -97,12 +73,6 @@ public class TokenService {
             tokens != null ? tokens.size() : 0);
     }
 
-    /*
-     * Refresh Token이 유효한지 확인합니다.
-     *
-     * @param refreshToken 확인할 Refresh Token
-     * @return 유효하면 true
-     */
     public boolean isRefreshTokenValid(String refreshToken) {
         return Boolean.TRUE.equals(
             redisTemplate.hasKey(tokenProperties.refreshKeyPrefix() + refreshToken)

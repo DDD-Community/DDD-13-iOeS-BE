@@ -13,25 +13,9 @@ import java.util.Map;
  */
 public interface OAuthClient {
 
-    /*
-     * 이 클라이언트가 처리하는 OAuth 공급자를 반환합니다.
-     */
     OAuthProvider getProvider();
 
-    /*
-     * OAuth 인증 페이지 URL을 생성합니다.
-     */
     String getAuthorizationUrl();
 
-    /*
-     * 인증 코드를 포함한 콜백 파라미터로 사용자 정보를 조회합니다.
-     * 공급자마다 콜백 파라미터가 다를 수 있습니다.
-     * Apple: code, user
-     * Kakao: code
-     * 따라서 Map을 통해 해당 문제를 해결했습니다.
-     *
-     * @param params 공급자가 콜백으로 전달한 모든 파라미터
-     * @return 공통 사용자 정보
-     */
     OAuthUserInfo getUserInfo(Map<String, String> params);
 }

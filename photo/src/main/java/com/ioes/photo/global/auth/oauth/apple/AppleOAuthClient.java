@@ -60,11 +60,6 @@ public class AppleOAuthClient implements OAuthClient {
         return OAuthProvider.APPLE;
     }
 
-    /*
-     * Apple 로그인 인증 URL을 생성합니다.
-     *
-     * @return Apple 인증 페이지 URL
-     */
     @Override
     public String getAuthorizationUrl() {
         OAuthProperties.Apple apple = oAuthProperties.apple();
@@ -72,11 +67,6 @@ public class AppleOAuthClient implements OAuthClient {
             + "&redirect_uri=" + apple.redirectUri() + "&scope=name%20email" + "&response_mode=form_post";
     }
 
-    /*
-     * Apple 인증 코드로 사용자 정보를 조회합니다.
-     *
-     * @return 공통 사용자 정보
-     */
     @Override
     public OAuthUserInfo getUserInfo(Map<String, String> params) {
         String code = params.get("code");
@@ -111,11 +101,6 @@ public class AppleOAuthClient implements OAuthClient {
             .body(AppleTokenResponse.class);
     }
 
-    /*
-     * Apple client_secret을 동적으로 생성합니다.
-     *
-     * Apple client_secret은 ES256 알고리즘으로 서명된 JWT
-     */
     private String generateClientSecret() {
         OAuthProperties.Apple apple = oAuthProperties.apple();
         try {
@@ -138,9 +123,6 @@ public class AppleOAuthClient implements OAuthClient {
         }
     }
 
-    /*
-     * PKCS8 PEM 형식의 EC 비밀 키를 로드합니다.
-     */
     private PrivateKey loadEcPrivateKey(String pem) throws Exception {
         String cleaned = pem.trim()
             .replace("-----BEGIN PRIVATE KEY-----", "")
@@ -151,12 +133,6 @@ public class AppleOAuthClient implements OAuthClient {
             .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
     }
 
-    /*
-     * Apple ID token의 payload를 파싱합니다.
-     *
-     * Apple 토큰 엔드포인트에서 직접 받은 토큰이므로 서명 검증 없이 payload를 파싱합니다.
-     * 프로덕션에서는 Apple JWKS 검증을 추가 예정
-     */
     private Map<String, Object> parseIdTokenClaims(String idToken) {
         try {
             String[] parts = idToken.split("\\.");
@@ -171,9 +147,6 @@ public class AppleOAuthClient implements OAuthClient {
         }
     }
 
-    /*
-     * Apple이 최초 로그인 시에만 전달하는 사용자 JSON에서 닉네임을 추출합니다.
-     */
     @SuppressWarnings("unchecked")
     private String extractNicknameFromUserJson(String userJson) {
         if (userJson == null || userJson.isBlank()) {

@@ -48,11 +48,6 @@ public class KakaoOAuthClient implements OAuthClient {
         return OAuthProvider.KAKAO;
     }
 
-    /**
-     * Kakao 로그인 인증 URL을 생성합니다.
-     *
-     * @return Kakao 인증 페이지 URL
-     */
     @Override
     public String getAuthorizationUrl() {
         OAuthProperties.Kakao kakao = oAuthProperties.kakao();
@@ -62,11 +57,6 @@ public class KakaoOAuthClient implements OAuthClient {
             + "&redirect_uri=" + kakao.redirectUri();
     }
 
-    /**
-     * Kakao 인증 코드로 사용자 정보를 조회합니다
-     *
-     * @return 공통 사용자 정보
-     */
     @Override
     public OAuthUserInfo getUserInfo(Map<String, String> params) {
         String code = params.get("code");
