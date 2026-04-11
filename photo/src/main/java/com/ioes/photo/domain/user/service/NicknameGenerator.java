@@ -34,8 +34,10 @@ public class NicknameGenerator {
     }
 
     public Result generate() {
-        int maxAttempts = properties.getHashtag().getMaxAttempts();
+        return generate(properties.getHashtag().getMaxAttempts());
+    }
 
+    private Result generate(int maxAttempts) {
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             String nickname = randomNickname();
             Long tag = findMinAvailableHashTag(nickname);

@@ -80,6 +80,11 @@ public class User extends BaseEntity {
         return hashTag != null ? nickname + "#" + hashTag : nickname;
     }
 
+    public void changeNickname(String nickname, Long hashTag) {
+        this.nickname = nickname;
+        this.hashTag = hashTag;
+    }
+
     public void updateProfile(String email, String nickname, String profileImageUrl) {
         if (email != null) {
             this.email = email;

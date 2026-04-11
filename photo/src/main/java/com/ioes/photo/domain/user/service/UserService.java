@@ -1,13 +1,20 @@
 package com.ioes.photo.domain.user.service;
 
+import com.ioes.photo.domain.user.dto.UpdateProfileRequest;
+import com.ioes.photo.domain.user.dto.UpdateProfileResponse;
+import com.ioes.photo.domain.user.entity.User;
+import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
+import com.ioes.photo.global.storage.StorageService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 사용자 도메인 서비스
@@ -21,6 +28,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final TokenService tokenService;
+    private final StorageService storageService;
+
+    @Transactional
+    public UpdateProfileResponse updateProfile(Long userId, UpdateProfileRequest request, MultipartFile profileImage) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        updateNicknameIfPresent(user, request.nickname());
+        updateEmailIfPresent(user, request.email());
+        updateProfileImageIfPresent(user, profileImage);
+
+        return UpdateProfileResponse.from(user);
+    }
 
     @Transactional
     public void deleteAccount(Long userId) {
@@ -30,5 +50,38 @@ public class UserService {
         tokenService.invalidateAllUserTokens(userId.toString());
         userRepository.softDeleteById(userId);
         log.info("회원탈퇴 완료: userId={}", userId);
+    }
+
+    private void updateNicknameIfPresent(User user, String nickname) {
+        if (nickname == null) {
+            return;
+        }
+        if (nickname.equals(user.getNickname())) {
+            return;
+        }
+
+        if (userRepository.existsByNicknameAndIdNot(nickname, user.getId())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_NICKNAME);
+        }
+        user.changeNickname(nickname, null);
+    }
+
+    private void updateEmailIfPresent(User user, String email) {
+        if (email == null) {
+            return;
+        }
+        if (user.getEmail() != null) {
+            throw new BusinessException(UserErrorCode.EMAIL_ALREADY_REGISTERED);
+        }
+        user.updateProfile(email, null, null);
+    }
+
+    private void updateProfileImageIfPresent(User user, MultipartFile profileImage) {
+        if (profileImage == null || profileImage.isEmpty()) {
+            return;
+        }
+
+        String imageUrl = storageService.uploadImage(profileImage);
+        user.updateProfile(null, null, imageUrl);
     }
 }

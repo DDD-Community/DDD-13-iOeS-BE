@@ -22,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.hashTag FROM User u WHERE u.nickname = :nickname ORDER BY u.hashTag ASC")
     List<Long> findHashTagsByNickname(@Param("nickname") String nickname);
 
+    boolean existsByNicknameAndIdNot(String nickname, Long id);
+
     @Modifying
     @Query("UPDATE User u SET u.deletedAt = CURRENT_TIMESTAMP WHERE u.id = :id")
     void softDeleteById(@Param("id") Long id);
