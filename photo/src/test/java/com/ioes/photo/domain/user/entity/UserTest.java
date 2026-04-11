@@ -65,6 +65,64 @@ class UserTest {
         }
     }
 
+    // ── getDisplayName ────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("getDisplayName()")
+    class GetDisplayName {
+
+        @Test
+        @DisplayName("hashTag가 있으면 nickname#hashTag 형식으로 반환한다")
+        void shouldReturnNicknameWithHashTag_whenHashTagExists() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .nickname("멋진코끼리")
+                .hashTag(7L)
+                .build();
+
+            assertThat(user.getDisplayName()).isEqualTo("멋진코끼리#7");
+        }
+
+        @Test
+        @DisplayName("hashTag가 없으면 nickname만 반환한다")
+        void shouldReturnNicknameOnly_whenHashTagIsNull() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .nickname("카카오유저")
+                .build();
+
+            assertThat(user.getDisplayName()).isEqualTo("카카오유저");
+        }
+
+        @Test
+        @DisplayName("hashTag 1은 nickname#1 형식으로 반환한다")
+        void shouldReturnNicknameWithTag1() {
+            User user = User.builder()
+                .provider(OAuthProvider.APPLE)
+                .providerUserId("apple-123")
+                .nickname("포근한여우")
+                .hashTag(1L)
+                .build();
+
+            assertThat(user.getDisplayName()).isEqualTo("포근한여우#1");
+        }
+
+        @Test
+        @DisplayName("hashTag 99999는 nickname#99999 형식으로 반환한다")
+        void shouldReturnNicknameWithMaxTag() {
+            User user = User.builder()
+                .provider(OAuthProvider.APPLE)
+                .providerUserId("apple-456")
+                .nickname("고요한독수리")
+                .hashTag(99999L)
+                .build();
+
+            assertThat(user.getDisplayName()).isEqualTo("고요한독수리#99999");
+        }
+    }
+
     // ── updateProfile ─────────────────────────────────────────────────────
 
     @Nested

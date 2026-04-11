@@ -27,11 +27,17 @@ import org.hibernate.annotations.SQLRestriction;
 @Getter
 @Entity
 @Table(
-    name = "users", // 테이블 명 강제
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_users_provider_provider_user_id", // 복합 유니크 제약조건명
-        columnNames = {"provider", "provider_user_id"} // 복합키 대상 컬럼
-    )
+    name = "users",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_users_provider_provider_user_id",
+            columnNames = {"provider", "provider_user_id"}
+        ),
+        @UniqueConstraint(
+            name = "uk_users_nickname_hash_tag",
+            columnNames = {"nickname", "hash_tag"}
+        )
+    }
 )
 @SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -51,6 +57,9 @@ public class User extends BaseEntity {
     private String nickname;
 
     @Column
+    private Long hashTag;
+
+    @Column
     private String profileImageUrl;
 
     @Column
@@ -58,12 +67,17 @@ public class User extends BaseEntity {
 
     @Builder
     private User(OAuthProvider provider, String providerUserId, String email,
-                 String nickname, String profileImageUrl) {
+                 String nickname, String profileImageUrl, Long hashTag) {
         this.provider = provider;
         this.providerUserId = providerUserId;
         this.email = email;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
+        this.hashTag = hashTag;
+    }
+
+    public String getDisplayName() {
+        return hashTag != null ? nickname + "#" + hashTag : nickname;
     }
 
     public void updateProfile(String email, String nickname, String profileImageUrl) {

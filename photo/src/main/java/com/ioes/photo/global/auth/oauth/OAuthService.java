@@ -2,10 +2,13 @@ package com.ioes.photo.global.auth.oauth;
 
 import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.domain.user.repository.UserRepository;
+import com.ioes.photo.domain.user.service.NicknameGenerator;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
+import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,7 @@ public class OAuthService {
     private final OAuthClientRegistry registry;
     private final UserRepository       userRepository;
     private final TokenService         tokenService;
+    private final NicknameGenerator    nicknameGenerator;
 
     public String getAuthorizationUrl(OAuthProvider provider) {
         return registry.getClient(provider).getAuthorizationUrl();
@@ -63,7 +67,7 @@ public class OAuthService {
         TokenResponse.UserProfile profile = new TokenResponse.UserProfile(
             userId,
             user.getEmail(),
-            user.getNickname(),
+            user.getDisplayName(),
             user.getProfileImageUrl(),
             user.getProvider()
         );
@@ -71,12 +75,32 @@ public class OAuthService {
     }
 
     private User createUser(OAuthUserInfo info) {
+        if (info.nickname() != null) {
+            return saveUser(info, info.nickname(), null);
+        }
+
+        int maxAttempts = nicknameGenerator.maxAttempts();
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            NicknameGenerator.Result generated = nicknameGenerator.generate();
+            try {
+                return saveUser(info, generated.nickname(), generated.hashTag());
+            } catch (DataIntegrityViolationException e) {
+                log.warn("닉네임 동시성 충돌, 재시도 {}/{}: nickname={}, hashTag={}",
+                    attempt + 1, maxAttempts, generated.nickname(), generated.hashTag());
+            }
+        }
+
+        throw new BusinessException(UserErrorCode.NICKNAME_GENERATION_FAILED);
+    }
+
+    private User saveUser(OAuthUserInfo info, String nickname, Long hashTag) {
         User user = User.builder()
             .provider(info.provider())
             .providerUserId(info.providerId())
             .email(info.email())
-            .nickname(info.nickname())
+            .nickname(nickname)
             .profileImageUrl(info.profileImageUrl())
+            .hashTag(hashTag)
             .build();
         return userRepository.save(user);
     }

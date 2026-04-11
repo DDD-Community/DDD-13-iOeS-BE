@@ -2,6 +2,7 @@ package com.ioes.photo.global.auth.oauth;
 
 import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.domain.user.repository.UserRepository;
+import com.ioes.photo.domain.user.service.NicknameGenerator;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.error.exception.BusinessException;
@@ -38,6 +39,7 @@ class OAuthServiceTest {
     @Mock OAuthClient         oAuthClient;
     @Mock UserRepository      userRepository;
     @Mock TokenService        tokenService;
+    @Mock NicknameGenerator   nicknameGenerator;
 
     @InjectMocks OAuthService oAuthService;
 
@@ -180,6 +182,95 @@ class OAuthServiceTest {
         }
     }
 
+    // ── handleCallback (nickname 자동 생성) ───────────────────────────────
+
+    @Nested
+    @DisplayName("handleCallback() - 닉네임 자동 생성")
+    class HandleCallbackNicknameGeneration {
+
+        @BeforeEach
+        void setUp() {
+            given(registry.getClient(any())).willReturn(oAuthClient);
+            given(tokenService.issueTokens(any())).willReturn(TEST_TOKENS);
+        }
+
+        @Test
+        @DisplayName("nickname이 null이면 NicknameGenerator를 호출한다")
+        void shouldCallNicknameGenerator_whenNicknameIsNull() {
+            OAuthUserInfo userInfo = new OAuthUserInfo(
+                "apple-sub-001", null, null, null, OAuthProvider.APPLE
+            );
+            given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
+            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.APPLE, "apple-sub-001"))
+                .willReturn(Optional.empty());
+            given(nicknameGenerator.maxAttempts()).willReturn(3);
+            given(nicknameGenerator.generate())
+                .willReturn(new NicknameGenerator.Result("멋진코끼리", 7L));
+            given(userRepository.save(any(User.class)))
+                .willReturn(createUserWithHashTag("멋진코끼리", 7L));
+
+            oAuthService.handleCallback(OAuthProvider.APPLE, Map.of("code", "apple-code"));
+
+            then(nicknameGenerator).should().generate();
+        }
+
+        @Test
+        @DisplayName("nickname이 있으면 NicknameGenerator를 호출하지 않는다")
+        void shouldNotCallNicknameGenerator_whenNicknameExists() {
+            OAuthUserInfo userInfo = new OAuthUserInfo(
+                "kakao-user-111", "kakao@test.com", "카카오유저", null, OAuthProvider.KAKAO
+            );
+            given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
+            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.KAKAO, "kakao-user-111"))
+                .willReturn(Optional.empty());
+            given(userRepository.save(any(User.class))).willReturn(createTestUser(userInfo));
+
+            oAuthService.handleCallback(OAuthProvider.KAKAO, Map.of("code", "kakao-code"));
+
+            then(nicknameGenerator).should(never()).generate();
+        }
+
+        @Test
+        @DisplayName("자동 생성된 닉네임은 nickname#hashTag 형식으로 응답에 포함된다")
+        void shouldIncludeDisplayNameInResponse_whenNicknameGenerated() {
+            OAuthUserInfo userInfo = new OAuthUserInfo(
+                "apple-sub-002", null, null, null, OAuthProvider.APPLE
+            );
+            given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
+            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.APPLE, "apple-sub-002"))
+                .willReturn(Optional.empty());
+            given(nicknameGenerator.maxAttempts()).willReturn(3);
+            given(nicknameGenerator.generate())
+                .willReturn(new NicknameGenerator.Result("포근한여우", 21L));
+            given(userRepository.save(any(User.class)))
+                .willReturn(createUserWithHashTag("포근한여우", 21L));
+
+            TokenResponse response = oAuthService.handleCallback(
+                OAuthProvider.APPLE, Map.of("code", "apple-code")
+            );
+
+            assertThat(response.profile().nickname()).isEqualTo("포근한여우#21");
+        }
+
+        @Test
+        @DisplayName("OAuth 제공 닉네임은 hashTag 없이 그대로 응답에 포함된다")
+        void shouldReturnNicknameWithoutHashTag_whenOAuthProvidesNickname() {
+            OAuthUserInfo userInfo = new OAuthUserInfo(
+                "kakao-user-222", "kakao@test.com", "카카오유저", null, OAuthProvider.KAKAO
+            );
+            given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
+            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.KAKAO, "kakao-user-222"))
+                .willReturn(Optional.empty());
+            given(userRepository.save(any(User.class))).willReturn(createTestUser(userInfo));
+
+            TokenResponse response = oAuthService.handleCallback(
+                OAuthProvider.KAKAO, Map.of("code", "kakao-code")
+            );
+
+            assertThat(response.profile().nickname()).isEqualTo("카카오유저");
+        }
+    }
+
     // ── resolveProvider ───────────────────────────────────────────────────
 
     @Nested
@@ -229,6 +320,17 @@ class OAuthServiceTest {
             .email(info.email())
             .nickname(info.nickname())
             .profileImageUrl(info.profileImageUrl())
+            .build();
+        ReflectionTestUtils.setField(user, "id", USER_ID);
+        return user;
+    }
+
+    private User createUserWithHashTag(String nickname, Long hashTag) {
+        User user = User.builder()
+            .provider(OAuthProvider.APPLE)
+            .providerUserId("apple-sub")
+            .nickname(nickname)
+            .hashTag(hashTag)
             .build();
         ReflectionTestUtils.setField(user, "id", USER_ID);
         return user;
