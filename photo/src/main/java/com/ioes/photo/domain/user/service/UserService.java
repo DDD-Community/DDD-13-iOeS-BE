@@ -5,8 +5,8 @@ import com.ioes.photo.domain.user.dto.UpdateProfileResponse;
 import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
+import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
-import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageService;
 
@@ -29,6 +29,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final StorageService storageService;
+    private final OAuthService oAuthService;
 
     @Transactional
     public UpdateProfileResponse updateProfile(Long userId, UpdateProfileRequest request, MultipartFile profileImage) {
@@ -44,9 +45,15 @@ public class UserService {
 
     @Transactional
     public void deleteAccount(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            throw new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND, "사용자를 찾을 수 없습니다.");
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        try {
+            oAuthService.revokeOAuthProvider(user);
+        } catch (Exception e) {
+            log.warn("OAuth 연동 해제 실패 (탈퇴 계속 진행): userId={}, provider={}", userId, user.getProvider(), e);
         }
+
         tokenService.invalidateAllUserTokens(userId.toString());
         userRepository.softDeleteById(userId);
         log.info("회원탈퇴 완료: userId={}", userId);

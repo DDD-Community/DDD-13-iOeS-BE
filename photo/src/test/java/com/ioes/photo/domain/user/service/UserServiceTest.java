@@ -1,9 +1,13 @@
 package com.ioes.photo.domain.user.service;
 
+import com.ioes.photo.domain.user.entity.User;
+import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
+import com.ioes.photo.global.auth.oauth.OAuthProvider;
+import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
-import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
+import com.ioes.photo.global.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,12 +16,16 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
@@ -32,6 +40,8 @@ class UserServiceTest {
 
     @Mock UserRepository userRepository;
     @Mock TokenService   tokenService;
+    @Mock StorageService storageService;
+    @Mock OAuthService   oAuthService;
 
     @InjectMocks UserService userService;
 
@@ -44,9 +54,25 @@ class UserServiceTest {
     class DeleteAccount {
 
         @Test
-        @DisplayName("존재하는 사용자이면 토큰 무효화 후 소프트 삭제한다")
-        void shouldInvalidateTokensAndSoftDelete_whenUserExists() {
-            given(userRepository.existsById(USER_ID)).willReturn(true);
+        @DisplayName("존재하는 사용자이면 OAuth 연동 해제 → 토큰 무효화 → 소프트 삭제 순서로 실행된다")
+        void shouldRevokeTokensAndSoftDelete_whenUserExists() {
+            User user = buildUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            userService.deleteAccount(USER_ID);
+
+            InOrder order = inOrder(oAuthService, tokenService, userRepository);
+            order.verify(oAuthService).revokeOAuthProvider(user);
+            order.verify(tokenService).invalidateAllUserTokens(USER_ID.toString());
+            order.verify(userRepository).softDeleteById(USER_ID);
+        }
+
+        @Test
+        @DisplayName("OAuth 연동 해제가 실패해도 토큰 무효화와 소프트 삭제는 계속 진행된다")
+        void shouldContinueDeletion_whenRevokeThrows() {
+            User user = buildUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            willThrow(new RuntimeException("revoke 실패")).given(oAuthService).revokeOAuthProvider(user);
 
             userService.deleteAccount(USER_ID);
 
@@ -55,38 +81,39 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("토큰 무효화가 소프트 삭제보다 먼저 실행된다")
-        void shouldInvalidateTokensBeforeSoftDelete() {
-            given(userRepository.existsById(USER_ID)).willReturn(true);
-
-            userService.deleteAccount(USER_ID);
-
-            InOrder order = inOrder(tokenService, userRepository);
-            order.verify(tokenService).invalidateAllUserTokens(USER_ID.toString());
-            order.verify(userRepository).softDeleteById(USER_ID);
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 사용자이면 BusinessException(RESOURCE_NOT_FOUND)을 던진다")
+        @DisplayName("존재하지 않는 사용자이면 USER_NOT_FOUND 예외를 던진다")
         void shouldThrow_whenUserNotFound() {
-            given(userRepository.existsById(USER_ID)).willReturn(false);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> userService.deleteAccount(USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                    .isEqualTo(CommonErrorCode.RESOURCE_NOT_FOUND));
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND));
         }
 
         @Test
-        @DisplayName("사용자가 없으면 토큰 무효화를 시도하지 않는다")
-        void shouldNotInvalidateTokens_whenUserNotFound() {
-            given(userRepository.existsById(USER_ID)).willReturn(false);
+        @DisplayName("사용자가 없으면 이후 처리를 진행하지 않는다")
+        void shouldNotProceed_whenUserNotFound() {
+            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> userService.deleteAccount(USER_ID))
                 .isInstanceOf(BusinessException.class);
 
+            then(oAuthService).should(never()).revokeOAuthProvider(any());
             then(tokenService).should(never()).invalidateAllUserTokens(any());
             then(userRepository).should(never()).softDeleteById(any());
         }
+    }
+
+    // ── helper ───────────────────────────────────────────────────────────
+
+    private User buildUser() {
+        User user = User.builder()
+            .provider(OAuthProvider.KAKAO)
+            .providerUserId("kakao-123")
+            .nickname("테스트유저")
+            .build();
+        ReflectionTestUtils.setField(user, "id", USER_ID);
+        return user;
     }
 }

@@ -15,7 +15,9 @@ public interface OAuthClient {
 
     OAuthProvider getProvider();
 
-    String getAuthorizationUrl();
+    String buildAuthorizationUrl(String state, String codeChallenge);
 
     OAuthUserInfo getUserInfo(Map<String, String> params);
+
+    void revokeConnection(String providerUserId, String providerRefreshToken);
 }

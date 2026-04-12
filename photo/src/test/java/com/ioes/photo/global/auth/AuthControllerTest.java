@@ -1,5 +1,7 @@
 package com.ioes.photo.global.auth;
 
+import com.ioes.photo.global.auth.dto.LogoutRequest;
+import com.ioes.photo.global.auth.dto.RefreshRequest;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenResponse;
@@ -19,7 +21,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -90,7 +91,7 @@ class AuthControllerTest {
         @Test
         @DisplayName("Kakao 인증 코드로 토큰 응답을 반환한다")
         void shouldReturnTokenResponse_forKakao() {
-            Map<String, String> params = Map.of("code", "kakao-code");
+            Map<String, String> params = Map.of("code", "kakao-code", "state", "test-state");
             TokenResponse tokenResponse = buildTokenResponse(OAuthProvider.KAKAO);
             given(oAuthService.resolveProvider("kakao")).willReturn(OAuthProvider.KAKAO);
             given(oAuthService.handleCallback(OAuthProvider.KAKAO, params)).willReturn(tokenResponse);
@@ -113,7 +114,7 @@ class AuthControllerTest {
         @DisplayName("Apple 인증 코드와 user 파라미터로 토큰 응답을 반환한다")
         void shouldReturnTokenResponse_withUserParam() {
             String userJson = "{\"name\":{\"firstName\":\"John\",\"lastName\":\"Doe\"}}";
-            Map<String, String> params = Map.of("code", "apple-code", "user", userJson);
+            Map<String, String> params = Map.of("code", "apple-code", "state", "s", "user", userJson);
             TokenResponse tokenResponse = buildTokenResponse(OAuthProvider.APPLE);
             given(oAuthService.handleCallback(eq(OAuthProvider.APPLE), eq(params))).willReturn(tokenResponse);
 
@@ -126,7 +127,7 @@ class AuthControllerTest {
         @Test
         @DisplayName("user 파라미터 없이도 토큰 응답을 반환한다 (재로그인)")
         void shouldReturnTokenResponse_withoutUserParam() {
-            Map<String, String> params = Map.of("code", "apple-code");
+            Map<String, String> params = Map.of("code", "apple-code", "state", "s");
             TokenResponse tokenResponse = buildTokenResponse(OAuthProvider.APPLE);
             given(oAuthService.handleCallback(eq(OAuthProvider.APPLE), eq(params))).willReturn(tokenResponse);
 
@@ -149,7 +150,7 @@ class AuthControllerTest {
                 .willReturn(new String[]{"new-access", "new-refresh"});
 
             ApiResponse<TokenResponse> response = authController.refresh(
-                Map.of("refreshToken", "valid-refresh-token")
+                new RefreshRequest("valid-refresh-token")
             );
 
             assertThat(response.isSuccess()).isTrue();
@@ -169,7 +170,7 @@ class AuthControllerTest {
         @DisplayName("Refresh Token 무효화 후 성공 응답을 반환한다")
         void shouldReturnSuccess() {
             ApiResponse<Void> response = authController.logout(
-                Map.of("refreshToken", "token-to-invalidate")
+                new LogoutRequest("token-to-invalidate")
             );
 
             then(tokenService).should().invalidateRefreshToken("token-to-invalidate");

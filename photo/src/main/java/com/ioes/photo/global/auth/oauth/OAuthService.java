@@ -14,13 +14,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * OAuth 로그인 통합 서비스.
  *
- * <p>{@link OAuthClientRegistry}를 통해 공급자별 {@link OAuthClient}에 처리를 위임합니다.
+ * {@link OAuthClientRegistry}를 통해 공급자별 {@link OAuthClient}에 처리를 위임합니다.
+ * State(CSRF 방지)와 PKCE(code 가로채기 방지) 생성/검증을 담당합니다.
  * 새로운 OAuth 공급자를 추가할 때 이 클래스를 수정하지 않아도 됩니다.
  *
  * @author 황제연
@@ -30,19 +38,36 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OAuthService {
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final OAuthClientRegistry registry;
-    private final UserRepository       userRepository;
-    private final TokenService         tokenService;
-    private final NicknameGenerator    nicknameGenerator;
+    private final OAuthStateStore stateStore;
+    private final UserRepository userRepository;
+    private final TokenService tokenService;
+    private final NicknameGenerator nicknameGenerator;
 
     public String getAuthorizationUrl(OAuthProvider provider) {
-        return registry.getClient(provider).getAuthorizationUrl();
+        String state = generateState();
+        String codeVerifier = generateCodeVerifier();
+        String codeChallenge = generateCodeChallenge(codeVerifier);
+
+        stateStore.save(state, codeVerifier);
+
+        return registry.getClient(provider).buildAuthorizationUrl(state, codeChallenge);
     }
 
     @Transactional
     public TokenResponse handleCallback(OAuthProvider provider, Map<String, String> params) {
-        OAuthUserInfo userInfo = registry.getClient(provider).getUserInfo(params);
+        Map<String, String> enrichedParams = validateStateAndEnrich(params);
+        OAuthUserInfo userInfo = registry.getClient(provider).getUserInfo(enrichedParams);
         return processLogin(userInfo);
+    }
+
+    public void revokeOAuthProvider(User user) {
+        OAuthClient client = registry.getClient(user.getProvider());
+        String providerRefreshToken = tokenService.getProviderRefreshToken(user.getId().toString());
+        client.revokeConnection(user.getProviderUserId(), providerRefreshToken);
+        log.info("OAuth 연동 해제 완료: userId={}, provider={}", user.getId(), user.getProvider());
     }
 
     public OAuthProvider resolveProvider(String provider) {
@@ -54,6 +79,23 @@ public class OAuthService {
         }
     }
 
+    private Map<String, String> validateStateAndEnrich(Map<String, String> params) {
+        String state = params.get("state");
+        if (state == null || state.isBlank()) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "state 파라미터가 누락되었습니다.");
+        }
+
+        String codeVerifier = stateStore.getAndDelete(state);
+        if (codeVerifier == null) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED,
+                "유효하지 않거나 만료된 state입니다. 처음부터 다시 로그인해주세요.");
+        }
+
+        Map<String, String> enriched = new HashMap<>(params);
+        enriched.put("code_verifier", codeVerifier);
+        return enriched;
+    }
+
     private TokenResponse processLogin(OAuthUserInfo userInfo) {
         Optional<User> existing = userRepository
             .findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerId());
@@ -62,6 +104,9 @@ public class OAuthService {
                 .orElseGet(() -> createUser(userInfo));
 
         String userId = user.getId().toString();
+        if (userInfo.providerRefreshToken() != null) {
+            tokenService.storeProviderRefreshToken(userId, userInfo.providerRefreshToken());
+        }
         String[] tokens = tokenService.issueTokens(userId);
 
         TokenResponse.UserProfile profile = new TokenResponse.UserProfile(
@@ -108,5 +153,23 @@ public class OAuthService {
     private User updateProfile(User user, OAuthUserInfo info) {
         user.updateProfile(info.email(), info.nickname(), info.profileImageUrl());
         return user;
+    }
+    private String generateState() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+    private String generateCodeVerifier() {
+        byte[] bytes = new byte[64];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String generateCodeChallenge(String codeVerifier) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
+        }
     }
 }

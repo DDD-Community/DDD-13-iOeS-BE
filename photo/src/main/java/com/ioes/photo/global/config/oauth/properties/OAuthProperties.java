@@ -37,10 +37,12 @@ public record OAuthProperties(Apple apple, Kakao kakao) {
      * @param clientId Kakao REST API 키
      * @param clientSecret Kakao 보안 코드
      * @param redirectUri 인증 후 콜백 URI
+     * @param adminKey Kakao 앱 관리자 키 (연동 해제 시 사용, 카카오 개발자 콘솔 > 앱 키)
      */
     public record Kakao(
         String clientId,
         String clientSecret,
-        String redirectUri
+        String redirectUri,
+        String adminKey
     ) {}
 }

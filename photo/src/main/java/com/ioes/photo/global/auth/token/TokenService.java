@@ -69,8 +69,20 @@ public class TokenService {
             }
         }
         redisTemplate.delete(userTokensKey);
+        redisTemplate.delete(tokenProperties.providerRtKeyPrefix() + userId);
         log.info("사용자 {} 의 모든 Refresh Token 무효화 완료 ({}개)", userId,
             tokens != null ? tokens.size() : 0);
+    }
+
+    public void storeProviderRefreshToken(String userId, String providerRefreshToken) {
+        redisTemplate.opsForValue().set(
+            tokenProperties.providerRtKeyPrefix() + userId,
+            providerRefreshToken
+        );
+    }
+
+    public String getProviderRefreshToken(String userId) {
+        return redisTemplate.opsForValue().get(tokenProperties.providerRtKeyPrefix() + userId);
     }
 
     public boolean isRefreshTokenValid(String refreshToken) {
