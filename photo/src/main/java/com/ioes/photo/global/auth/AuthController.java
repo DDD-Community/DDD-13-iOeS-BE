@@ -44,7 +44,7 @@ public class AuthController {
     @SecurityRequirements
     @GetMapping("/oauth/{provider}/authorize")
     public ApiResponse<Map<String, String>> getAuthorizationUrl(
-        @Parameter(description = "OAuth 공급자 (kakao | apple)", required = true)
+        @Parameter(description = "OAuth 공급자 (KAKAO | APPLE)", required = true)
         @PathVariable String provider
     ) {
         OAuthProvider oAuthProvider = oAuthService.resolveProvider(provider);
