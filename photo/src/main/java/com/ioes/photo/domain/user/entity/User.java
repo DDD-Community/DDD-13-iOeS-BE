@@ -89,6 +89,7 @@ public class User extends BaseEntity {
         }
         if (NullUtils.isNotBlank(nickname)){
             this.nickname = nickname;
+            this.hashTag = null;
         }
         if (NullUtils.isNotBlank(profileImageUrl)){
             this.profileImageUrl = profileImageUrl;

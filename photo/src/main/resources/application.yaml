@@ -183,7 +183,7 @@ app:
     hashtag:
       min: 1
       max: 99999
-      max-attempts: 10
+      max-attempts: 5
 
   # OAuth State/PKCE Redis 저장
   oauth:

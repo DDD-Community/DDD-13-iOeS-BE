@@ -1,6 +1,7 @@
 package com.ioes.photo.global.auth.oauth;
 
 import com.ioes.photo.domain.user.entity.User;
+import com.ioes.photo.domain.user.service.NicknameProperties;
 import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
@@ -33,14 +36,16 @@ import static org.mockito.Mockito.never;
  * @author 황제연
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("OAuthService 단위 테스트")
 class OAuthServiceTest {
 
-    @Mock OAuthClientRegistry registry;
-    @Mock OAuthStateStore     stateStore;
-    @Mock OAuthClient         oAuthClient;
-    @Mock UserAccountService    userAccountService;
-    @Mock TokenService        tokenService;
+    @Mock OAuthClientRegistry  registry;
+    @Mock OAuthStateStore      stateStore;
+    @Mock OAuthClient          oAuthClient;
+    @Mock UserAccountService   userAccountService;
+    @Mock TokenService         tokenService;
+    @Mock NicknameProperties   nicknameProperties;
 
     @InjectMocks OAuthService oAuthService;
 
@@ -48,6 +53,13 @@ class OAuthServiceTest {
     private static final String KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize?...";
     private static final Long   USER_ID        = 1L;
     private static final String[] TEST_TOKENS  = {"access-token", "refresh-token"};
+
+    @BeforeEach
+    void setUpNicknameProperties() {
+        NicknameProperties.Hashtag hashtag = new NicknameProperties.Hashtag();
+        hashtag.setMaxAttempts(5);
+        given(nicknameProperties.getHashtag()).willReturn(hashtag);
+    }
 
     // ── getAuthorizationUrl ───────────────────────────────────────────────
 

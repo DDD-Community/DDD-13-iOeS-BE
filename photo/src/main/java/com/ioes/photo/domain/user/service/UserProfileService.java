@@ -67,8 +67,6 @@ public class UserProfileService {
         if (nickname.equals(user.getNickname())) {
             return;
         }
-
-        // 업데이트 시, 닉네임 중복 체크 여부는 정책 논의해야함.
         user.updateProfile(null, nickname, null);
     }
 
@@ -76,7 +74,7 @@ public class UserProfileService {
         if (NullUtils.isBlank(email)) {
             return;
         }
-        if (NullUtils.isBlank(user.getEmail())) {
+        if (NullUtils.isNotBlank(user.getEmail())) {
             throw new BusinessException(UserErrorCode.EMAIL_ALREADY_REGISTERED);
         }
         user.updateProfile(email, null, null);

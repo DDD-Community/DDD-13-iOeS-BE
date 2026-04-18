@@ -1,6 +1,8 @@
 package com.ioes.photo.global.auth.oauth;
 
 import com.ioes.photo.domain.user.entity.User;
+import com.ioes.photo.domain.user.error.UserErrorCode;
+import com.ioes.photo.domain.user.service.NicknameProperties;
 import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
@@ -8,6 +10,7 @@ import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -40,6 +43,7 @@ public class OAuthService {
     private final OAuthStateStore stateStore;
     private final UserAccountService userAccountService;
     private final TokenService tokenService;
+    private final NicknameProperties nicknameProperties;
 
     public String getAuthorizationUrl(OAuthProvider provider) {
         String state = generateState();
@@ -94,7 +98,7 @@ public class OAuthService {
         Optional<User> existing = userAccountService.findExistingUser(userInfo.provider(), userInfo.providerId());
 
         User user = existing
-            .orElseGet(() -> userAccountService.createUser(userInfo));
+            .orElseGet(() -> createUserWithRetry(userInfo));
 
         String userId = user.getId().toString();
         if (userInfo.providerRefreshToken() != null) {
@@ -111,6 +115,25 @@ public class OAuthService {
         );
         return new TokenResponse(tokens[0], tokens[1], profile);
     }
+
+    private User createUserWithRetry(OAuthUserInfo info) {
+        int maxAttempts = nicknameProperties.getHashtag().getMaxAttempts();
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return userAccountService.createUser(info);
+            } catch (DataIntegrityViolationException e) {
+                if (attempt < maxAttempts) {
+                    log.warn("닉네임 동시성 충돌, 재시도 {}/{}", attempt, maxAttempts);
+                } else {
+                    log.error("닉네임/해시태그 충돌로 사용자 생성 {}회 실패: provider={}, providerId={}",
+                        maxAttempts, info.provider(), info.providerId());
+                    throw new BusinessException(UserErrorCode.NICKNAME_GENERATION_FAILED);
+                }
+            }
+        }
+        throw new BusinessException(UserErrorCode.NICKNAME_GENERATION_FAILED);
+    }
+
     private String generateState() {
         return UUID.randomUUID().toString().replace("-", "");
     }

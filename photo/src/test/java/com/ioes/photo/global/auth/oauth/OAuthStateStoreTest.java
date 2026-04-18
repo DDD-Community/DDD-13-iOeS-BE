@@ -1,5 +1,6 @@
 package com.ioes.photo.global.auth.oauth;
 
+import com.ioes.photo.global.config.oauth.properties.OAuthProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,6 +30,7 @@ import static org.mockito.BDDMockito.then;
 @DisplayName("OAuthStateStore 단위 테스트")
 class OAuthStateStoreTest {
 
+    @Mock OAuthProperties                oAuthProperties;
     @Mock RedisTemplate<String, String> redisTemplate;
     @Mock ValueOperations<String, String> valueOps;
 
@@ -36,6 +38,8 @@ class OAuthStateStoreTest {
 
     @BeforeEach
     void setUp() {
+        OAuthProperties.State stateProps = new OAuthProperties.State("oauth_state:", 300L);
+        given(oAuthProperties.state()).willReturn(stateProps);
         given(redisTemplate.opsForValue()).willReturn(valueOps);
     }
 
