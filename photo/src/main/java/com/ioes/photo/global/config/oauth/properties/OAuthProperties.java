@@ -7,10 +7,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param apple Apple OAuth 설정
  * @param kakao Kakao OAuth 설정
+ * @param state OAuth State/PKCE Redis 저장 설정
  * @author 황제연
  */
 @ConfigurationProperties(prefix = "app.oauth")
-public record OAuthProperties(Apple apple, Kakao kakao) {
+public record OAuthProperties(Apple apple, Kakao kakao, State state) {
 
     /**
      * Apple Sign In 설정.
@@ -44,5 +45,16 @@ public record OAuthProperties(Apple apple, Kakao kakao) {
         String clientSecret,
         String redirectUri,
         String adminKey
+    ) {}
+
+    /**
+     * OAuth State / PKCE code_verifier Redis 저장 설정.
+     *
+     * @param keyPrefix Redis 키 접두사
+     * @param ttlSeconds Redis TTL (초)
+     */
+    public record State(
+        String keyPrefix,
+        long ttlSeconds
     ) {}
 }

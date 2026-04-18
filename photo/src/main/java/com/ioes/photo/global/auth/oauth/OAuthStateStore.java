@@ -1,5 +1,6 @@
 package com.ioes.photo.global.auth.oauth;
 
+import com.ioes.photo.global.config.oauth.properties.OAuthProperties;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,16 +18,21 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class OAuthStateStore {
 
-    private static final String KEY_PREFIX  = "oauth_state:";
-    private static final long   TTL_SECONDS = 300; // 5분
-
+    private final OAuthProperties oAuthProperties;
     private final RedisTemplate<String, String> redisTemplate;
+
     public void save(String state, String codeVerifier) {
-        redisTemplate.opsForValue().set(KEY_PREFIX + state, codeVerifier, TTL_SECONDS, TimeUnit.SECONDS);
+        OAuthProperties.State stateProps = oAuthProperties.state();
+        redisTemplate.opsForValue().set(
+            stateProps.keyPrefix() + state,
+            codeVerifier,
+            stateProps.ttlSeconds(),
+            TimeUnit.SECONDS
+        );
     }
 
     public String getAndDelete(String state) {
-        String key = KEY_PREFIX + state;
+        String key = oAuthProperties.state().keyPrefix() + state;
         String codeVerifier = redisTemplate.opsForValue().get(key);
         if (codeVerifier != null) {
             redisTemplate.delete(key);

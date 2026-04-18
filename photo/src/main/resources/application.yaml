@@ -185,6 +185,12 @@ app:
       max: 99999
       max-attempts: 10
 
+  # OAuth State/PKCE Redis 저장
+  oauth:
+    state:
+      key-prefix: "oauth_state:"
+      ttl-seconds: 300
+
   # JWT
   jwt:
     # 운영 환경에서는 반드시 환경 변수 JWT_SECRET 으로 주입 (256 bit 이상 Base64 인코딩)
