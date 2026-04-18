@@ -1,18 +1,14 @@
 package com.ioes.photo.global.auth.oauth;
 
 import com.ioes.photo.domain.user.entity.User;
-import com.ioes.photo.domain.user.repository.UserRepository;
-import com.ioes.photo.domain.user.service.NicknameGenerator;
+import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
-import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
-import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -42,9 +38,8 @@ public class OAuthService {
 
     private final OAuthClientRegistry registry;
     private final OAuthStateStore stateStore;
-    private final UserRepository userRepository;
+    private final UserAccountService userAccountService;
     private final TokenService tokenService;
-    private final NicknameGenerator nicknameGenerator;
 
     public String getAuthorizationUrl(OAuthProvider provider) {
         String state = generateState();
@@ -56,7 +51,6 @@ public class OAuthService {
         return registry.getClient(provider).buildAuthorizationUrl(state, codeChallenge);
     }
 
-    @Transactional
     public TokenResponse handleCallback(OAuthProvider provider, Map<String, String> params) {
         Map<String, String> enrichedParams = validateStateAndEnrich(params);
         OAuthUserInfo userInfo = registry.getClient(provider).getUserInfo(enrichedParams);
@@ -97,11 +91,10 @@ public class OAuthService {
     }
 
     private TokenResponse processLogin(OAuthUserInfo userInfo) {
-        Optional<User> existing = userRepository
-            .findByProviderAndProviderUserId(userInfo.provider(), userInfo.providerId());
+        Optional<User> existing = userAccountService.findExistingUser(userInfo.provider(), userInfo.providerId());
 
-        User user = existing.map(value -> updateProfile(value, userInfo))
-                .orElseGet(() -> createUser(userInfo));
+        User user = existing
+            .orElseGet(() -> userAccountService.createUser(userInfo));
 
         String userId = user.getId().toString();
         if (userInfo.providerRefreshToken() != null) {
@@ -117,42 +110,6 @@ public class OAuthService {
             user.getProvider()
         );
         return new TokenResponse(tokens[0], tokens[1], profile);
-    }
-
-    private User createUser(OAuthUserInfo info) {
-        if (info.nickname() != null) {
-            return saveUser(info, info.nickname(), null);
-        }
-
-        int maxAttempts = nicknameGenerator.maxAttempts();
-        for (int attempt = 0; attempt < maxAttempts; attempt++) {
-            NicknameGenerator.Result generated = nicknameGenerator.generate();
-            try {
-                return saveUser(info, generated.nickname(), generated.hashTag());
-            } catch (DataIntegrityViolationException e) {
-                log.warn("닉네임 동시성 충돌, 재시도 {}/{}: nickname={}, hashTag={}",
-                    attempt + 1, maxAttempts, generated.nickname(), generated.hashTag());
-            }
-        }
-
-        throw new BusinessException(UserErrorCode.NICKNAME_GENERATION_FAILED);
-    }
-
-    private User saveUser(OAuthUserInfo info, String nickname, Long hashTag) {
-        User user = User.builder()
-            .provider(info.provider())
-            .providerUserId(info.providerId())
-            .email(info.email())
-            .nickname(nickname)
-            .profileImageUrl(info.profileImageUrl())
-            .hashTag(hashTag)
-            .build();
-        return userRepository.save(user);
-    }
-
-    private User updateProfile(User user, OAuthUserInfo info) {
-        user.updateProfile(info.email(), info.nickname(), info.profileImageUrl());
-        return user;
     }
     private String generateState() {
         return UUID.randomUUID().toString().replace("-", "");

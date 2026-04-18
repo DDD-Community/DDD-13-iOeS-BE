@@ -1,8 +1,7 @@
 package com.ioes.photo.global.auth.oauth;
 
 import com.ioes.photo.domain.user.entity.User;
-import com.ioes.photo.domain.user.repository.UserRepository;
-import com.ioes.photo.domain.user.service.NicknameGenerator;
+import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.error.exception.BusinessException;
@@ -40,9 +39,8 @@ class OAuthServiceTest {
     @Mock OAuthClientRegistry registry;
     @Mock OAuthStateStore     stateStore;
     @Mock OAuthClient         oAuthClient;
-    @Mock UserRepository      userRepository;
+    @Mock UserAccountService    userAccountService;
     @Mock TokenService        tokenService;
-    @Mock NicknameGenerator   nicknameGenerator;
 
     @InjectMocks OAuthService oAuthService;
 
@@ -118,41 +116,44 @@ class OAuthServiceTest {
         }
 
         @Test
-        @DisplayName("기존 회원이 없으면 새로 생성하고 토큰을 반환한다")
+        @DisplayName("기존 회원이 없으면 createUser를 호출하고 토큰을 반환한다")
         void shouldCreateNewUser_whenNotExists() {
             OAuthUserInfo userInfo = kakaoUserInfo("kakao-user-123");
+            User newUser = createTestUser(userInfo);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.KAKAO, "kakao-user-123"))
+            given(userAccountService.findExistingUser(OAuthProvider.KAKAO, "kakao-user-123"))
                 .willReturn(Optional.empty());
-            given(userRepository.save(any(User.class))).willReturn(createTestUser(userInfo));
+            given(userAccountService.createUser(userInfo)).willReturn(newUser);
 
             TokenResponse response = oAuthService.handleCallback(OAuthProvider.KAKAO, paramsWithState());
 
-            then(userRepository).should().save(any(User.class));
+            then(userAccountService).should().createUser(userInfo);
             assertThat(response.accessToken()).isEqualTo("access-token");
             assertThat(response.refreshToken()).isEqualTo("refresh-token");
         }
 
         @Test
-        @DisplayName("기존 회원이면 프로필을 업데이트하고 save를 호출하지 않는다")
-        void shouldUpdateProfile_whenUserExists() {
+        @DisplayName("기존 회원이면 createUser를 호출하지 않는다")
+        void shouldNotCreateUser_whenUserExists() {
             OAuthUserInfo userInfo = kakaoUserInfo("kakao-user-123");
+            User existingUser = createTestUser(userInfo);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.KAKAO, "kakao-user-123"))
-                .willReturn(Optional.of(createTestUser(userInfo)));
+            given(userAccountService.findExistingUser(OAuthProvider.KAKAO, "kakao-user-123"))
+                .willReturn(Optional.of(existingUser));
 
             oAuthService.handleCallback(OAuthProvider.KAKAO, paramsWithState());
 
-            then(userRepository).should(never()).save(any(User.class));
+            then(userAccountService).should(never()).createUser(any());
         }
 
         @Test
         @DisplayName("Apple 콜백을 처리하면 토큰 응답을 반환한다")
         void shouldHandleAppleCallback() {
             OAuthUserInfo appleUserInfo = appleUserInfo("apple-sub-123");
+            User existingUser = createTestUser(appleUserInfo);
             given(oAuthClient.getUserInfo(any())).willReturn(appleUserInfo);
-            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.APPLE, "apple-sub-123"))
-                .willReturn(Optional.of(createTestUser(appleUserInfo)));
+            given(userAccountService.findExistingUser(OAuthProvider.APPLE, "apple-sub-123"))
+                .willReturn(Optional.of(existingUser));
 
             TokenResponse response = oAuthService.handleCallback(
                 OAuthProvider.APPLE, paramsWithState()
@@ -166,9 +167,10 @@ class OAuthServiceTest {
         @DisplayName("로그인 응답에 프로필 정보가 포함된다")
         void shouldIncludeProfileInResponse() {
             OAuthUserInfo userInfo = kakaoUserInfo("kakao-user-123");
+            User existingUser = createTestUser(userInfo);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(any(), any()))
-                .willReturn(Optional.of(createTestUser(userInfo)));
+            given(userAccountService.findExistingUser(any(), any()))
+                .willReturn(Optional.of(existingUser));
 
             TokenResponse response = oAuthService.handleCallback(OAuthProvider.KAKAO, paramsWithState());
 
@@ -186,7 +188,7 @@ class OAuthServiceTest {
             );
             User user = createTestUser(userInfo);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(any(), any()))
+            given(userAccountService.findExistingUser(any(), any()))
                 .willReturn(Optional.of(user));
 
             oAuthService.handleCallback(OAuthProvider.KAKAO, paramsWithState());
@@ -230,9 +232,10 @@ class OAuthServiceTest {
             given(tokenService.issueTokens(any())).willReturn(TEST_TOKENS);
 
             OAuthUserInfo userInfo = kakaoUserInfo("kakao-123");
+            User user = createTestUser(userInfo);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(any(), any()))
-                .willReturn(Optional.of(createTestUser(userInfo)));
+            given(userAccountService.findExistingUser(any(), any()))
+                .willReturn(Optional.of(user));
 
             Map<String, String> params = Map.of("code", "code", "state", "valid-state");
             oAuthService.handleCallback(OAuthProvider.KAKAO, params);
@@ -264,47 +267,29 @@ class OAuthServiceTest {
         }
 
         @Test
-        @DisplayName("nickname이 null이면 NicknameGenerator를 호출한다")
-        void shouldCallNicknameGenerator_whenNicknameIsNull() {
+        @DisplayName("신규 회원이면 UserAccountService.createUser를 호출한다")
+        void shouldDelegateToCreateUser_whenNewUser() {
             OAuthUserInfo userInfo = new OAuthUserInfo("apple-sub-001", null, null, null, OAuthProvider.APPLE, null);
+            User newUser = createUserWithHashTag("멋진코끼리", 7L);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.APPLE, "apple-sub-001"))
+            given(userAccountService.findExistingUser(OAuthProvider.APPLE, "apple-sub-001"))
                 .willReturn(Optional.empty());
-            given(nicknameGenerator.maxAttempts()).willReturn(3);
-            given(nicknameGenerator.generate()).willReturn(new NicknameGenerator.Result("멋진코끼리", 7L));
-            given(userRepository.save(any(User.class))).willReturn(createUserWithHashTag("멋진코끼리", 7L));
+            given(userAccountService.createUser(userInfo)).willReturn(newUser);
 
             oAuthService.handleCallback(OAuthProvider.APPLE, params());
 
-            then(nicknameGenerator).should().generate();
-        }
-
-        @Test
-        @DisplayName("nickname이 있으면 NicknameGenerator를 호출하지 않는다")
-        void shouldNotCallNicknameGenerator_whenNicknameExists() {
-            OAuthUserInfo userInfo = new OAuthUserInfo(
-                "kakao-user-111", "kakao@test.com", "카카오유저", null, OAuthProvider.KAKAO, null
-            );
-            given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.KAKAO, "kakao-user-111"))
-                .willReturn(Optional.empty());
-            given(userRepository.save(any(User.class))).willReturn(createTestUser(userInfo));
-
-            oAuthService.handleCallback(OAuthProvider.KAKAO, params());
-
-            then(nicknameGenerator).should(never()).generate();
+            then(userAccountService).should().createUser(userInfo);
         }
 
         @Test
         @DisplayName("자동 생성된 닉네임은 nickname#hashTag 형식으로 응답에 포함된다")
         void shouldIncludeDisplayNameInResponse_whenNicknameGenerated() {
             OAuthUserInfo userInfo = new OAuthUserInfo("apple-sub-002", null, null, null, OAuthProvider.APPLE, null);
+            User newUser = createUserWithHashTag("포근한여우", 21L);
             given(oAuthClient.getUserInfo(any())).willReturn(userInfo);
-            given(userRepository.findByProviderAndProviderUserId(OAuthProvider.APPLE, "apple-sub-002"))
+            given(userAccountService.findExistingUser(OAuthProvider.APPLE, "apple-sub-002"))
                 .willReturn(Optional.empty());
-            given(nicknameGenerator.maxAttempts()).willReturn(3);
-            given(nicknameGenerator.generate()).willReturn(new NicknameGenerator.Result("포근한여우", 21L));
-            given(userRepository.save(any(User.class))).willReturn(createUserWithHashTag("포근한여우", 21L));
+            given(userAccountService.createUser(userInfo)).willReturn(newUser);
 
             TokenResponse response = oAuthService.handleCallback(OAuthProvider.APPLE, params());
 

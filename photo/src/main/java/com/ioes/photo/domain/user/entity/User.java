@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.user.entity;
 
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
+import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -77,22 +78,19 @@ public class User extends BaseEntity {
     }
 
     public String getDisplayName() {
-        return hashTag != null ? nickname + "#" + hashTag : nickname;
-    }
-
-    public void changeNickname(String nickname, Long hashTag) {
-        this.nickname = nickname;
-        this.hashTag = hashTag;
+        return hashTag != null
+                ? nickname + "#" + hashTag
+                : nickname;
     }
 
     public void updateProfile(String email, String nickname, String profileImageUrl) {
-        if (email != null) {
+        if (NullUtils.isNotBlank(email)) {
             this.email = email;
         }
-        if (nickname != null){
+        if (NullUtils.isNotBlank(nickname)){
             this.nickname = nickname;
         }
-        if (profileImageUrl != null){
+        if (NullUtils.isNotBlank(profileImageUrl)){
             this.profileImageUrl = profileImageUrl;
         }
     }

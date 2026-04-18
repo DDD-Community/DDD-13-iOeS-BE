@@ -2,7 +2,7 @@ package com.ioes.photo.domain.user.controller;
 
 import com.ioes.photo.domain.user.dto.UpdateProfileRequest;
 import com.ioes.photo.domain.user.dto.UpdateProfileResponse;
-import com.ioes.photo.domain.user.service.UserService;
+import com.ioes.photo.domain.user.service.UserProfileService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,7 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+    private final UserProfileService userService;
 
     @Operation(summary = "프로필 수정", description = "닉네임·이메일·프로필 이미지를 선택적으로 수정합니다. null인 필드는 변경되지 않습니다.")
     @SecurityRequirement(name = "Bearer Authentication")
