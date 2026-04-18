@@ -30,27 +30,14 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum CommonErrorCode implements ErrorCode {
 
-    // 400 Bad Request
     INVALID_INPUT_VALUE("C001", "입력값이 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     INVALID_TYPE_VALUE("C002", "요청 타입이 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     MISSING_REQUEST_PARAMETER("C003", "필수 요청 파라미터가 누락되었습니다.", HttpStatus.BAD_REQUEST),
-
-    // 401 Unauthorized
     UNAUTHORIZED("C004", "인증이 필요합니다.", HttpStatus.UNAUTHORIZED),
-
-    // 403 Forbidden
     ACCESS_DENIED("C005", "접근 권한이 없습니다.", HttpStatus.FORBIDDEN),
-
-    // 404 Not Found
     RESOURCE_NOT_FOUND("C006", "요청한 리소스를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-
-    // 405 Method Not Allowed
     METHOD_NOT_ALLOWED("C007", "지원하지 않는 HTTP 메서드입니다.", HttpStatus.METHOD_NOT_ALLOWED),
-
-    // 409 Conflict
     CONFLICT("C008", "이미 존재하는 리소스입니다.", HttpStatus.CONFLICT),
-
-    // 500 Internal Server Error
     INTERNAL_SERVER_ERROR("C999", "서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;

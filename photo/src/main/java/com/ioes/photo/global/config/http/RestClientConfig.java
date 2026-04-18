@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
+
 /**
  * RestClient 설정 클래스.
  *
@@ -21,15 +23,6 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class RestClientConfig {
 
-    /**
-     * 타임아웃 및 에러 핸들러가 설정된 {@link RestClient} 빈을 생성합니다.
-     *
-     * RestClient.Builder를 주입받으므로 Spring Boot가 자동 구성한
-     * JSON / XML 메시지 컨버터가 모두 포함됩니다.
-     *
-     * @param props   HTTP 클라이언트 설정 프로퍼티
-     * @return 설정된 RestClient 인스턴스
-     */
     @Bean
     public RestClient restClient(HttpClientProperties props) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -42,7 +35,7 @@ public class RestClientConfig {
                 HttpStatusCode::is4xxClientError,
                 (request, response) -> {
                     int code = response.getStatusCode().value();
-                    log.warn("외부 API 4xx 오류: {} {}", code, request.getURI());
+                    log.warn("외부 API 4xx 오류: {} {}", code, maskUri(request.getURI()));
                     throw switch (code) {
                         case 401 -> new BusinessException(CommonErrorCode.UNAUTHORIZED,
                             "외부 API 인증 실패");
@@ -59,11 +52,17 @@ public class RestClientConfig {
                 HttpStatusCode::is5xxServerError,
                 (request, response) -> {
                     int code = response.getStatusCode().value();
-                    log.error("외부 API 5xx 오류: {} {}", code, request.getURI());
+                    log.error("외부 API 5xx 오류: {} {}", code, maskUri(request.getURI()));
                     throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
                         "외부 API 서버 오류: " + code);
                 }
             )
             .build();
+    }
+
+    private static String maskUri(URI uri) {
+        String raw = uri.toString();
+        return raw.replaceAll("(?i)(serviceKey=)[^&]+", "$1****")
+                  .replaceAll("(openapi\\.seoul\\.go\\.kr:\\d+/)[^/]+(/)", "$1****$2");
     }
 }

@@ -39,13 +39,6 @@ public class TransactionLoggingAspect {
 
     private static final String TX_ID_KEY = "txId";
 
-    /**
-     * 실제 트랜잭션이 활성화된 경우에만 MDC에 트랜잭션 ID를 설정합니다.
-     *
-     * @param pjp 실행 중인 조인포인트
-     * @return 원본 메서드 반환값
-     * @throws Throwable 원본 메서드에서 발생한 예외를 그대로 전파
-     */
     @Around(
         "@annotation(org.springframework.transaction.annotation.Transactional)" +
         " || @within(org.springframework.transaction.annotation.Transactional)"

@@ -22,11 +22,6 @@ public class SwaggerConfig {
 
     private final SwaggerProperties swaggerProperties;
 
-    /**
-     * JWT Bearer 인증 보안 스키마가 포함된 빈을 생성합니다
-     *
-     * @return 설정된 OpenAPI 인스턴스
-     */
     @Bean
     public OpenAPI openAPI() {
         String schemeName = swaggerProperties.securitySchemeName();

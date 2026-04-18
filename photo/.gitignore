@@ -47,5 +47,8 @@ src/main/resources/config/prod/logback/logback-prod.xml
 ### 로컬 로그 파일 ###
 logs/
 
+### Environment variables ###
+.env
+
 ### Claude Code local settings ###
 .claude/

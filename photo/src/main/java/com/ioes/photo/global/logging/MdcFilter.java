@@ -40,15 +40,6 @@ public class MdcFilter extends OncePerRequestFilter {
 
     private final MdcProperties mdcProperties;
 
-    /**
-     * 요청마다 MDC 컨텍스트를 설정하고, 처리 완료 후 초기화합니다.
-     *
-     * @param request  현재 HTTP 요청
-     * @param response 현재 HTTP 응답
-     * @param chain    다음 필터 체인
-     * @throws ServletException 서블릿 처리 중 예외
-     * @throws IOException      I/O 처리 중 예외
-     */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,

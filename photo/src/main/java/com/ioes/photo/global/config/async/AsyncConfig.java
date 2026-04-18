@@ -29,13 +29,6 @@ public class AsyncConfig implements AsyncConfigurer {
 
     private final AsyncProperties asyncProperties;
 
-    /**
-     *  메소드 실행 시 사용할 기본 스레드 풀을 생성합니다.
-     *
-     * MdcTaskDecorator가 적용되어 부모 스레드의 MDC 컨텍스트가 자식 스레드(비동기 태스크)로 전파됩니다.
-     *
-     * @return 설정된 {@link ThreadPoolTaskExecutor}
-     */
     @Override
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

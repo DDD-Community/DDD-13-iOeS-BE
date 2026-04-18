@@ -23,23 +23,10 @@ public class FileService {
 
     private final FileProperties fileProperties;
 
-    /**
-     * 기본 업로드 디렉터리에 저장합니다.
-     *
-     * @param file 저장할 파일
-     * @return UUID 기반 저장 파일명
-     */
     public String save(MultipartFile file) {
         return save(file, fileProperties.uploadPath());
     }
 
-    /**
-     * 지정 디렉터리에 저장합니다.
-     *
-     * @param file      저장할 파일
-     * @param directory 저장할 디렉터리
-     * @return UUID 기반 저장 파일명
-     */
     public String save(MultipartFile file, Path directory) {
         FileUtils.validateNotEmpty(file);
         String savedName = FileUtils.generateFileName(file.getOriginalFilename());
@@ -47,13 +34,6 @@ public class FileService {
         return savedName;
     }
 
-    /**
-     * 최대 크기 검증 후 기본 경로에 저장합니다.
-     *
-     * @param file     저장할 파일
-     * @param maxBytes 최대 허용 파일 크기 (bytes)
-     * @return UUID 기반 저장 파일명
-     */
     public String save(MultipartFile file, long maxBytes) {
         FileUtils.validateNotEmpty(file);
         FileUtils.validateSize(file, maxBytes);
@@ -62,24 +42,12 @@ public class FileService {
         return savedName;
     }
 
-    /**
-     * 기본 업로드 디렉터리에 저장하고 Path를 반환합니다.
-     *
-     * @param file 저장할 파일
-     * @return 저장된 파일의 Path
-     */
     public Path saveAndGetPath(MultipartFile file) {
         FileUtils.validateNotEmpty(file);
         String savedName = FileUtils.generateFileName(file.getOriginalFilename());
         return FileUtils.saveToPath(file, fileProperties.uploadPath(), savedName);
     }
 
-    /**
-     * 이미지 검증(확장자 + 최대 크기)후 기본 디렉터리에 저장합니다.
-     *
-     * @param file 저장할 이미지 파일
-     * @return UUID 기반 저장 파일명
-     */
     public String saveImage(MultipartFile file) {
         FileUtils.validateNotEmpty(file);
         FileUtils.validateImage(file, fileProperties.imageExtensionSet());
@@ -89,13 +57,6 @@ public class FileService {
         return savedName;
     }
 
-    /**
-     * 이미지 검증 후 지정 디렉터리에 저장합니다.
-     *
-     * @param file      저장할 이미지 파일
-     * @param directory 저장할 디렉터리
-     * @return UUID 기반 저장 파일명
-     */
     public String saveImage(MultipartFile file, Path directory) {
         FileUtils.validateNotEmpty(file);
         FileUtils.validateImage(file, fileProperties.imageExtensionSet());
