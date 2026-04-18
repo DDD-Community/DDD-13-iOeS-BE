@@ -28,7 +28,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -97,8 +96,6 @@ class UserProfileServiceUpdateProfileTest {
         @Test
         @DisplayName("새 닉네임으로 변경 시 닉네임이 업데이트되고 hashTag는 null이 된다")
         void shouldUpdateNicknameAndClearHashTag() {
-            given(userRepository.existsByNicknameAndIdNot("포근한여우", USER_ID)).willReturn(false);
-
             UpdateProfileResponse response = userService.updateProfile(
                 USER_ID, new UpdateProfileRequest("포근한여우", null), null
             );
@@ -109,8 +106,6 @@ class UserProfileServiceUpdateProfileTest {
         @Test
         @DisplayName("기존에 hashTag가 있어도 닉네임 변경 시 hashTag가 제거된다")
         void shouldClearHashTag_whenNicknameChangedFromGenerated() {
-            given(userRepository.existsByNicknameAndIdNot("새닉네임", USER_ID)).willReturn(false);
-
             UpdateProfileResponse response = userService.updateProfile(
                 USER_ID, new UpdateProfileRequest("새닉네임", null), null
             );
@@ -119,11 +114,13 @@ class UserProfileServiceUpdateProfileTest {
         }
 
         @Test
-        @DisplayName("현재 닉네임과 동일하면 중복 체크를 수행하지 않는다")
-        void shouldNotCheckDuplicate_whenNicknameUnchanged() {
-            userService.updateProfile(USER_ID, new UpdateProfileRequest("멋진코끼리", null), null);
+        @DisplayName("현재 닉네임과 동일하면 업데이트되지 않는다")
+        void shouldNotUpdate_whenNicknameUnchanged() {
+            UpdateProfileResponse response = userService.updateProfile(
+                USER_ID, new UpdateProfileRequest("멋진코끼리", null), null
+            );
 
-            then(userRepository).should(never()).existsByNicknameAndIdNot(anyString(), any());
+            assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
         }
 
         @Test
@@ -134,20 +131,6 @@ class UserProfileServiceUpdateProfileTest {
             );
 
             assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
-            then(userRepository).should(never()).existsByNicknameAndIdNot(anyString(), any());
-        }
-
-        @Test
-        @DisplayName("다른 유저가 이미 사용 중인 닉네임이면 DUPLICATE_NICKNAME 예외를 던진다")
-        void shouldThrow_whenNicknameIsDuplicate() {
-            given(userRepository.existsByNicknameAndIdNot("이미사용중", USER_ID)).willReturn(true);
-
-            assertThatThrownBy(() -> userService.updateProfile(
-                USER_ID, new UpdateProfileRequest("이미사용중", null), null
-            ))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                    .isEqualTo(UserErrorCode.DUPLICATE_NICKNAME));
         }
     }
 
@@ -258,7 +241,6 @@ class UserProfileServiceUpdateProfileTest {
         void shouldUpdateAllFieldsAtOnce() {
             given(userRepository.findById(USER_ID))
                 .willReturn(Optional.of(baseUser("멋진코끼리", 3L, null)));
-            given(userRepository.existsByNicknameAndIdNot("새닉네임", USER_ID)).willReturn(false);
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );
@@ -286,7 +268,6 @@ class UserProfileServiceUpdateProfileTest {
             assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
             assertThat(response.email()).isEqualTo("test@example.com");
             assertThat(response.profileImageUrl()).isEqualTo("https://original.com/image.jpg");
-            then(userRepository).should(never()).existsByNicknameAndIdNot(anyString(), any());
             then(storageService).should(never()).uploadImage(any());
         }
     }

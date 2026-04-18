@@ -3,6 +3,8 @@ package com.ioes.photo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -16,6 +18,11 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 @SpringBootTest
 @DisplayName("PhotoApplication 통합 테스트")
 class PhotoApplicationTests {
+
+    @DynamicPropertySource
+    static void overrideProperties(DynamicPropertyRegistry registry) {
+        registry.add("JWT_SECRET", () -> "c2VjcmV0LWtleS1mb3ItdGVzdGluZy1wdXJwb3Nlcy1vbmx5LW11c3QtYmUtYXQtbGVhc3QtNjQtYnl0ZXMtbG9uZw==");
+    }
 
     /**
      * 실제 Redis 없이 컨텍스트 로드가 가능하도록 ConnectionFactory를 Mock 처리.
