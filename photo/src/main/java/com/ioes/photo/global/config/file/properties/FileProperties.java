@@ -22,22 +22,12 @@ public record FileProperties(
     long maxSize,
     String imageExtensions
 ) {
-    /**
-     * 쉼표 구분 문자열을 소문자 확장자로 변환합니다.
-     *
-     * @return 허용 이미지 확장자의 불변 Set
-     */
     public Set<String> imageExtensionSet() {
         return Arrays.stream(imageExtensions.split(","))
             .map(String::trim)
             .collect(Collectors.toUnmodifiableSet());
     }
 
-    /**
-     * 업로드 디렉터리 문자열을 Path 로 변환합니다.
-     *
-     * @return 업로드 디렉터리 경로
-     */
     public Path uploadPath() {
         return Paths.get(uploadDir);
     }

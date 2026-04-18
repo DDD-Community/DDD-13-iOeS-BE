@@ -28,31 +28,15 @@ public class TokenService {
     private final JwtProvider jwtProvider;
     private final RedisTemplate<String, String> redisTemplate;
     private final TokenProperties tokenProperties;
-
-    /*
-     * 새 Access Token과 Refresh Token을 발급합니다.
-     *
-     * @param userId 서버 내부 사용자 ID
-     * @return 발급된 토큰 쌍
-     */
     public String[] issueTokens(String userId) {
         String accessToken  = jwtProvider.generateToken(userId);
         String refreshToken = generateRefreshToken();
         storeRefreshToken(refreshToken, userId);
-        return new String[]{
-                accessToken, refreshToken
-        };
+        return new String[]{accessToken, refreshToken};
     }
 
-    /*
-     * Refresh Token으로 새 토큰 쌍을 발급합니다 (Rotation).
-     *
-     * @param refreshToken 기존 Refresh Token
-     * @return 새로 발급된 토큰 쌍 (accessToken, refreshToken)
-     * @throws BusinessException 유효하지 않거나 만료된 Refresh Token인 경우
-     */
     public String[] refreshTokens(String refreshToken) {
-        String key    = tokenProperties.refreshKeyPrefix() + refreshToken;
+        String key = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
 
         if (userId == null) {
@@ -64,26 +48,18 @@ public class TokenService {
         return issueTokens(userId);
     }
 
-    /*
-     * Refresh Token을 무효화합니다 (로그아웃).
-     *
-     * @param refreshToken 무효화할 Refresh Token
-     */
     public void invalidateRefreshToken(String refreshToken) {
-        String key    = tokenProperties.refreshKeyPrefix() + refreshToken;
+        String key = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
         Boolean deleted = redisTemplate.delete(key);
         if (Boolean.TRUE.equals(deleted) && userId != null) {
             redisTemplate.opsForSet().remove(tokenProperties.userTokensKeyPrefix() + userId, refreshToken);
         }
-        log.debug("Refresh Token 무효화: {}", Boolean.TRUE.equals(deleted) ? "성공" : "이미 만료됨");
+        log.debug("Refresh Token 무효화: {}",
+                Boolean.TRUE.equals(deleted) ? "성공"
+                : "이미 만료됨");
     }
 
-    /*
-     * 사용자의 모든 Refresh Token을 무효화합니다 (회원탈퇴).
-     *
-     * @param userId 사용자 ID
-     */
     public void invalidateAllUserTokens(String userId) {
         String userTokensKey = tokenProperties.userTokensKeyPrefix() + userId;
         Set<String> tokens   = redisTemplate.opsForSet().members(userTokensKey);
@@ -93,16 +69,22 @@ public class TokenService {
             }
         }
         redisTemplate.delete(userTokensKey);
+        redisTemplate.delete(tokenProperties.providerRtKeyPrefix() + userId);
         log.info("사용자 {} 의 모든 Refresh Token 무효화 완료 ({}개)", userId,
             tokens != null ? tokens.size() : 0);
     }
 
-    /*
-     * Refresh Token이 유효한지 확인합니다.
-     *
-     * @param refreshToken 확인할 Refresh Token
-     * @return 유효하면 true
-     */
+    public void storeProviderRefreshToken(String userId, String providerRefreshToken) {
+        redisTemplate.opsForValue().set(
+            tokenProperties.providerRtKeyPrefix() + userId,
+            providerRefreshToken
+        );
+    }
+
+    public String getProviderRefreshToken(String userId) {
+        return redisTemplate.opsForValue().get(tokenProperties.providerRtKeyPrefix() + userId);
+    }
+
     public boolean isRefreshTokenValid(String refreshToken) {
         return Boolean.TRUE.equals(
             redisTemplate.hasKey(tokenProperties.refreshKeyPrefix() + refreshToken)

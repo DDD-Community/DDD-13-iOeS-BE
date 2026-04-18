@@ -54,8 +54,28 @@ app:
     security-scheme-name: "Bearer Authentication"
 
   jwt:
-    secret:
+    secret: ${JWT_SECRET}
     expiration-ms: 3600000
+
+  token:
+    refresh-expiration-ms: 3600000
+    refresh-key-prefix: "refresh:"
+    user-tokens-key-prefix: "userTokens:"
+    provider-rt-key-prefix: "provider_rt:"
+
+  oauth:
+    kakao:
+      client-id: test-kakao-id
+      client-secret: test-kakao-secret
+      redirect-uri: http://localhost/auth/oauth/kakao/callback
+      admin-key: test-kakao-admin-key
+    apple:
+      client-id: com.test.app
+      team-id: TEST1TEAM1
+      key-id: TESTKEY123
+      private-key: "test-private-key"
+      redirect-uri: http://localhost/auth/oauth/apple/callback
+      client-secret-ttl-ms: 600000
 
   cors:
     allowed-origins:

@@ -8,6 +8,7 @@ package com.ioes.photo.global.auth.oauth;
  * @param nickname 닉네임 (공급자가 제공하지 않을 수 있음)
  * @param profileImageUrl 프로필 이미지 URL (공급자가 제공하지 않을 수 있음)
  * @param provider OAuth 공급자
+ * @param providerRefreshToken 공급자 발급 Refresh Token (연동 해제 시 사용, null 가능)
  * @author 황제연
  */
 public record OAuthUserInfo(
@@ -15,6 +16,7 @@ public record OAuthUserInfo(
     String email,
     String nickname,
     String profileImageUrl,
-    OAuthProvider provider
+    OAuthProvider provider,
+    String providerRefreshToken
 ) {
 }

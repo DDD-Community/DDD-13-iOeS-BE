@@ -1,10 +1,17 @@
 package com.ioes.photo.global.auth;
 
+import com.ioes.photo.global.auth.dto.LogoutRequest;
+import com.ioes.photo.global.auth.dto.RefreshRequest;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +28,7 @@ import java.util.Map;
  *
  * @author 황제연
  */
+@Tag(name = "인증", description = "OAuth 소셜 로그인 및 토큰 관리 API")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -29,30 +37,29 @@ public class AuthController {
     private final OAuthService oAuthService;
     private final TokenService tokenService;
 
-    /*
-     * OAuth 인증 URL을 반환합니다.
-     *
-     * @param provider OAuth 공급자 (apple, kakao - 대소문자 무관)
-     * @return 인증 페이지 URL을 담은 응답
-     */
+    @Operation(
+        summary = "인증 URL 조회",
+        description = "소셜 로그인 페이지로 이동할 인증 URL을 반환합니다. State(CSRF 방지)와 PKCE(code 가로채기 방지)가 자동으로 포함됩니다."
+    )
+    @SecurityRequirements
     @GetMapping("/oauth/{provider}/authorize")
-    public ApiResponse<Map<String, String>> getAuthorizationUrl(@PathVariable String provider) {
+    public ApiResponse<Map<String, String>> getAuthorizationUrl(
+        @Parameter(description = "OAuth 공급자 (KAKAO | APPLE)", required = true)
+        @PathVariable String provider
+    ) {
         OAuthProvider oAuthProvider = oAuthService.resolveProvider(provider);
         String url = oAuthService.getAuthorizationUrl(oAuthProvider);
         return ApiResponse.success(Map.of("authorizationUrl", url));
     }
 
-    /*
-     * GET 방식 OAuth 콜백을 처리합니다 (Kakao 등 표준 OAuth 공급자).
-     *
-     * 새로운 GET 기반 공급자(Google, Naver 등)를 추가해도 이 엔드포인트를 재사용합니다.
-     *
-     * @param provider OAuth 공급자 이름
-     * @param params 공급자가 전달한 콜백 파라미터 (code 등)
-     * @return 발급된 토큰 및 프로필 정보
-     */
+    @Operation(
+        summary = "OAuth 콜백 처리 — GET",
+        description = "Kakao 등 GET 방식 콜백을 처리합니다. code와 state가 쿼리 파라미터로 전달됩니다."
+    )
+    @SecurityRequirements
     @GetMapping("/oauth/{provider}/callback")
     public ApiResponse<TokenResponse> oauthCallback(
+        @Parameter(description = "OAuth 공급자 (kakao)", required = true)
         @PathVariable String provider,
         @RequestParam Map<String, String> params
     ) {
@@ -60,35 +67,34 @@ public class AuthController {
         return ApiResponse.success(oAuthService.handleCallback(oAuthProvider, params));
     }
 
-    /*
-     * Apple 인증 콜백을 처리합니다 (POST, form_post 방식).
-     *
-     * <p>Apple은 response_mode=form_post로 인증 코드를 POST로 전송하므로 별도 엔드포인트를 유지합니다
-     */
+    @Operation(
+        summary = "Apple OAuth 콜백 처리 — POST",
+        description = "Apple Sign In의 response_mode=form_post 방식 콜백을 처리합니다."
+    )
+    @SecurityRequirements
     @PostMapping("/oauth/apple/callback")
     public ApiResponse<TokenResponse> appleCallback(@RequestParam Map<String, String> params) {
         return ApiResponse.success(oAuthService.handleCallback(OAuthProvider.APPLE, params));
     }
 
-    /*
-     * Refresh Token으로 새 Access Token과 Refresh Token을 발급합니다.
-     */
+    @Operation(
+        summary = "토큰 갱신",
+        description = "Refresh Token으로 새 Access Token과 Refresh Token을 발급합니다. (Refresh Token Rotation)"
+    )
+    @SecurityRequirements
     @PostMapping("/refresh")
-    public ApiResponse<TokenResponse> refresh(@RequestBody Map<String, String> body) {
-        String refreshToken = body.get("refreshToken");
-        String[] tokens = tokenService.refreshTokens(refreshToken);
+    public ApiResponse<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        String[] tokens = tokenService.refreshTokens(request.refreshToken());
         return ApiResponse.success(TokenResponse.ofTokenOnly(tokens[0], tokens[1]));
     }
 
-    /*
-     * Refresh Token을 무효화합니다 (로그아웃).
-     *
-     * @param body {@code {"refreshToken": "..."}} 형태의 요청 바디
-     * @return 성공 응답
-     */
+    @Operation(
+        summary = "로그아웃",
+        description = "Refresh Token을 무효화합니다. Access Token은 만료까지 유효합니다."
+    )
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@RequestBody Map<String, String> body) {
-        tokenService.invalidateRefreshToken(body.get("refreshToken"));
+    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        tokenService.invalidateRefreshToken(request.refreshToken());
         return ApiResponse.success();
     }
 }

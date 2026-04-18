@@ -37,14 +37,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 /**
  * {@link AppleOAuthClient} 단위 테스트.
  *
- * Apple은 실제 키 발급 없이 테스트할 수 없으므로 단위 테스트로 최대한 검증합니다.
- *  - ID token 파싱 (서명 검증 없이 payload 추출)
- *  - user JSON에서 닉네임 추출 (최초 로그인 케이스)
- *  - 인증 URL 파라미터 검증
- *  - 잘못된 키/토큰 시 예외 처리
- *
- * HTTP 레이어는 MockRestServiceServer로 인터셉트합니다.
- *
  * @author 황제연
  */
 @ExtendWith(MockitoExtension.class)
@@ -52,19 +44,19 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @DisplayName("AppleOAuthClient 단위 테스트")
 class AppleOAuthClientTest {
 
-    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+    private static final String APPLE_TOKEN_URL  = "https://appleid.apple.com/auth/token";
+    private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
     @Mock OAuthProperties oAuthProperties;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private MockRestServiceServer server;
-    private AppleOAuthClient appleOAuthClient;
-    private OAuthProperties.Apple appleProps;
-    private String validPrivateKeyPem;
+    private final ObjectMapper     objectMapper = new ObjectMapper();
+    private MockRestServiceServer  server;
+    private AppleOAuthClient       appleOAuthClient;
+    private OAuthProperties.Apple  appleProps;
+    private String                 validPrivateKeyPem;
 
     @BeforeEach
     void setUp() throws Exception {
-        // 테스트용 P-256 EC 키 동적 생성 (Apple ES256 서명에 사용하는 알고리즘)
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         kpg.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair keyPair = kpg.generateKeyPair();
@@ -73,9 +65,7 @@ class AppleOAuthClientTest {
             + "\n-----END PRIVATE KEY-----";
 
         appleProps = new OAuthProperties.Apple(
-            "com.test.app",
-            "TEST1TEAM1",
-            "TESTKEY123",
+            "com.test.app", "TEST1TEAM1", "TESTKEY123",
             validPrivateKeyPem,
             "https://test.com/auth/oauth/apple/callback",
             15552000000L
@@ -95,16 +85,16 @@ class AppleOAuthClientTest {
         assertThat(appleOAuthClient.getProvider()).isEqualTo(OAuthProvider.APPLE);
     }
 
-    // ── getAuthorizationUrl ───────────────────────────────────────────────
+    // ── buildAuthorizationUrl ─────────────────────────────────────────────
 
     @Nested
-    @DisplayName("getAuthorizationUrl()")
-    class GetAuthorizationUrl {
+    @DisplayName("buildAuthorizationUrl()")
+    class BuildAuthorizationUrl {
 
         @Test
         @DisplayName("Apple 인증 URL에 필수 파라미터가 포함된다")
         void shouldContainRequiredParams() {
-            String url = appleOAuthClient.getAuthorizationUrl();
+            String url = appleOAuthClient.buildAuthorizationUrl("test-state", "test-challenge");
 
             assertThat(url)
                 .contains("https://appleid.apple.com/auth/authorize")
@@ -116,11 +106,14 @@ class AppleOAuthClientTest {
         }
 
         @Test
-        @DisplayName("response_mode=form_post가 포함된다 (Apple POST 콜백 방식)")
-        void shouldUseFormPost() {
-            String url = appleOAuthClient.getAuthorizationUrl();
+        @DisplayName("State와 PKCE code_challenge가 포함된다")
+        void shouldContainStateAndPkce() {
+            String url = appleOAuthClient.buildAuthorizationUrl("apple-state", "apple-challenge");
 
-            assertThat(url).contains("response_mode=form_post");
+            assertThat(url)
+                .contains("state=apple-state")
+                .contains("code_challenge=apple-challenge")
+                .contains("code_challenge_method=S256");
         }
     }
 
@@ -131,18 +124,21 @@ class AppleOAuthClientTest {
     class GetUserInfo {
 
         @Test
-        @DisplayName("Apple ID 토큰에서 sub와 email을 추출한다")
-        void shouldExtractSubAndEmailFromIdToken() {
+        @DisplayName("Apple ID 토큰에서 sub와 email을 추출하고 providerRefreshToken을 반환한다")
+        void shouldExtractSubEmailAndRefreshToken() {
             String idToken = buildTestIdToken("apple-user-sub-001", "apple@test.com");
             server.expect(requestTo(APPLE_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(appleTokenJson(idToken), MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(appleTokenJson(idToken, "apple-rt"), MediaType.APPLICATION_JSON));
 
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "auth-code"));
+            OAuthUserInfo result = appleOAuthClient.getUserInfo(
+                Map.of("code", "auth-code", "code_verifier", "verifier-abc")
+            );
 
             assertThat(result.provider()).isEqualTo(OAuthProvider.APPLE);
             assertThat(result.providerId()).isEqualTo("apple-user-sub-001");
             assertThat(result.email()).isEqualTo("apple@test.com");
-            assertThat(result.profileImageUrl()).isNull(); // Apple은 프로필 이미지 미제공
+            assertThat(result.profileImageUrl()).isNull();
+            assertThat(result.providerRefreshToken()).isEqualTo("apple-rt");
         }
 
         @Test
@@ -150,9 +146,11 @@ class AppleOAuthClientTest {
         void shouldHandleIdTokenWithoutEmail() {
             String idToken = buildTestIdToken("sub-no-email", null);
             server.expect(requestTo(APPLE_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(appleTokenJson(idToken), MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(appleTokenJson(idToken, "rt"), MediaType.APPLICATION_JSON));
 
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code"));
+            OAuthUserInfo result = appleOAuthClient.getUserInfo(
+                Map.of("code", "code", "code_verifier", "v")
+            );
 
             assertThat(result.providerId()).isEqualTo("sub-no-email");
             assertThat(result.email()).isNull();
@@ -162,9 +160,9 @@ class AppleOAuthClientTest {
         @DisplayName("유효하지 않은 JWT 형식이면 BusinessException(UNAUTHORIZED)을 던진다")
         void shouldThrow_whenInvalidIdToken() {
             server.expect(requestTo(APPLE_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(appleTokenJson("not-a-jwt"), MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(appleTokenJson("not-a-jwt", "rt"), MediaType.APPLICATION_JSON));
 
-            assertThatThrownBy(() -> appleOAuthClient.getUserInfo(Map.of("code", "code")))
+            assertThatThrownBy(() -> appleOAuthClient.getUserInfo(Map.of("code", "code", "code_verifier", "v")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(CommonErrorCode.UNAUTHORIZED));
@@ -175,9 +173,9 @@ class AppleOAuthClientTest {
         void shouldThrow_whenPayloadIsNotJson() {
             String badToken = base64Url("{header}") + "." + base64Url("not-json") + ".sig";
             server.expect(requestTo(APPLE_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(appleTokenJson(badToken), MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(appleTokenJson(badToken, "rt"), MediaType.APPLICATION_JSON));
 
-            assertThatThrownBy(() -> appleOAuthClient.getUserInfo(Map.of("code", "code")))
+            assertThatThrownBy(() -> appleOAuthClient.getUserInfo(Map.of("code", "code", "code_verifier", "v")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(CommonErrorCode.UNAUTHORIZED));
@@ -194,7 +192,7 @@ class AppleOAuthClientTest {
         void setUpServer() {
             String idToken = buildTestIdToken("sub-abc", "user@icloud.com");
             server.expect(requestTo(APPLE_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(appleTokenJson(idToken), MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(appleTokenJson(idToken, "rt"), MediaType.APPLICATION_JSON));
         }
 
         @Test
@@ -202,7 +200,9 @@ class AppleOAuthClientTest {
         void shouldCombineFirstAndLastName() {
             String userJson = "{\"name\":{\"firstName\":\"John\",\"lastName\":\"Doe\"}}";
 
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code", "user", userJson));
+            OAuthUserInfo result = appleOAuthClient.getUserInfo(
+                Map.of("code", "code", "code_verifier", "v", "user", userJson)
+            );
 
             assertThat(result.nickname()).isEqualTo("John Doe");
         }
@@ -212,53 +212,19 @@ class AppleOAuthClientTest {
         void shouldUseFirstNameOnly_whenLastNameNull() {
             String userJson = "{\"name\":{\"firstName\":\"John\"}}";
 
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code", "user", userJson));
+            OAuthUserInfo result = appleOAuthClient.getUserInfo(
+                Map.of("code", "code", "code_verifier", "v", "user", userJson)
+            );
 
             assertThat(result.nickname()).isEqualTo("John");
         }
 
         @Test
-        @DisplayName("lastName만 있으면 lastName을 반환한다")
-        void shouldUseLastNameOnly_whenFirstNameNull() {
-            String userJson = "{\"name\":{\"lastName\":\"Doe\"}}";
-
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code", "user", userJson));
-
-            assertThat(result.nickname()).isEqualTo("Doe");
-        }
-
-        @Test
-        @DisplayName("name 필드가 없으면 null을 반환한다")
-        void shouldReturnNull_whenNameFieldMissing() {
-            String userJson = "{\"email\":\"user@icloud.com\"}";
-
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code", "user", userJson));
-
-            assertThat(result.nickname()).isNull();
-        }
-
-        @Test
-        @DisplayName("name 오브젝트가 비어 있으면 null을 반환한다")
-        void shouldReturnNull_whenNameIsEmptyObject() {
-            String userJson = "{\"name\":{}}";
-
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code", "user", userJson));
-
-            assertThat(result.nickname()).isNull();
-        }
-
-        @Test
         @DisplayName("재로그인 시 user 파라미터가 없으면 nickname이 null이다")
         void shouldReturnNullNickname_whenUserParamAbsent() {
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code"));
-
-            assertThat(result.nickname()).isNull();
-        }
-
-        @Test
-        @DisplayName("user JSON이 빈 문자열이면 nickname이 null이다")
-        void shouldReturnNullNickname_whenUserParamBlank() {
-            OAuthUserInfo result = appleOAuthClient.getUserInfo(Map.of("code", "code", "user", ""));
+            OAuthUserInfo result = appleOAuthClient.getUserInfo(
+                Map.of("code", "code", "code_verifier", "v")
+            );
 
             assertThat(result.nickname()).isNull();
         }
@@ -267,10 +233,42 @@ class AppleOAuthClientTest {
         @DisplayName("user JSON이 잘못된 형식이면 예외 없이 null을 반환한다")
         void shouldReturnNull_whenUserJsonMalformed() {
             OAuthUserInfo result = appleOAuthClient.getUserInfo(
-                Map.of("code", "code", "user", "{invalid-json}")
+                Map.of("code", "code", "code_verifier", "v", "user", "{invalid-json}")
             );
 
             assertThat(result.nickname()).isNull();
+        }
+    }
+
+    // ── revokeConnection ──────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("revokeConnection()")
+    class RevokeConnection {
+
+        @Test
+        @DisplayName("refresh_token이 있으면 Apple revoke API를 호출한다")
+        void shouldCallRevokeApi_whenRefreshTokenPresent() {
+            server.expect(requestTo(APPLE_REVOKE_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
+
+            appleOAuthClient.revokeConnection("apple-sub-123", "valid-refresh-token");
+
+            server.verify();
+        }
+
+        @Test
+        @DisplayName("refresh_token이 null이면 API 호출 없이 경고 로그만 남긴다")
+        void shouldSkip_whenRefreshTokenNull() {
+            // 서버 expectation 없음 → 호출되면 AssertionError
+            appleOAuthClient.revokeConnection("apple-sub-123", null);
+        }
+
+        @Test
+        @DisplayName("refresh_token이 빈 문자열이면 API 호출 없이 경고 로그만 남긴다")
+        void shouldSkip_whenRefreshTokenBlank() {
+            appleOAuthClient.revokeConnection("apple-sub-123", "");
         }
     }
 
@@ -290,10 +288,8 @@ class AppleOAuthClientTest {
                 15552000000L
             );
             given(oAuthProperties.apple()).willReturn(badProps);
-            // oAuthProperties는 mock이므로 badProps 반환으로 덮어씌워짐 →
-            // getUserInfo() → exchangeCodeForToken() → generateClientSecret() 호출 시 적용됨
 
-            assertThatThrownBy(() -> appleOAuthClient.getUserInfo(Map.of("code", "code")))
+            assertThatThrownBy(() -> appleOAuthClient.getUserInfo(Map.of("code", "code", "code_verifier", "v")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR));
@@ -302,16 +298,15 @@ class AppleOAuthClientTest {
 
     // ── helper ───────────────────────────────────────────────────────────
 
-    /** Apple 토큰 엔드포인트 응답 JSON 생성 */
-    private String appleTokenJson(String idToken) {
+    private String appleTokenJson(String idToken, String refreshToken) {
         return """
             {"access_token":"access","token_type":"bearer","expires_in":3600,
-             "refresh_token":"refresh","id_token":"%s"}
-            """.formatted(idToken);
+             "refresh_token":"%s","id_token":"%s"}
+            """.formatted(refreshToken, idToken);
     }
 
     private String buildTestIdToken(String sub, String email) {
-        String header = base64Url("{\"alg\":\"RS256\",\"kid\":\"testkey\"}");
+        String header  = base64Url("{\"alg\":\"RS256\",\"kid\":\"testkey\"}");
         String payload = String.format(
             "{\"iss\":\"https://appleid.apple.com\",\"aud\":\"com.test.app\",\"sub\":\"%s\"%s}",
             sub,

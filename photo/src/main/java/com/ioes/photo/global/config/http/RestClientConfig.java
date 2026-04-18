@@ -23,15 +23,6 @@ import java.net.URI;
 @Configuration
 public class RestClientConfig {
 
-    /**
-     * 타임아웃 및 에러 핸들러가 설정된 {@link RestClient} 빈을 생성합니다.
-     *
-     * RestClient.Builder를 주입받으므로 Spring Boot가 자동 구성한
-     * JSON / XML 메시지 컨버터가 모두 포함됩니다.
-     *
-     * @param props   HTTP 클라이언트 설정 프로퍼티
-     * @return 설정된 RestClient 인스턴스
-     */
     @Bean
     public RestClient restClient(HttpClientProperties props) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();

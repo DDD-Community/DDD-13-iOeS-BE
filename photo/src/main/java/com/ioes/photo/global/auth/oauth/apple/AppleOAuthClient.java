@@ -49,6 +49,7 @@ public class AppleOAuthClient implements OAuthClient {
 
     private static final String APPLE_AUTH_URL = "https://appleid.apple.com/auth/authorize";
     private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+    private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
     private static final String APPLE_AUDIENCE = "https://appleid.apple.com";
 
     private final RestClient restClient;
@@ -60,29 +61,27 @@ public class AppleOAuthClient implements OAuthClient {
         return OAuthProvider.APPLE;
     }
 
-    /*
-     * Apple 로그인 인증 URL을 생성합니다.
-     *
-     * @return Apple 인증 페이지 URL
-     */
     @Override
-    public String getAuthorizationUrl() {
+    public String buildAuthorizationUrl(String state, String codeChallenge) {
         OAuthProperties.Apple apple = oAuthProperties.apple();
-        return APPLE_AUTH_URL + "?response_type=code" + "&client_id=" + apple.clientId()
-            + "&redirect_uri=" + apple.redirectUri() + "&scope=name%20email" + "&response_mode=form_post";
+        return APPLE_AUTH_URL
+            + "?response_type=code"
+            + "&client_id=" + apple.clientId()
+            + "&redirect_uri=" + apple.redirectUri()
+            + "&scope=name%20email"
+            + "&response_mode=form_post"
+            + "&state=" + state
+            + "&code_challenge=" + codeChallenge
+            + "&code_challenge_method=S256";
     }
 
-    /*
-     * Apple 인증 코드로 사용자 정보를 조회합니다.
-     *
-     * @return 공통 사용자 정보
-     */
     @Override
     public OAuthUserInfo getUserInfo(Map<String, String> params) {
         String code = params.get("code");
+        String codeVerifier = params.get("code_verifier");
         String userJson = params.get("user");
 
-        AppleTokenResponse tokenResponse = exchangeCodeForToken(code);
+        AppleTokenResponse tokenResponse = exchangeCodeForToken(code, codeVerifier);
         Map<String, Object> claims = parseIdTokenClaims(tokenResponse.idToken());
 
         String providerId = (String) claims.get("sub");
@@ -90,10 +89,34 @@ public class AppleOAuthClient implements OAuthClient {
         String nickname = extractNicknameFromUserJson(userJson);
 
         log.debug("Apple 사용자 정보 조회 완료: providerId={}", providerId);
-        return new OAuthUserInfo(providerId, email, nickname, null, OAuthProvider.APPLE);
+        return new OAuthUserInfo(providerId, email, nickname, null, OAuthProvider.APPLE,
+            tokenResponse.refreshToken());
     }
 
-    private AppleTokenResponse exchangeCodeForToken(String code) {
+    @Override
+    public void revokeConnection(String providerUserId, String providerRefreshToken) {
+        if (providerRefreshToken == null || providerRefreshToken.isBlank()) {
+            log.warn("Apple refresh token이 없어 연동 해제를 건너뜁니다: providerUserId={}", providerUserId);
+            return;
+        }
+
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("client_id", oAuthProperties.apple().clientId());
+        form.add("client_secret", generateClientSecret());
+        form.add("token", providerRefreshToken);
+        form.add("token_type_hint", "refresh_token");
+
+        restClient.post()
+            .uri(APPLE_REVOKE_URL)
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .body(form)
+            .retrieve()
+            .toBodilessEntity();
+
+        log.info("Apple 연동 해제 완료: providerUserId={}", providerUserId);
+    }
+
+    private AppleTokenResponse exchangeCodeForToken(String code, String codeVerifier) {
         OAuthProperties.Apple apple = oAuthProperties.apple();
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -102,6 +125,9 @@ public class AppleOAuthClient implements OAuthClient {
         form.add("code", code);
         form.add("grant_type", "authorization_code");
         form.add("redirect_uri", apple.redirectUri());
+        if (codeVerifier != null) {
+            form.add("code_verifier", codeVerifier);
+        }
 
         return restClient.post()
             .uri(APPLE_TOKEN_URL)
@@ -111,11 +137,6 @@ public class AppleOAuthClient implements OAuthClient {
             .body(AppleTokenResponse.class);
     }
 
-    /*
-     * Apple client_secret을 동적으로 생성합니다.
-     *
-     * Apple client_secret은 ES256 알고리즘으로 서명된 JWT
-     */
     private String generateClientSecret() {
         OAuthProperties.Apple apple = oAuthProperties.apple();
         try {
@@ -138,9 +159,6 @@ public class AppleOAuthClient implements OAuthClient {
         }
     }
 
-    /*
-     * PKCS8 PEM 형식의 EC 비밀 키를 로드합니다.
-     */
     private PrivateKey loadEcPrivateKey(String pem) throws Exception {
         String cleaned = pem.trim()
             .replace("-----BEGIN PRIVATE KEY-----", "")
@@ -151,12 +169,6 @@ public class AppleOAuthClient implements OAuthClient {
             .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
     }
 
-    /*
-     * Apple ID token의 payload를 파싱합니다.
-     *
-     * Apple 토큰 엔드포인트에서 직접 받은 토큰이므로 서명 검증 없이 payload를 파싱합니다.
-     * 프로덕션에서는 Apple JWKS 검증을 추가 예정
-     */
     private Map<String, Object> parseIdTokenClaims(String idToken) {
         try {
             String[] parts = idToken.split("\\.");
@@ -171,9 +183,6 @@ public class AppleOAuthClient implements OAuthClient {
         }
     }
 
-    /*
-     * Apple이 최초 로그인 시에만 전달하는 사용자 JSON에서 닉네임을 추출합니다.
-     */
     @SuppressWarnings("unchecked")
     private String extractNicknameFromUserJson(String userJson) {
         if (userJson == null || userJson.isBlank()) {

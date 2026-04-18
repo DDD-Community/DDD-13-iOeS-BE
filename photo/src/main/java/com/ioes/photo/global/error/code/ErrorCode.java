@@ -13,25 +13,7 @@ import org.springframework.http.HttpStatus;
  * @author 황제연
  */
 public interface ErrorCode {
-
-    /**
-     * 에러 코드 문자열을 반환합니다 (예: "C001", "O002").
-     *
-     * @return 에러 코드 문자열
-     */
     String getCode();
-
-    /**
-     * 사용자에게 노출할 에러 메시지를 반환합니다.
-     *
-     * @return 에러 메시지
-     */
     String getMessage();
-
-    /**
-     * HTTP 응답 상태 코드를 반환합니다.
-     *
-     * @return HTTP 상태 코드
-     */
     HttpStatus getStatus();
 }
