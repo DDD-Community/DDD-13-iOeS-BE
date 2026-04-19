@@ -50,6 +50,16 @@ app:
       redirect-uri: ${APPLE_REDIRECT_URI}
       client-secret-ttl-ms: 600000   # 10분
 
+  # S3 / MinIO 설정
+  # 기동: docker compose -f docker/minio/docker-compose.yml up -d
+  # Web Console: http://localhost:9001 (ID: minioadmin / PW: minioadmin)
+  storage:
+    type: s3
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ROOT_USER:minioadmin}
+    secret-key: ${MINIO_ROOT_PASSWORD:minioadmin}
+
   security:
     public-urls:
       - /swagger-ui/**
