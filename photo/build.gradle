@@ -39,6 +39,11 @@ dependencyManagement {
 }
 
 dependencies {
+	implementation platform('software.amazon.awssdk:bom:2.41.30')
+	implementation 'software.amazon.awssdk:s3'
+	implementation 'software.amazon.awssdk:cloudfront'
+	// 이미지 썸네일 생성
+	implementation 'net.coobird:thumbnailator:0.4.20'
 	implementation 'org.aspectj:aspectjweaver'
 	implementation 'org.springframework.retry:spring-retry:2.0.11'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
