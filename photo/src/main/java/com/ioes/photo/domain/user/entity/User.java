@@ -61,7 +61,10 @@ public class User extends BaseEntity {
     private Long hashTag;
 
     @Column
-    private String profileImageUrl;
+    private String profileImageUrl;  // OAuth 공급자(카카오/애플)로부터 제공된 프로필 이미지 URL
+
+    @Column
+    private String profileImageKey; // 사용자가 직접 업로드한 프로필 이미지
 
     @Column
     private LocalDateTime deletedAt;
@@ -94,6 +97,15 @@ public class User extends BaseEntity {
         if (NullUtils.isNotBlank(profileImageUrl)){
             this.profileImageUrl = profileImageUrl;
         }
+    }
+
+    /**
+     * 사용자 업로드 프로필 이미지를 S3 키 방식으로 교체합니다.
+     * OAuth 공급자 URL({@code profileImageUrl})을 초기화하고 S3 키를 저장합니다.
+     */
+    public void updateProfileImageKey(String key) {
+        this.profileImageKey = key;
+        this.profileImageUrl = null;
     }
 
 }
