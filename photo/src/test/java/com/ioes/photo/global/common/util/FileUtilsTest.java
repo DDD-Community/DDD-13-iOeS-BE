@@ -4,11 +4,8 @@ import com.ioes.photo.global.error.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 
@@ -16,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link FileUtils} 단위 테스트 (static 헬퍼 메서드 및 인스턴스 메서드).
+ * {@link FileUtils} 단위 테스트 (static 헬퍼 메서드).
  *
  * @author 황제연
  */
@@ -185,7 +182,7 @@ class FileUtilsTest {
         @DisplayName("내용 있는 파일은 예외 없음")
         void noException_validFile() {
             MockMultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", new byte[100]);
-            FileUtils.validateNotEmpty(file); // 예외 없음
+            FileUtils.validateNotEmpty(file);
         }
     }
 
@@ -206,7 +203,7 @@ class FileUtilsTest {
         @DisplayName("최대 크기 이하는 예외 없음")
         void noException_withinLimit() {
             MockMultipartFile file = new MockMultipartFile("file", "small.jpg", "image/jpeg", new byte[500]);
-            FileUtils.validateSize(file, 1000L); // 예외 없음
+            FileUtils.validateSize(file, 1000L);
         }
     }
 
@@ -229,65 +226,7 @@ class FileUtilsTest {
         @DisplayName("허용 확장자면 예외 없음")
         void noException_validImage() {
             MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[10]);
-            FileUtils.validateImage(file, allowedExts); // 예외 없음
-        }
-    }
-
-    @Nested
-    @DisplayName("saveToPath / delete (파일 I/O)")
-    class SaveAndDelete {
-
-        @Test
-        @DisplayName("saveToPath: 파일 저장 후 실제 파일 생성 확인")
-        void saveToPath_createsFile(@TempDir Path tempDir) throws IOException {
-            byte[] content = "hello".getBytes();
-            MockMultipartFile file = new MockMultipartFile("file", "test.txt", "text/plain", content);
-            String savedName = FileUtils.generateFileName("test.txt");
-
-            Path saved = FileUtils.saveToPath(file, tempDir, savedName);
-
-            assertThat(Files.exists(saved)).isTrue();
-            assertThat(savedName).endsWith(".txt");
-            assertThat(Files.readAllBytes(saved)).isEqualTo(content);
-        }
-
-        @Test
-        @DisplayName("저장된 파일 삭제")
-        void delete_removesFile(@TempDir Path tempDir) throws IOException {
-            Path file = tempDir.resolve("to-delete.txt");
-            Files.writeString(file, "content");
-            assertThat(Files.exists(file)).isTrue();
-
-            FileUtils.delete(file);
-
-            assertThat(Files.exists(file)).isFalse();
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 파일 삭제는 예외 없음")
-        void delete_nonExistent(@TempDir Path tempDir) {
-            Path nonExistent = tempDir.resolve("no-such-file.txt");
-            FileUtils.delete(nonExistent); // 예외 없음
-        }
-    }
-
-    @Nested
-    @DisplayName("exists")
-    class Exists {
-
-        @Test
-        @DisplayName("존재하는 파일이면 true")
-        void returnsTrue_existingFile(@TempDir Path tempDir) throws IOException {
-            Path file = tempDir.resolve("file.txt");
-            Files.writeString(file, "data");
-
-            assertThat(FileUtils.exists(file)).isTrue();
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 파일이면 false")
-        void returnsFalse_missingFile(@TempDir Path tempDir) {
-            assertThat(FileUtils.exists(tempDir.resolve("missing.txt"))).isFalse();
+            FileUtils.validateImage(file, allowedExts);
         }
     }
 }
