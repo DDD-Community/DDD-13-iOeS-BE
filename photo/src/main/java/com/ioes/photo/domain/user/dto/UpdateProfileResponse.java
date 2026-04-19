@@ -15,11 +15,11 @@ public record UpdateProfileResponse(
     String email,
     String profileImageUrl
 ) {
-    public static UpdateProfileResponse from(User user) {
+    public static UpdateProfileResponse from(User user, String resolvedProfileImageUrl) {
         return new UpdateProfileResponse(
             user.getDisplayName(),
             user.getEmail(),
-            user.getProfileImageUrl()
+            resolvedProfileImageUrl
         );
     }
 }
