@@ -1,0 +1,34 @@
+# Build outputs
+build/
+.gradle/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Logs
+logs/
+
+# Secrets / local env
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docs
+HELP.md
+README.md
+
+# Docker
+Dockerfile
+.dockerignore

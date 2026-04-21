@@ -1,0 +1,82 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+  datasource:
+    url: ${PROD_DB_URL:jdbc:postgresql://postgres:5432/photo}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+  docker:
+    compose:
+      enabled: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+      redirect-uri: ${KAKAO_REDIRECT_URI}
+      admin-key: ${KAKAO_ADMIN_KEY}
+    apple:
+      client-id: ${APPLE_CLIENT_ID}
+      team-id: ${APPLE_TEAM_ID}
+      key-id: ${APPLE_KEY_ID}
+      private-key: ${APPLE_PRIVATE_KEY}
+      redirect-uri: ${APPLE_REDIRECT_URI}
+      client-secret-ttl-ms: 600000
+
+  security:
+    public-urls:
+      - /swagger-ui/**
+      - /api-docs/**
+      - /swagger-ui.html
+      - /actuator/health
+      - /auth/**
+
+logging:
+  config: classpath:config/prod/logback/logback-prod.xml
+  file:
+    path: /app/logs
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  forward-headers-strategy: native
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: ${SWAGGER_ENABLED:false}
+  api-docs:
+    path: /api-docs
+    enabled: ${SWAGGER_ENABLED:false}

@@ -1,0 +1,8 @@
+# 실제 환경변수 파일은 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# TLS 인증서
+nginx/certs/
+nginx/ssl/
