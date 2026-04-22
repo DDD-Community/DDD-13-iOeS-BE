@@ -10,6 +10,7 @@ import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.UploadResult;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +31,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -41,10 +45,12 @@ import static org.mockito.Mockito.never;
 @DisplayName("UserProfileService.updateProfile() 단위 테스트")
 class UserProfileServiceUpdateProfileTest {
 
-    @Mock UserRepository userRepository;
-    @Mock TokenService   tokenService;
-    @Mock StorageService storageService;
-    @Mock OAuthService   oAuthService;
+    @Mock UserRepository         userRepository;
+    @Mock TokenService           tokenService;
+    @Mock StorageService         storageService;
+    @Mock OAuthService           oAuthService;
+    @Mock Environment            environment;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks UserProfileService userService;
 
@@ -194,18 +200,23 @@ class UserProfileServiceUpdateProfileTest {
         }
 
         @Test
-        @DisplayName("이미지 파일이 있으면 StorageService를 호출하고 URL을 저장한다")
+        @DisplayName("이미지 파일이 있으면 upload()를 호출하고 getUrl()로 변환된 URL을 반환한다")
         void shouldUploadImage_whenFileProvided() {
+            given(environment.getActiveProfiles()).willReturn(new String[]{"test"});
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );
-            given(storageService.uploadImage(any())).willReturn("https://storage.example.com/photo.jpg");
+            given(storageService.upload(any(), anyString()))
+                .willReturn(new UploadResult("test/public/users/1/profile/202504/abc.jpg",
+                    "photo.jpg", 9L, "image/jpeg"));
+            given(storageService.getUrl(anyString()))
+                .willReturn("https://storage.example.com/photo.jpg");
 
             UpdateProfileResponse response = userService.updateProfile(
                 USER_ID, new UpdateProfileRequest(null, null), image
             );
 
-            then(storageService).should().uploadImage(image);
+            then(storageService).should().upload(any(MultipartFile.class), anyString());
             assertThat(response.profileImageUrl()).isEqualTo("https://storage.example.com/photo.jpg");
         }
 
@@ -214,7 +225,7 @@ class UserProfileServiceUpdateProfileTest {
         void shouldNotUploadImage_whenFileIsNull() {
             userService.updateProfile(USER_ID, new UpdateProfileRequest(null, null), null);
 
-            then(storageService).should(never()).uploadImage(any());
+            then(storageService).should(never()).upload(any(), anyString());
         }
 
         @Test
@@ -226,7 +237,7 @@ class UserProfileServiceUpdateProfileTest {
 
             userService.updateProfile(USER_ID, new UpdateProfileRequest(null, null), emptyImage);
 
-            then(storageService).should(never()).uploadImage(any());
+            then(storageService).should(never()).upload(any(), anyString());
         }
     }
 
@@ -241,10 +252,14 @@ class UserProfileServiceUpdateProfileTest {
         void shouldUpdateAllFieldsAtOnce() {
             given(userRepository.findById(USER_ID))
                 .willReturn(Optional.of(baseUser("멋진코끼리", 3L, null)));
+            given(environment.getActiveProfiles()).willReturn(new String[]{"test"});
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );
-            given(storageService.uploadImage(any())).willReturn("https://storage.example.com/photo.jpg");
+            given(storageService.upload(any(), anyString()))
+                .willReturn(new UploadResult("test-key", "photo.jpg", 9L, "image/jpeg"));
+            given(storageService.getUrl(anyString()))
+                .willReturn("https://storage.example.com/photo.jpg");
 
             UpdateProfileResponse response = userService.updateProfile(
                 USER_ID, new UpdateProfileRequest("새닉네임", "new@example.com"), image
@@ -268,7 +283,7 @@ class UserProfileServiceUpdateProfileTest {
             assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
             assertThat(response.email()).isEqualTo("test@example.com");
             assertThat(response.profileImageUrl()).isEqualTo("https://original.com/image.jpg");
-            then(storageService).should(never()).uploadImage(any());
+            then(storageService).should(never()).upload(any(), anyString());
         }
     }
 }

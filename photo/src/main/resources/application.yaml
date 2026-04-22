@@ -6,11 +6,40 @@ spring:
       - "classpath:config/dev/yaml/application-dev.yaml"
       - "optional:classpath:config/test/yaml/application-test.yaml"
       - "optional:classpath:config/prod/yaml/application-prod.yaml"
+  servlet:
+    multipart:
+      max-file-size: 10MB        # app.file.max-size 와 반드시 일치
+      max-request-size: 11MB     # 폼 필드 포함 전체 요청 크기
 
 # 파일 업로드
 app:
+  # 저장소 타입: s3 (MinIO 또는 AWS S3)
+  storage:
+    type: s3
+
+  # AWS S3 / MinIO 설정 (app.storage.type=s3 일 때 사용)
+  s3:
+    bucket: photo-images
+    region: ap-northeast-2
+    endpoint: ""          # MinIO: http://localhost:9000 / 실제 AWS: 빈 값
+    access-key: ""        # MinIO: MINIO_ROOT_USER  / AWS: IAM Access Key
+    secret-key: ""        # MinIO: MINIO_ROOT_PASSWORD / AWS: IAM Secret Key
+    # CloudFront 배포 도메인 (예: d1234567890.cloudfront.net)
+    # 설정 시 public 콘텐츠는 만료 없는 CloudFront URL로 제공됩니다.
+    # 미설정 시 모든 콘텐츠는 Presigned URL로 제공됩니다.
+    cloud-front-domain: ${CLOUDFRONT_DOMAIN:}
+    # CloudFront 배포 ID — 캐시 무효화(이미지 교체/삭제 시)에 사용.
+    # 설정 시 CloudFrontClient 빈이 생성되어 무효화가 활성화됩니다.
+    distribution-id: ${CLOUDFRONT_DISTRIBUTION_ID:}
+
+  # 이미지 처리 설정
+  image:
+    thumbnail:
+      width: 400      # 썸네일 최대 가로 픽셀 (비율 유지)
+      height: 400     # 썸네일 최대 세로 픽셀 (비율 유지)
+    presigned-url-expiry-minutes: 60   # Presigned URL 유효 시간(분)
+
   file:
-    upload-dir: uploads
     max-size: 10485760          # 10MB (bytes)
     image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif,exif
 

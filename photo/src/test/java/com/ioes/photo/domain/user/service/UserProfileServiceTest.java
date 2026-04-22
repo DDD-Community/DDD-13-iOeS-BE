@@ -7,7 +7,6 @@ import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,7 +39,6 @@ class UserProfileServiceTest {
 
     @Mock UserRepository userRepository;
     @Mock TokenService   tokenService;
-    @Mock StorageService storageService;
     @Mock OAuthService   oAuthService;
 
     @InjectMocks UserProfileService userService;
