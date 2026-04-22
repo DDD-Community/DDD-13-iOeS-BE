@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -44,11 +45,12 @@ import static org.mockito.Mockito.never;
 @DisplayName("UserProfileService.updateProfile() 단위 테스트")
 class UserProfileServiceUpdateProfileTest {
 
-    @Mock UserRepository userRepository;
-    @Mock TokenService   tokenService;
-    @Mock StorageService storageService;
-    @Mock OAuthService   oAuthService;
-    @Mock Environment    environment;
+    @Mock UserRepository         userRepository;
+    @Mock TokenService           tokenService;
+    @Mock StorageService         storageService;
+    @Mock OAuthService           oAuthService;
+    @Mock Environment            environment;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks UserProfileService userService;
 
@@ -200,6 +202,7 @@ class UserProfileServiceUpdateProfileTest {
         @Test
         @DisplayName("이미지 파일이 있으면 upload()를 호출하고 getUrl()로 변환된 URL을 반환한다")
         void shouldUploadImage_whenFileProvided() {
+            given(environment.getActiveProfiles()).willReturn(new String[]{"test"});
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );
@@ -249,6 +252,7 @@ class UserProfileServiceUpdateProfileTest {
         void shouldUpdateAllFieldsAtOnce() {
             given(userRepository.findById(USER_ID))
                 .willReturn(Optional.of(baseUser("멋진코끼리", 3L, null)));
+            given(environment.getActiveProfiles()).willReturn(new String[]{"test"});
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );

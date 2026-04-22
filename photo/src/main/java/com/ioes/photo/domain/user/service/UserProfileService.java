@@ -10,12 +10,13 @@ import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.AccessType;
-import com.ioes.photo.global.storage.CloudFrontInvalidationService;
+import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StoragePathUtils;
 import com.ioes.photo.global.storage.StorageService;
 import com.ioes.photo.global.storage.UploadResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +49,7 @@ public class UserProfileService {
     private final StorageService storageService;
     private final OAuthService oAuthService;
     private final Environment environment;
-    private final CloudFrontInvalidationService cloudFrontService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public UpdateProfileResponse updateProfile(Long userId, UpdateProfileRequest request,
@@ -68,10 +69,9 @@ public class UserProfileService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
-        // 사용자가 직접 업로드한 프로필 이미지 S3 삭제 + CloudFront 무효화
+        // 사용자가 직접 업로드한 프로필 이미지 S3 삭제 + CloudFront 무효화 (커밋 후 실행)
         if (user.getProfileImageKey() != null) {
-            storageService.delete(user.getProfileImageKey());
-            invalidateCloudFront(user.getProfileImageKey());
+            eventPublisher.publishEvent(new StorageCleanupEvent(user.getProfileImageKey()));
         }
 
         try {
@@ -111,16 +111,15 @@ public class UserProfileService {
             activeEnv(), AccessType.PUBLIC, ENTITY, user.getId(), TYPE_PROFILE,
             profileImage.getOriginalFilename());
 
+        String oldKey = user.getProfileImageKey();
         UploadResult result = storageService.upload(profileImage, newKey);
 
-        // 기존 업로드 이미지 정리
-        String oldKey = user.getProfileImageKey();
-        if (NullUtils.isNotBlank(oldKey)) {
-            storageService.delete(oldKey);
-            invalidateCloudFront(oldKey);
-        }
-
         user.updateProfileImageKey(result.key());
+
+        // 기존 업로드 이미지 정리 — DB 커밋 성공 후 실행
+        if (NullUtils.isNotBlank(oldKey)) {
+            eventPublisher.publishEvent(new StorageCleanupEvent(oldKey));
+        }
     }
 
     private String resolveProfileImageUrl(User user) {
@@ -128,12 +127,6 @@ public class UserProfileService {
             return storageService.getUrl(user.getProfileImageKey());
         }
         return user.getProfileImageUrl();
-    }
-
-    private void invalidateCloudFront(String key){
-        if (cloudFrontService != null) {
-            cloudFrontService.invalidate(key);
-        }
     }
 
     private String activeEnv(){
