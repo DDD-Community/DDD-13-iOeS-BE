@@ -1,37 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- Spring Boot가 logging.file.path / logging.logback.rollingpolicy.* 를
-         시스템 프로퍼티로 export하므로 참조 가능 -->
-    <property name="LOG_DIR"     value="${LOG_PATH:-logs}"/>
+    <property name="LOG_DIR"     value="${LOG_PATH:-/app/logs}"/>
     <property name="APP_NAME"    value="photo"/>
     <property name="MAX_HISTORY" value="${LOGBACK_ROLLINGPOLICY_MAX_HISTORY:-30}"/>
     <property name="MAX_SIZE"    value="${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-100MB}"/>
     <property name="TOTAL_SIZE"  value="${LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP:-3GB}"/>
 
-    <!--
-        MDC 키 (MdcFilter가 각 요청마다 세팅):
-          %X{requestId} - UUID 기반 요청 추적 ID
-          %X{userId}    - 인증 사용자 ID
-          %X{method}    - HTTP 메서드
-          %X{uri}       - 요청 URI
-          %X{clientIp}  - 클라이언트 IP
-        키가 없으면 '-' 로 표시 (:-  기본값 문법)
-    -->
-    <!--
-        콘솔 패턴: 실시간 개발 확인용
-          [method uri] [clientIp] [requestId] [userId] 순서로 출력
-          HTTP 요청이 아닌 로그(애플리케이션 시작 등)는 해당 MDC 키가 비어 있음
-    -->
     <property name="CONSOLE_PATTERN"
-              value="%d{HH:mm:ss.SSS} %highlight([%-5level])[%thread][%X{method:-} %X{uri:-}][%X{clientIp:-}][rid:%X{requestId:-}][uid:%X{userId:-}][tx:%X{txId:-}] %boldYellow(%logger{30}) - %msg%n"/>
-    <!--
-        파일 패턴: 로그 분석용 — 전체 요청 컨텍스트 포함
-    -->
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [rid:%X{requestId:-}] [uid:%X{userId:-}] [%X{method:-} %X{uri:-}] [ip:%X{clientIp:-}] [tx:%X{txId:-}] %logger{36} - %msg%n"/>
     <property name="FILE_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [rid:%X{requestId:-}] [uid:%X{userId:-}] [%X{method:-} %X{uri:-}] [ip:%X{clientIp:-}] [tx:%X{txId:-}] %logger{36} - %msg%n"/>
 
-    <!-- ── Console ────────────────────────────────────────────────── -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>${CONSOLE_PATTERN}</pattern>
@@ -39,7 +19,7 @@
         </encoder>
     </appender>
 
-    <!-- ── INFO 롤링 파일: INFO 레벨만 ────────────────────────────── -->
+    <!-- INFO 파일: INFO 레벨만 -->
     <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-info.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -59,7 +39,7 @@
         </encoder>
     </appender>
 
-    <!-- ── WARN 롤링 파일: WARN 레벨만 ────────────────────────────── -->
+    <!-- WARN 파일: WARN 레벨만 -->
     <appender name="FILE_WARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-warn.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -79,7 +59,7 @@
         </encoder>
     </appender>
 
-    <!-- ── ERROR 롤링 파일: ERROR 이상 ────────────────────────────── -->
+    <!-- ERROR 파일: ERROR 이상 -->
     <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-error.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -97,7 +77,6 @@
         </encoder>
     </appender>
 
-    <!-- ── 비동기 래퍼 ────────────────────────────────────────────── -->
     <appender name="ASYNC_INFO" class="ch.qos.logback.classic.AsyncAppender">
         <discardingThreshold>0</discardingThreshold>
         <queueSize>512</queueSize>
@@ -116,7 +95,6 @@
         <appender-ref ref="FILE_ERROR"/>
     </appender>
 
-    <!-- ── Root ─────────────────────────────────────────────────── -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_INFO"/>
@@ -124,35 +102,17 @@
         <appender-ref ref="ASYNC_ERROR"/>
     </root>
 
-    <!-- ── 애플리케이션 패키지: DEBUG ────────────────────────────── -->
-    <logger name="com.ioes.photo" level="DEBUG" additivity="false">
+    <logger name="com.ioes.photo" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_INFO"/>
         <appender-ref ref="ASYNC_WARN"/>
         <appender-ref ref="ASYNC_ERROR"/>
     </logger>
 
-    <!-- ── SQL 로깅 (콘솔만) ─────────────────────────────────────── -->
-    <logger name="org.hibernate.SQL"           level="DEBUG" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <!-- HikariCP 커넥션 풀 정보 로그 억제 -->
-    <logger name="com.zaxxer.hikari" level="WARN" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <!-- Hibernate 시작 시 DB 메타데이터 요약 로그 억제 (HHH10001005: Database info) -->
-    <logger name="org.hibernate.orm.connections.pooling" level="WARN" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <!-- "Using generated security password" 로그 억제 (JWT 전용 앱에서 UserDetailsService 미등록 시 출력) -->
-    <logger name="org.springframework.boot.security.autoconfigure" level="WARN" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
+    <logger name="org.hibernate.SQL"           level="WARN"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
+    <logger name="com.zaxxer.hikari"           level="WARN"/>
+    <logger name="org.hibernate.orm.connections.pooling" level="WARN"/>
+    <logger name="org.springframework.boot.security.autoconfigure" level="WARN"/>
 
 </configuration>
