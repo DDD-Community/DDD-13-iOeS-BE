@@ -1,19 +1,19 @@
-package com.ioes.photo.global.auth.oauth;
+package com.ioes.photo.domain.spot.enums;
 
 import com.ioes.photo.global.persistence.enumeration.CodedEnum;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * OAuth 로그인 공급자 ENUM.
+ * 스팟 테마.
  *
- * @author 황제연
+ * @author 김성민
  */
 @Getter
 @RequiredArgsConstructor
-public enum OAuthProvider implements CodedEnum {
-    APPLE("A"),
-    KAKAO("K");
+public enum SpotTheme implements CodedEnum {
+    SUNSET("SS"),
+    YUNSEUL("YS");
 
     private final String code;
 }
