@@ -7,6 +7,8 @@ import com.ioes.photo.global.common.util.HttpClientUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.web.client.ResourceAccessException;
@@ -34,11 +36,18 @@ public class SeoulCrowdApiClient {
     private final ExternalApiProperties properties;
 
     /**
-     * 서울시 실시간 인구 데이터 조회
+     * 서울시 실시간 인구 데이터 조회.
+     *
+     * <p>외부 API 일시 장애에 대해 최대 3회 재시도(1s → 2s → 4s 백오프)한다.</p>
      *
      * @param areaName 장소명 (예: "광화문·덕수궁")
      * @return 혼잡도 응답
      */
+    @Retryable(
+        retryFor = BusinessException.class,
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 1000L, multiplier = 2.0)
+    )
     public CrowdStatusResponse getCrowdStatus(String areaName) {
         Assert.hasText(areaName, "areaName은 필수입니다");
 

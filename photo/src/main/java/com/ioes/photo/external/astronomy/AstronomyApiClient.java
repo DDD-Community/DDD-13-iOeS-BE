@@ -8,6 +8,8 @@ import com.ioes.photo.global.common.util.HttpClientUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.web.client.ResourceAccessException;
@@ -35,12 +37,19 @@ public class AstronomyApiClient {
     private final ExternalApiProperties properties;
 
     /**
-     * 지역별 해달 출몰시각 정보 조회
+     * 지역별 해달 출몰시각 정보 조회.
+     *
+     * <p>외부 API 일시 장애에 대해 최대 3회 재시도(1s → 2s → 4s 백오프)한다.</p>
      *
      * @param locdate  날짜 (yyyyMMdd)
      * @param location 지역명 (예: 서울, 부산)
      * @return 출몰시각 응답
      */
+    @Retryable(
+        retryFor = BusinessException.class,
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 1000L, multiplier = 2.0)
+    )
     public SunMoonRiseSetResponse getRiseSetInfo(String locdate, String location) {
         Assert.hasText(locdate, "locdate는 필수입니다");
         Assert.hasText(location, "location은 필수입니다");

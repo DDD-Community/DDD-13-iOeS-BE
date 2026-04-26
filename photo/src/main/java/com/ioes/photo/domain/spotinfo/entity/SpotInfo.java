@@ -6,8 +6,6 @@ import com.ioes.photo.external.weather.enums.SkyStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
@@ -39,8 +37,7 @@ public class SpotInfo {
     @Column(name = "spot_id")
     private Long spotId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "congestion_level", length = 20)
+    @Column(name = "congestion_level", length = 4)
     private CongestionLevel congestionLevel;
 
     @Column(name = "congestion_message", columnDefinition = "text")
@@ -55,12 +52,10 @@ public class SpotInfo {
     @Column(name = "congestion_updated_at")
     private LocalDateTime congestionUpdatedAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "weather_sky", length = 20)
+    @Column(name = "weather_sky", length = 4)
     private SkyStatus weatherSky;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "weather_precipitation", length = 20)
+    @Column(name = "weather_precipitation", length = 4)
     private PrecipitationType weatherPrecipitation;
 
     @Column(name = "temperature")

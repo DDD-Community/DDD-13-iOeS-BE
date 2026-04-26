@@ -18,6 +18,7 @@ import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
 import com.ioes.photo.external.weather.WeatherApiClient;
+import com.ioes.photo.external.weather.config.WeatherProperties;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Body;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Header;
@@ -27,10 +28,10 @@ import com.ioes.photo.external.weather.enums.SkyStatus;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -46,8 +47,17 @@ class WeatherCollectorTest {
     @Mock
     private WeatherApiClient weatherApiClient;
 
-    @InjectMocks
     private WeatherCollector weatherCollector;
+
+    @BeforeEach
+    void setUp() {
+        weatherCollector = new WeatherCollector(
+            spotRepository,
+            spotInfoUpdateService,
+            weatherApiClient,
+            new WeatherProperties(10)
+        );
+    }
 
     @Test
     @DisplayName("동일 격자 스팟은 단일 API 호출로 처리된다")

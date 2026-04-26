@@ -6,6 +6,19 @@ package com.ioes.photo.external.weather.util;
  * 위경도 좌표를 기상청 단기예보 API가 요구하는 격자 좌표(nx, ny)로 변환한다.
  * 공식 값은 기상청 제공 변환식 상수를 그대로 사용한다.
  *
+ * <h3>변환 상수 의미</h3>
+ * <ul>
+ *   <li>{@code RE}    — 지구 반지름 (km)</li>
+ *   <li>{@code GRID}  — 격자 간격 (km). 5km 격자.</li>
+ *   <li>{@code SLAT1} — LCC 투영 표준 위도 1 (deg)</li>
+ *   <li>{@code SLAT2} — LCC 투영 표준 위도 2 (deg)</li>
+ *   <li>{@code OLON}  — 투영 원점 경도 (deg)</li>
+ *   <li>{@code OLAT}  — 투영 원점 위도 (deg)</li>
+ *   <li>{@code XO}    — 격자 원점 X (격자 단위)</li>
+ *   <li>{@code YO}    — 격자 원점 Y (격자 단위)</li>
+ *   <li>{@code DEGRAD} — degree → radian 변환 계수</li>
+ * </ul>
+ *
  * @author 김성민
  */
 public final class LccGridConverter {

@@ -6,6 +6,7 @@ import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
 import com.ioes.photo.external.weather.WeatherApiClient;
+import com.ioes.photo.external.weather.config.WeatherProperties;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Item;
 import com.ioes.photo.external.weather.enums.PrecipitationType;
@@ -45,6 +46,7 @@ public class WeatherCollector {
     private final SpotRepository spotRepository;
     private final SpotInfoUpdateService spotInfoUpdateService;
     private final WeatherApiClient weatherApiClient;
+    private final WeatherProperties weatherProperties;
 
     public CollectResult collect() {
         List<Spot> targets = spotRepository
@@ -52,7 +54,10 @@ public class WeatherCollector {
         Map<GridKey, List<Spot>> grouped = targets.stream()
             .collect(Collectors.groupingBy(s -> new GridKey(s.getGridNx(), s.getGridNy())));
 
-        BaseInfo base = WeatherBaseTime.resolve(LocalDateTime.now());
+        BaseInfo base = WeatherBaseTime.resolve(
+            LocalDateTime.now(),
+            weatherProperties.availabilityDelayMinutes()
+        );
 
         int success = 0;
         int fail = 0;

@@ -5,8 +5,6 @@ import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
@@ -45,8 +43,7 @@ public class Spot extends BaseEntity {
     @Column(columnDefinition = "text")
     private String comment;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 4)
     private SpotTheme theme;
 
     @Column(nullable = false)
@@ -58,8 +55,7 @@ public class Spot extends BaseEntity {
     @Column(length = 255)
     private String address;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 4)
     private SpotStatus status;
 
     @Column(name = "grid_nx")

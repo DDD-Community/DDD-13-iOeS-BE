@@ -8,6 +8,7 @@ import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
 import com.ioes.photo.external.astronomy.AstronomyApiClient;
 import com.ioes.photo.external.astronomy.dto.SunMoonRiseSetResponse;
 import com.ioes.photo.external.astronomy.dto.SunMoonRiseSetResponse.Item;
+import com.ioes.photo.global.common.util.NullUtils;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -49,11 +50,10 @@ public class AstronomyCollector {
             return new CollectResult(0, 0);
         }
 
-        Item item;
         LocalTime sunrise;
         LocalTime sunset;
         try {
-            item = extractItem(response);
+            Item item = extractItem(response);
             sunrise = parseTime(item.trimmedSunrise());
             sunset = parseTime(item.trimmedSunset());
         } catch (Exception e) {
@@ -88,7 +88,7 @@ public class AstronomyCollector {
     }
 
     private LocalTime parseTime(String hhmm) {
-        if (hhmm == null || hhmm.isBlank()) {
+        if (NullUtils.isBlank(hhmm)) {
             return null;
         }
         return LocalTime.parse(hhmm, TIME_FORMAT);

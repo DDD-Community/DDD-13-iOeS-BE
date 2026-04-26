@@ -9,6 +9,7 @@ import com.ioes.photo.external.crowd.SeoulCrowdApiClient;
 import com.ioes.photo.external.crowd.dto.CrowdStatusResponse;
 import com.ioes.photo.external.crowd.dto.CrowdStatusResponse.LivePopulation;
 import com.ioes.photo.external.crowd.enums.CongestionLevel;
+import com.ioes.photo.global.common.util.NullUtils;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -76,23 +77,27 @@ public class CrowdCollector {
     }
 
     private Integer parseNullableInt(String value) {
-        if (value == null || value.isBlank()) {
+        if (NullUtils.isBlank(value)) {
             return null;
         }
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
+            log.debug("[CrowdCollector] population 숫자 파싱 실패 value={} reason={}",
+                value, e.getMessage());
             return null;
         }
     }
 
     private LocalDateTime parseObservedAt(String populationTime) {
-        if (populationTime == null || populationTime.isBlank()) {
+        if (NullUtils.isBlank(populationTime)) {
             return LocalDateTime.now();
         }
         try {
             return LocalDateTime.parse(populationTime.trim(), POPULATION_TIME_FORMAT);
         } catch (Exception e) {
+            log.debug("[CrowdCollector] populationTime 파싱 실패 value={} reason={}",
+                populationTime, e.getMessage());
             return LocalDateTime.now();
         }
     }

@@ -8,6 +8,8 @@ import com.ioes.photo.global.common.util.HttpClientUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.web.client.ResourceAccessException;
@@ -36,7 +38,9 @@ public class WeatherApiClient {
     private final ExternalApiProperties properties;
 
     /**
-     * 단기예보 조회
+     * 단기예보 조회.
+     *
+     * <p>외부 API 일시 장애에 대해 최대 3회 재시도(1s → 2s → 4s 백오프)한다.</p>
      *
      * @param baseDate 발표일자 (yyyyMMdd)
      * @param baseTime 발표시각 (HHmm, 예: 0200, 0500, 0800 ...)
@@ -44,6 +48,11 @@ public class WeatherApiClient {
      * @param ny       예보지점 Y좌표
      * @return 단기예보 응답
      */
+    @Retryable(
+        retryFor = BusinessException.class,
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 1000L, multiplier = 2.0)
+    )
     public ShortTermForecastResponse getShortTermForecast(
         String baseDate, String baseTime, int nx, int ny
     ) {

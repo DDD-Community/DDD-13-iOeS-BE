@@ -1,5 +1,6 @@
 package com.ioes.photo.external.crowd.enums;
 
+import com.ioes.photo.global.persistence.enumeration.CodedEnum;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -17,13 +18,14 @@ import java.util.stream.Stream;
  */
 @Getter
 @RequiredArgsConstructor
-public enum CongestionLevel {
+public enum CongestionLevel implements CodedEnum {
 
-    RELAXED("여유", "인구가 평소와 비교하여 적음"),
-    NORMAL("보통", "인구가 평소와 비교하여 비슷함"),
-    SLIGHTLY_CROWDED("약간 붐빔", "인구가 평소와 비교하여 많음"),
-    CROWDED("붐빔", "인구가 평소와 비교하여 매우 많음");
+    RELAXED("R", "여유", "인구가 평소와 비교하여 적음"),
+    NORMAL("N", "보통", "인구가 평소와 비교하여 비슷함"),
+    SLIGHTLY_CROWDED("S", "약간 붐빔", "인구가 평소와 비교하여 많음"),
+    CROWDED("C", "붐빔", "인구가 평소와 비교하여 매우 많음");
 
+    private final String code;
     private final String label;
     private final String description;
 

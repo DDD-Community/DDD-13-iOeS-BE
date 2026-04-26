@@ -1,5 +1,6 @@
 package com.ioes.photo.external.weather.enums;
 
+import com.ioes.photo.global.persistence.enumeration.CodedEnum;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -11,13 +12,14 @@ import java.util.stream.Stream;
 /**
  * 단기예보 강수형태 코드.
  *
- * <p>기상청 단기예보 API의 PTY 카테고리 값에 대응합니다.</p>
+ * <p>기상청 단기예보 API의 PTY 카테고리 값에 대응합니다.
+ * 외부 API 코드를 그대로 DB 저장 코드로도 사용합니다.</p>
  *
  * @author 김성민
  */
 @Getter
 @RequiredArgsConstructor
-public enum PrecipitationType {
+public enum PrecipitationType implements CodedEnum {
 
     NONE("0", "없음"),
     RAIN("1", "비"),
