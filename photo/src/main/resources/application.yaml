@@ -19,11 +19,11 @@ app:
 
   # AWS S3 / MinIO 설정 (app.storage.type=s3 일 때 사용)
   s3:
-    bucket: photo-images
-    region: ap-northeast-2
-    endpoint: ""          # MinIO: http://localhost:9000 / 실제 AWS: 빈 값
-    access-key: ""        # MinIO: MINIO_ROOT_USER  / AWS: IAM Access Key
-    secret-key: ""        # MinIO: MINIO_ROOT_PASSWORD / AWS: IAM Secret Key
+    bucket: ${S3_BUCKET:photo-images}
+    region: ${S3_REGION:ap-northeast-2}
+    endpoint: ${S3_ENDPOINT:}          # MinIO: http://localhost:9000 / 실제 AWS: 빈 값
+    access-key: ${S3_ACCESS_KEY:}        # MinIO: MINIO_ROOT_USER  / AWS: IAM Access Key
+    secret-key: ${S3_SECRET_KEY:}        # MinIO: MINIO_ROOT_PASSWORD / AWS: IAM Secret Key
     # CloudFront 배포 도메인 (예: d1234567890.cloudfront.net)
     # 설정 시 public 콘텐츠는 만료 없는 CloudFront URL로 제공됩니다.
     # 미설정 시 모든 콘텐츠는 Presigned URL로 제공됩니다.
