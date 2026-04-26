@@ -33,15 +33,21 @@ services:
     env_file:
       - .env
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+      # SPRING_PROFILES_ACTIVE 는 .env 에서 결정한다 (test | prod)
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # test/prod 양쪽 yaml 이 같은 변수명을 읽도록 PROD_*/TEST_* 모두 주입
       PROD_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       PROD_DB_USERNAME: ${POSTGRES_USER}
       PROD_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      TEST_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      TEST_DB_USERNAME: ${POSTGRES_USER}
+      TEST_DB_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - app_uploads:/app/uploads
-      - app_logs:/app/logs
+      # 로그는 호스트에서 직접 접근 가능하도록 bind mount
+      # (logrotate / scp 백업 / ELK forwarder 연계 용이)
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,7 +56,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/actuator/health"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/api/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -80,10 +86,13 @@ services:
     image: redis:7-alpine
     container_name: photo-redis
     restart: unless-stopped
+    # JWT refresh / OAuth state 등 단기성 키만 사용하므로 영속화 불필요.
+    # AOF/RDB 모두 비활성화하여 메모리 전용으로 동작.
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
-      --appendonly yes
+      --appendonly no
+      --save ""
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
     volumes:
@@ -104,4 +113,3 @@ volumes:
   pgdata:
   redis_data:
   app_uploads:
-  app_logs:

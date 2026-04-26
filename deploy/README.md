@@ -25,10 +25,46 @@ Docker Compose 기반으로 **Nginx + Spring Boot + PostgreSQL + Redis** 스택�
 
 - **외부 노출 포트**: Nginx의 `80/443`만. DB/Redis는 절대 외부 노출 금지.
 - **볼륨**:
-  - `pgdata` → Postgres 데이터
-  - `redis_data` → Redis AOF
-  - `app_uploads` → 업로드 이미지 (app가 RW, nginx가 RO 공유)
-  - `app_logs` → 앱 로그 파일
+  - `pgdata` (named) → Postgres 데이터
+  - `redis_data` (named) → Redis 빈 마운트 (현재 영속화 비활성: AOF off, RDB off)
+  - `app_uploads` (named) → 업로드 이미지 (app RW, nginx RO 공유)
+  - `./logs` (bind) → 앱 로그 파일. 호스트에서 직접 접근 가능하도록 bind mount
+
+> ⚠️ **로그 디렉토리 권한**: 컨테이너 내부 `photo` 사용자의 uid는 **1000**입니다. 호스트의 `deploy/logs/` 디렉토리가 uid 1000에게 쓰기 권한이 있어야 합니다.
+> ```bash
+> mkdir -p deploy/logs
+> sudo chown -R 1000:1000 deploy/logs
+> ```
+> 권한이 안 맞으면 컨테이너가 시작은 되지만 로그가 비어 있게 됩니다.
+
+---
+
+## 프로파일 (test / prod)
+
+`SPRING_PROFILES_ACTIVE` 값으로 동작 모드를 결정합니다. `.env`에서 설정.
+
+| 항목 | `test` (테스트 서버, iOS 협업/검증용) | `prod` (운영 서버) |
+|---|---|---|
+| Swagger UI | 노출 (`/api/swagger-ui.html`) | 차단 |
+| 앱 로그 레벨 | DEBUG | INFO |
+| `show-sql` | true | false |
+| Actuator endpoints | health, info, metrics, env | health 만 |
+| 헬스 상세 | always | never |
+| DDL | update | update (이후 Flyway 도입 시 validate) |
+
+**테스트 서버 EC2의 `.env`**:
+
+```env
+SPRING_PROFILES_ACTIVE=test
+```
+
+**운영 서버 EC2의 `.env`**:
+
+```env
+SPRING_PROFILES_ACTIVE=prod
+```
+
+같은 `docker-compose.yml`/이미지로 두 환경을 운영하며, 차이는 `.env`로만 통제합니다.
 
 ---
 
@@ -125,8 +161,12 @@ git clone https://github.com/DDD-Community/DDD-13-iOeS-BE.git
 cd DDD-13-iOeS-BE/deploy
 
 cp .env.example .env
-vi .env   # 실제 값 채워넣기
+vi .env   # 실제 값 채워넣기 (SPRING_PROFILES_ACTIVE 도 환경에 맞게)
 chmod 600 .env
+
+# 로그 bind mount 디렉토리 권한 (컨테이너 photo 사용자 uid=1000)
+mkdir -p logs
+sudo chown -R 1000:1000 logs
 ```
 
 ### 5) 스택 기동

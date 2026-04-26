@@ -36,12 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
-### Spring - profile configs (test 환경 정보 포함) ###
-src/main/resources/config/test/yaml/application-test.yaml
-
-### Logback - test (환경별 경로 정보 포함) ###
-src/main/resources/config/test/logback/logback-test.xml
-
 ### 로컬 로그 파일 ###
 logs/
 

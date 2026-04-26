@@ -16,10 +16,10 @@ RUN ./gradlew bootJar -x test --no-daemon && \
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN apk add --no-cache curl tzdata && \
+RUN apk add --no-cache tzdata && \
     cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
-    addgroup -S photo && adduser -S photo -G photo && \
+    addgroup -g 1000 -S photo && adduser -u 1000 -S photo -G photo && \
     mkdir -p /app/logs /app/uploads && \
     chown -R photo:photo /app
 
@@ -34,6 +34,6 @@ ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8080/api/actuator/health || exit 1
+    CMD wget -q -O - http://localhost:8080/api/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

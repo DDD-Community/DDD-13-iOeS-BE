@@ -1,16 +1,16 @@
 spring:
   config:
     activate:
-      on-profile: prod
+      on-profile: test
   data:
     redis:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
   datasource:
-    url: ${PROD_DB_URL:jdbc:postgresql://postgres:5432/photo}
-    username: ${PROD_DB_USERNAME}
-    password: ${PROD_DB_PASSWORD}
+    url: ${TEST_DB_URL:jdbc:postgresql://postgres:5432/photo}
+    username: ${TEST_DB_USERNAME}
+    password: ${TEST_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -19,8 +19,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: false
+    show-sql: true
     open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
   docker:
     compose:
       enabled: false
@@ -45,11 +48,14 @@ app:
 
   security:
     public-urls:
-      - /actuator/health
+      - /swagger-ui/**
+      - /api-docs/**
+      - /swagger-ui.html
+      - /actuator/**
       - /auth/**
 
 logging:
-  config: classpath:config/prod/logback/logback-prod.xml
+  config: classpath:config/test/logback/logback-test.xml
   file:
     path: /app/logs
 
@@ -63,15 +69,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,metrics,env
   endpoint:
     health:
-      show-details: never
+      show-details: always
       probes:
         enabled: true
 
 springdoc:
   swagger-ui:
-    enabled: false
+    path: /swagger-ui.html
+    enabled: true
   api-docs:
-    enabled: false
+    path: /api-docs
+    enabled: true

@@ -102,16 +102,23 @@
         <appender-ref ref="ASYNC_ERROR"/>
     </root>
 
-    <logger name="com.ioes.photo" level="INFO" additivity="false">
+    <!-- 애플리케이션 패키지: DEBUG (test 환경 디버깅용) -->
+    <logger name="com.ioes.photo" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="ASYNC_INFO"/>
         <appender-ref ref="ASYNC_WARN"/>
         <appender-ref ref="ASYNC_ERROR"/>
     </logger>
 
-    <logger name="org.hibernate.SQL"           level="WARN"/>
-    <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
-    <logger name="com.zaxxer.hikari"           level="WARN"/>
+    <!-- SQL 로깅 (콘솔만, show-sql=true 와 함께) -->
+    <logger name="org.hibernate.SQL"           level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="com.zaxxer.hikari" level="WARN"/>
     <logger name="org.hibernate.orm.connections.pooling" level="WARN"/>
     <logger name="org.springframework.boot.security.autoconfigure" level="WARN"/>
 
