@@ -130,15 +130,16 @@ public class S3StorageService implements StorageService {
 
     private void putObject(MultipartFile file, String key) {
         try {
+            byte[] bytes = file.getBytes();
             s3Client.putObject(
                 PutObjectRequest.builder()
                     .bucket(s3Properties.bucket())
                     .key(key)
                     .contentType(resolveContentType(file))
-                    .contentLength(file.getSize())
+                    .contentLength((long) bytes.length)
                     .contentDisposition(buildContentDisposition(file.getOriginalFilename()))
                     .build(),
-                RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+                    RequestBody.fromBytes(bytes)
             );
         } catch (IOException e) {
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
