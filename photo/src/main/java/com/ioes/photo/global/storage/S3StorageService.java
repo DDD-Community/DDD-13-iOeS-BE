@@ -15,11 +15,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -109,6 +112,22 @@ public class S3StorageService implements StorageService {
 
         // Private 콘텐츠 또는 CloudFront 미설정: Presigned URL 동적 생성
         return generatePresignedUrl(key);
+    }
+
+    public byte[] fetchBytes(String key) {
+        try {
+            ResponseBytes<GetObjectResponse> response = s3Client.getObject(
+                GetObjectRequest.builder()
+                    .bucket(s3Properties.bucket())
+                    .key(key)
+                    .build(),
+                ResponseTransformer.toBytes()
+            );
+            return response.asByteArray();
+        } catch (SdkException e) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
+                "S3 파일 읽기에 실패했습니다: " + e.getMessage());
+        }
     }
 
     @Override
