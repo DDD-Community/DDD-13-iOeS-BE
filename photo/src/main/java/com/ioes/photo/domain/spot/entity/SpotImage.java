@@ -74,4 +74,12 @@ public class SpotImage {
     public void updateThumbnailKey(String thumbnailKey) {
         this.thumbnailKey = thumbnailKey;
     }
+
+    public void updateOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
+
+    public void updateContentType(String contentType) {
+        this.contentType = contentType;
+    }
 }

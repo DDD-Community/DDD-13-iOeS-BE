@@ -8,13 +8,11 @@ import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
-import com.ioes.photo.global.storage.StorageService;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 스팟 조회 서비스.
@@ -23,12 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class SpotQueryService {
 
     private final SpotRepository spotRepository;
     private final SpotImageRepository spotImageRepository;
-    private final StorageService storageService;
+    private final SpotThumbnailService spotThumbnailService;
 
     public SpotViewportResponse findSpotsInViewport(ViewportRequest request) {
         List<Spot> spots = spotRepository.findAllInViewport(
@@ -43,9 +40,11 @@ public class SpotQueryService {
 
         List<SpotSummary> summaries = spots.stream()
             .map(spot -> {
-                SpotImage image = imageBySpotId.get(spot.getId());
-                String imageUrl = image != null ? storageService.getUrl(image.getImageKey()) : null;
-                return new SpotSummary(spot.getId(), imageUrl, spot.getLatitude(), spot.getLongitude());
+                SpotImage spotImage = imageBySpotId.get(spot.getId());
+                String thumbnailUrl = spotImage != null
+                    ? spotThumbnailService.getThumbnailUrl(spotImage)
+                    : null;
+                return new SpotSummary(spot.getId(), thumbnailUrl, spot.getLatitude(), spot.getLongitude());
             })
             .toList();
 
