@@ -35,6 +35,15 @@ public class SpotImage {
     @Column(name = "image_key", nullable = false)
     private String imageKey;
 
+    @Column(name = "thumbnail_key")
+    private String thumbnailKey;
+
+    @Column(name = "original_filename")
+    private String originalFilename;
+
+    @Column(name = "content_type")
+    private String contentType;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
@@ -43,16 +52,26 @@ public class SpotImage {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    private SpotImage(Long spotId, String imageKey) {
+    private SpotImage(Long spotId, String imageKey, String originalFilename, String contentType) {
         this.spotId = spotId;
         this.imageKey = imageKey;
+        this.originalFilename = originalFilename;
+        this.contentType = contentType;
     }
 
     public static SpotImage create(Long spotId, String imageKey) {
-        return new SpotImage(spotId, imageKey);
+        return new SpotImage(spotId, imageKey, null, null);
+    }
+
+    public static SpotImage create(Long spotId, String imageKey, String originalFilename, String contentType) {
+        return new SpotImage(spotId, imageKey, originalFilename, contentType);
     }
 
     public void updateImageKey(String imageKey) {
         this.imageKey = imageKey;
+    }
+
+    public void updateThumbnailKey(String thumbnailKey) {
+        this.thumbnailKey = thumbnailKey;
     }
 }
