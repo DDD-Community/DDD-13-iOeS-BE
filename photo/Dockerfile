@@ -16,7 +16,7 @@ RUN ./gradlew bootJar -x test --no-daemon && \
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN apk add --no-cache tzdata && \
+RUN apk add --no-cache tzdata imagemagick libheif && \
     cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
     addgroup -g 1000 -S photo && adduser -u 1000 -S photo -G photo && \
