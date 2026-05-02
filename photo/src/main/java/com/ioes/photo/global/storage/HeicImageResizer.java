@@ -71,6 +71,7 @@ public class HeicImageResizer {
     }
 
     public byte[] resize(byte[] data, int width, int height) {
+        // 유저가 스팟 등록할 수 있도록 활성화할 경우, 디스크에 임시파일 저장하는 방식으로 경로 명시 필수
         try (TempFile input = new TempFile("heic-in-", ".heic");
              TempFile output = new TempFile("heic-out-", ".jpg")) {
 
