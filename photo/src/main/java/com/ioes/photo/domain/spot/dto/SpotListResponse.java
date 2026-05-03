@@ -16,11 +16,8 @@ public record SpotListResponse(
     public record SpotItem(
         Long spotId,
         String name,
-        String address,
         String theme,
         String thumbnailUrl,
-        Double latitude,
-        Double longitude,
         Double distanceKm
     ) {}
 }

@@ -8,10 +8,7 @@
         SELECT
             s.id,
             s.name,
-            s.address,
             s.theme,
-            s.latitude,
-            s.longitude,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
