@@ -65,6 +65,7 @@ dependencies {
 //	developmentOnly 'org.springframework.boot:spring-boot-docker-compose' 잠시 주석처리, 이후 다시 복구예정
 	runtimeOnly 'org.postgresql:postgresql'
 	implementation 'org.hibernate.orm:hibernate-spatial'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.4'
 	annotationProcessor 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

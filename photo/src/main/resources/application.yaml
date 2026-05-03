@@ -248,6 +248,13 @@ app:
       method: method
       client-ip: clientIp
 
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.ioes.photo.domain.spot.mapper
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
+
 # 로깅 공통
 logging:
   file:
