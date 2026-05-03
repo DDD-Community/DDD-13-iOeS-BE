@@ -13,6 +13,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 
 /**
  * 사진 촬영 스팟 엔티티.
@@ -30,12 +34,13 @@ import org.hibernate.annotations.SQLRestriction;
         @Index(name = "idx_spots_theme", columnList = "theme"),
         @Index(name = "idx_spots_status", columnList = "status"),
         @Index(name = "idx_spots_crowd_area_name", columnList = "crowd_area_name"),
-        @Index(name = "idx_spots_lat_lng", columnList = "latitude, longitude")
     }
 )
 @SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Spot extends BaseEntity {
+
+    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -51,6 +56,9 @@ public class Spot extends BaseEntity {
 
     @Column(nullable = false)
     private Double longitude;
+
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point location;
 
     @Column(length = 255)
     private String address;
@@ -78,6 +86,7 @@ public class Spot extends BaseEntity {
         this.theme = theme;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.location = GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
         this.address = address;
         this.status = status == null ? SpotStatus.PENDING : status;
         this.gridNx = gridNx;
