@@ -43,7 +43,7 @@ public class SpotQueryService {
         List<Spot> spots = spotRepository.findAllInViewport(
             request.minLat(), request.maxLat(),
             request.minLng(), request.maxLng(),
-            SpotStatus.PUBLISHED
+            SpotStatus.PUBLISHED.getCode()
         );
 
         Map<Long, SpotImage> imageMap = loadImageMap(spots.stream().map(Spot::getId).toList());
