@@ -22,7 +22,13 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
 
     List<Spot> findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus status);
 
-    @Query("SELECT s FROM Spot s WHERE s.latitude BETWEEN :minLat AND :maxLat AND s.longitude BETWEEN :minLng AND :maxLng AND s.status = :status")
+    @Query(
+        value = "SELECT s.* FROM spots s " +
+                "WHERE s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326) " +
+                "AND s.status = :status " +
+                "AND s.deleted_at IS NULL",
+        nativeQuery = true
+    )
     List<Spot> findAllInViewport(@Param("minLat") double minLat, @Param("maxLat") double maxLat,
                                   @Param("minLng") double minLng, @Param("maxLng") double maxLng,
                                   @Param("status") SpotStatus status);
