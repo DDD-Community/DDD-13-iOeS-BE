@@ -6,6 +6,8 @@ import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.service.SpotQueryService;
 import com.ioes.photo.global.common.response.ApiResponse;
+import com.ioes.photo.global.common.validation.Latitude;
+import com.ioes.photo.global.common.validation.Longitude;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
@@ -34,14 +36,14 @@ public class SpotController {
     @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다.")
     @GetMapping("/viewport")
     public ApiResponse<SpotViewportResponse> getSpotsInViewport(
-        @RequestParam @NotNull Double topLeftLat,
-        @RequestParam @NotNull Double topLeftLng,
-        @RequestParam @NotNull Double topRightLat,
-        @RequestParam @NotNull Double topRightLng,
-        @RequestParam @NotNull Double bottomLeftLat,
-        @RequestParam @NotNull Double bottomLeftLng,
-        @RequestParam @NotNull Double bottomRightLat,
-        @RequestParam @NotNull Double bottomRightLng
+        @RequestParam @NotNull @Latitude Double topLeftLat,
+        @RequestParam @NotNull @Longitude Double topLeftLng,
+        @RequestParam @NotNull @Latitude Double topRightLat,
+        @RequestParam @NotNull @Longitude Double topRightLng,
+        @RequestParam @NotNull @Latitude Double bottomLeftLat,
+        @RequestParam @NotNull @Longitude Double bottomLeftLng,
+        @RequestParam @NotNull @Latitude Double bottomRightLat,
+        @RequestParam @NotNull @Longitude Double bottomRightLng
     ) {
         return ApiResponse.success(spotQueryService.findSpotsInViewport(
             new ViewportRequest(topLeftLat, topLeftLng, topRightLat, topRightLng,
@@ -57,8 +59,8 @@ public class SpotController {
     public ApiResponse<SpotListResponse> getSpots(
         @RequestParam(defaultValue = "0") @Min(0) int page,
         @RequestParam(required = false) SpotTheme theme,
-        @RequestParam(required = false) Double latitude,
-        @RequestParam(required = false) Double longitude
+        @RequestParam(required = false) @Latitude Double latitude,
+        @RequestParam(required = false) @Longitude Double longitude
     ) {
         return ApiResponse.success(spotQueryService.findSpots(page, theme, latitude, longitude));
     }

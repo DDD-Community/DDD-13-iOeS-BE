@@ -1,19 +1,23 @@
 package com.ioes.photo.domain.spot.dto;
 
+import com.ioes.photo.global.common.validation.Latitude;
+import com.ioes.photo.global.common.validation.Longitude;
 import jakarta.validation.constraints.NotNull;
 
 /**
  * 지도 뷰포트 4개 꼭짓점 좌표 요청.
+ *
+ * @author 황제연
  */
 public record ViewportRequest(
-    @NotNull Double topLeftLat,
-    @NotNull Double topLeftLng,
-    @NotNull Double topRightLat,
-    @NotNull Double topRightLng,
-    @NotNull Double bottomLeftLat,
-    @NotNull Double bottomLeftLng,
-    @NotNull Double bottomRightLat,
-    @NotNull Double bottomRightLng
+    @NotNull @Latitude Double topLeftLat,
+    @NotNull @Longitude Double topLeftLng,
+    @NotNull @Latitude Double topRightLat,
+    @NotNull @Longitude Double topRightLng,
+    @NotNull @Latitude Double bottomLeftLat,
+    @NotNull @Longitude Double bottomLeftLng,
+    @NotNull @Latitude Double bottomRightLat,
+    @NotNull @Longitude Double bottomRightLng
 ) {
 
     public double minLat() {
