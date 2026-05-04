@@ -8,13 +8,11 @@ import com.ioes.photo.domain.spot.service.SpotQueryService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,12 +31,22 @@ public class SpotController {
 
     private final SpotQueryService spotQueryService;
 
-    @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "아이폰 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다.")
-    @PostMapping("/viewport")
+    @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다.")
+    @GetMapping("/viewport")
     public ApiResponse<SpotViewportResponse> getSpotsInViewport(
-        @RequestBody @Valid ViewportRequest request
+        @RequestParam @NotNull Double topLeftLat,
+        @RequestParam @NotNull Double topLeftLng,
+        @RequestParam @NotNull Double topRightLat,
+        @RequestParam @NotNull Double topRightLng,
+        @RequestParam @NotNull Double bottomLeftLat,
+        @RequestParam @NotNull Double bottomLeftLng,
+        @RequestParam @NotNull Double bottomRightLat,
+        @RequestParam @NotNull Double bottomRightLng
     ) {
-        return ApiResponse.success(spotQueryService.findSpotsInViewport(request));
+        return ApiResponse.success(spotQueryService.findSpotsInViewport(
+            new ViewportRequest(topLeftLat, topLeftLng, topRightLat, topRightLng,
+                                bottomLeftLat, bottomLeftLng, bottomRightLat, bottomRightLng)
+        ));
     }
 
     @Operation(
