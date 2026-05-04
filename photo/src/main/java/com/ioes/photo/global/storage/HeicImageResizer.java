@@ -1,16 +1,16 @@
 package com.ioes.photo.global.storage;
 
 import com.ioes.photo.domain.storage.error.StorageErrorCode;
+import com.ioes.photo.global.config.image.ImageMagickConfig.ImageMagickCommand;
 import com.ioes.photo.global.error.exception.BusinessException;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * HEIC/HEIF 이미지 리사이징 컴포넌트.
@@ -18,54 +18,28 @@ import java.util.concurrent.TimeUnit;
  * Thumbnailator(ImageIO)가 지원하지 않는 HEIC/HEIF 포맷을
  * ImageMagick을 통해 JPEG로 변환하고 리사이징한다.
  *
- * 앱 시작 시 ImageMagick 설치 여부와 사용 가능한 명령어를 자동 감지한다.
  * - Linux/Docker: imagemagick + libheif 패키지 필요 (convert 명령어)
- * - Windows:      ImageMagick 7 설치 시 동작 (magick 명령어)
- * - 미설치 환경:  supports()가 false를 반환하며 HEIC 변환 비활성화
+ * - Windows: ImageMagick 7 설치 시 동작 (magick 명령어)
+ * - 미설치 환경: supports()가 false를 반환하며 HEIC 변환 비활성화
  *
  * @author 황제연
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class HeicImageResizer {
 
     private static final Set<String> SUPPORTED_TYPES = Set.of(
         "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"
     );
 
-    private static final int DETECT_TIMEOUT_SECONDS = 5;
     private static final int CONVERT_TIMEOUT_SECONDS = 30;
     private static final int JPEG_QUALITY = 85;
 
-    private final Optional<String> convertCommand;
-
-    public HeicImageResizer() {
-        this.convertCommand = detectImageMagick();
-    }
-
-    private static Optional<String> detectImageMagick() {
-        for (String cmd : new String[]{"convert", "magick"}) {
-            try {
-                Process p = new ProcessBuilder(cmd, "--version")
-                    .redirectErrorStream(true)
-                    .start();
-                String output = new String(p.getInputStream().readAllBytes());
-                boolean finished = p.waitFor(DETECT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-                if (finished && p.exitValue() == 0 && output.contains("ImageMagick")) {
-                    log.info("ImageMagick 감지됨: '{}' 명령어로 HEIC 지원 활성화", cmd);
-                    return Optional.of(cmd);
-                }
-            } catch (IOException | InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        log.warn("ImageMagick을 찾을 수 없어 HEIC 썸네일 생성이 비활성화됩니다.");
-        return Optional.empty();
-    }
+    private final ImageMagickCommand imageMagickCommand;
 
     public boolean supports(String contentType) {
-        return convertCommand.isPresent()
+        return imageMagickCommand.isPresent()
             && contentType != null
             && SUPPORTED_TYPES.contains(contentType.toLowerCase());
     }
@@ -79,7 +53,7 @@ public class HeicImageResizer {
 
             String geometry = width + "x" + height + ">";
             ProcessBuilder pb = new ProcessBuilder(
-                convertCommand.orElseThrow(),
+                imageMagickCommand.command(),
                 "-resize", geometry,
                 "-quality", String.valueOf(JPEG_QUALITY),
                 input.path.toString(),
