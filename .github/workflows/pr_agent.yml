@@ -3,6 +3,11 @@ on:
     types: [opened, reopened, ready_for_review]
   issue_comment:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
 
 jobs:
   pr_agent:
@@ -20,3 +25,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           config__ai__provider: "gemini"
           config__ai__model: "gemini-2.5-flash"
+          GITHUB_ACTION_CONFIG__AUTO_REVIEW: "true"
+          config__git_provider__pr_url: "https://github.com/DDD-Community/DDD-13-iOeS-BE/pull/${{ github.event.inputs.pr_number }}"
