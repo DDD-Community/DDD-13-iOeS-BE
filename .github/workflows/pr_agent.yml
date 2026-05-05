@@ -26,8 +26,19 @@ jobs:
 
           config.model: "gemini/gemini-2.5-flash"
           config.fallback_models: '["gemini/gemini-2.5-flash"]'
-
           config.response_language: "ko-KR"
+          config.max_model_tokens: "20000"
+
+          # 테스트/설정 파일 스킵
+          config.patch_extension_skip_types: '[".md", ".txt", ".xml", ".sql", ".yaml", ".yml"]'
+
+          # 리뷰 항목 축소
+          pr_reviewer.require_tests_review: "false"
+          pr_reviewer.require_ticket_analysis_review: "false"
+          pr_reviewer.num_max_findings: "3"
+
+          # 코드 제안 개수 축소
+          pr_code_suggestions.num_code_suggestions_per_chunk: "2"
 
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
