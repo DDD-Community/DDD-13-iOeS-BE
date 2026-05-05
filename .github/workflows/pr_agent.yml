@@ -19,5 +19,5 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          config__ai__provider: "gemini"
-          config__ai__model: "gemini-2.5-flash"
+          CONFIG__AI__PROVIDER: "gemini"
+          CONFIG__AI__MODEL: "gemini-2.5-flash"
