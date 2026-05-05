@@ -1,0 +1,22 @@
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+jobs:
+  pr_agent:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
+    name: Run PR Agent
+    steps:
+      - name: PR Agent action step
+        uses: Codium-ai/pr-agent@main
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          config__ai__provider: "gemini"
+          config__ai__model: "gemini-2.5-flash"
