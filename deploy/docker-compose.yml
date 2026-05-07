@@ -24,16 +24,13 @@ services:
       retries: 3
 
   app:
-    build:
-      context: ../photo
-      dockerfile: Dockerfile
-    image: photo-app:latest
+    image: ghcr.io/ddd-community/ddd-13-ioes-be:${APP_IMAGE_TAG:-dev-latest}
     container_name: photo-app
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      # SPRING_PROFILES_ACTIVE 는 .env 에서 결정한다 (test | prod)
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       # test/prod 양쪽 yaml 이 같은 변수명을 읽도록 PROD_*/TEST_* 모두 주입
