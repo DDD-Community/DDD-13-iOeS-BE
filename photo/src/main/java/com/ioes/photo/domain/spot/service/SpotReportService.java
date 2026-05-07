@@ -28,7 +28,7 @@ public class SpotReportService {
     public SpotReportResponse report(Long userId, Long spotId, SpotReportRequest request) {
         spotRepository.findById(spotId)
             .filter(spot -> spot.getStatus() == SpotStatus.PUBLISHED)
-            .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
+            .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_PUBLISHED));
 
         SpotReport report = SpotReport.builder()
             .spotId(spotId)

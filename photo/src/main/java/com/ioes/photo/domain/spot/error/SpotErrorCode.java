@@ -15,7 +15,7 @@ import org.springframework.http.HttpStatus;
 public enum SpotErrorCode implements ErrorCode {
 
     SPOT_NOT_FOUND("SP001", "존재하지 않는 스팟입니다.", HttpStatus.NOT_FOUND),
-    SPOT_NOT_PUBLISHED("SP002", "신고할 수 없는 스팟입니다.", HttpStatus.BAD_REQUEST);
+    SPOT_NOT_PUBLISHED("SP002", "아직 승인되지 않은 스팟입니다. 승인되지 않은 스팟은 신고할 수 없습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
