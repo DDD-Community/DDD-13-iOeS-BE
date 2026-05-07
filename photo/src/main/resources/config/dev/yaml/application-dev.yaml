@@ -19,11 +19,16 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    defer-datasource-initialization: true
     show-sql: true
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/spatial-index.sql
   docker:
     compose:
       enabled: true

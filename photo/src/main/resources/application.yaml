@@ -35,13 +35,13 @@ app:
   # 이미지 처리 설정
   image:
     thumbnail:
-      width: 400      # 썸네일 최대 가로 픽셀 (비율 유지)
-      height: 400     # 썸네일 최대 세로 픽셀 (비율 유지)
+      width: 300      # 썸네일 최대 가로 픽셀 (비율 유지) - 아이폰 @3x 마커 기준
+      height: 300     # 썸네일 최대 세로 픽셀 (비율 유지)
     presigned-url-expiry-minutes: 60   # Presigned URL 유효 시간(분)
 
   file:
     max-size: 10485760          # 10MB (bytes)
-    image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif,exif
+    image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif
 
   # 외부 API
   external-api:
@@ -247,6 +247,13 @@ app:
       request-uri: uri
       method: method
       client-ip: clientIp
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.ioes.photo.domain.spot.mapper
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
 
 # 로깅 공통
 logging:

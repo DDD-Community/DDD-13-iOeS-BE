@@ -63,7 +63,10 @@ services:
       start_period: 60s
 
   postgres:
-    image: postgres:17-alpine
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    image: photo-postgres:latest
     container_name: photo-postgres
     restart: unless-stopped
     environment:
@@ -74,6 +77,7 @@ services:
       PGTZ: Asia/Seoul
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/init-postgis.sql:/docker-entrypoint-initdb.d/01-postgis.sql:ro
     networks:
       - backend
     healthcheck:

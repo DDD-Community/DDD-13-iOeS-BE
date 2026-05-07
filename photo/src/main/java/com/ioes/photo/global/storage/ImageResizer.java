@@ -7,8 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.tasks.UnsupportedFormatException;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Set;
@@ -31,9 +31,10 @@ public class ImageResizer {
     private static final String OUTPUT_CONTENT_TYPE = "image/jpeg";
     private static final double OUTPUT_QUALITY = 0.85;
 
-    public byte[] resize(MultipartFile file, int width, int height) {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Thumbnails.of(file.getInputStream())
+    public byte[] resize(byte[] data, int width, int height) {
+        try (ByteArrayInputStream in = new ByteArrayInputStream(data);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Thumbnails.of(in)
                 .size(width, height)
                 .keepAspectRatio(true)
                 .outputFormat(OUTPUT_FORMAT)
