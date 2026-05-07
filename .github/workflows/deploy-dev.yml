@@ -70,6 +70,10 @@ jobs:
           envs: GHCR_PAT
           script: |
             set -e
+            cd ${{ secrets.EC2_DEPLOY_PATH }}/..
+            git fetch origin dev
+            git checkout dev
+            git reset --hard origin/dev
             cd ${{ secrets.EC2_DEPLOY_PATH }}
             echo "$GHCR_PAT" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
             docker compose pull app
