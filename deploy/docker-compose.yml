@@ -30,7 +30,7 @@ services:
     env_file:
       - .env
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       # test/prod 양쪽 yaml 이 같은 변수명을 읽도록 PROD_*/TEST_* 모두 주입
