@@ -64,6 +64,9 @@ public class User extends BaseEntity {
     private String profileImageKey; // 사용자가 직접 업로드한 프로필 이미지
 
     @Column
+    private String archiveImageKey; // 보관함 이미지 (PRIVATE, S3 키 저장)
+
+    @Column
     private LocalDateTime deletedAt;
 
     @Builder
@@ -103,6 +106,10 @@ public class User extends BaseEntity {
     public void updateProfileImageKey(String key) {
         this.profileImageKey = key;
         this.profileImageUrl = null;
+    }
+
+    public void updateArchiveImageKey(String key) {
+        this.archiveImageKey = key;
     }
 
 }

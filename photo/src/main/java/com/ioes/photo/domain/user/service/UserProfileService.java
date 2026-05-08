@@ -8,16 +8,17 @@ import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.common.util.NullUtils;
+import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.AccessType;
 import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StoragePathUtils;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import com.ioes.photo.global.storage.UploadResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,7 +49,7 @@ public class UserProfileService {
     private final TokenService tokenService;
     private final StorageService storageService;
     private final OAuthService oAuthService;
-    private final Environment environment;
+    private final StorageProperties storageProperties;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -108,15 +109,15 @@ public class UserProfileService {
         }
 
         String newKey = StoragePathUtils.generate(
-            activeEnv(), AccessType.PUBLIC, ENTITY, user.getId(), TYPE_PROFILE,
+            storageProperties.env(), AccessType.PUBLIC, ENTITY, user.getId(), TYPE_PROFILE,
             profileImage.getOriginalFilename());
 
         String oldKey = user.getProfileImageKey();
         UploadResult result = storageService.upload(profileImage, newKey);
+        eventPublisher.publishEvent(new StorageUploadRollbackEvent(result.key()));
 
         user.updateProfileImageKey(result.key());
 
-        // 기존 업로드 이미지 정리 — DB 커밋 성공 후 실행
         if (NullUtils.isNotBlank(oldKey)) {
             eventPublisher.publishEvent(new StorageCleanupEvent(oldKey));
         }
@@ -129,10 +130,4 @@ public class UserProfileService {
         return user.getProfileImageUrl();
     }
 
-    private String activeEnv(){
-        String[] profiles = environment.getActiveProfiles();
-        return profiles.length > 0
-                ? profiles[0]
-                : "dev";
-    }
 }

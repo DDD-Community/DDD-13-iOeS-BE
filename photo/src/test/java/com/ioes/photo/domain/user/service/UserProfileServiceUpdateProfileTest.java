@@ -8,8 +8,10 @@ import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
+import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import com.ioes.photo.global.storage.UploadResult;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,11 +19,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 
 /**
@@ -49,7 +52,7 @@ class UserProfileServiceUpdateProfileTest {
     @Mock TokenService           tokenService;
     @Mock StorageService         storageService;
     @Mock OAuthService           oAuthService;
-    @Mock Environment            environment;
+    @Mock StorageProperties      storageProperties;
     @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks UserProfileService userService;
@@ -200,9 +203,9 @@ class UserProfileServiceUpdateProfileTest {
         }
 
         @Test
-        @DisplayName("이미지 파일이 있으면 upload()를 호출하고 getUrl()로 변환된 URL을 반환한다")
-        void shouldUploadImage_whenFileProvided() {
-            given(environment.getActiveProfiles()).willReturn(new String[]{"test"});
+        @DisplayName("이미지 파일이 있으면 upload()를 호출하고 StorageUploadRollbackEvent를 발행하며 URL을 반환한다")
+        void shouldUploadImageAndPublishRollbackEvent_whenFileProvided() {
+            given(storageProperties.env()).willReturn("test");
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );
@@ -217,6 +220,10 @@ class UserProfileServiceUpdateProfileTest {
             );
 
             then(storageService).should().upload(any(MultipartFile.class), anyString());
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            then(eventPublisher).should(atLeastOnce()).publishEvent(captor.capture());
+            assertThat(captor.getAllValues())
+                .anyMatch(e -> e instanceof StorageUploadRollbackEvent);
             assertThat(response.profileImageUrl()).isEqualTo("https://storage.example.com/photo.jpg");
         }
 
@@ -252,7 +259,7 @@ class UserProfileServiceUpdateProfileTest {
         void shouldUpdateAllFieldsAtOnce() {
             given(userRepository.findById(USER_ID))
                 .willReturn(Optional.of(baseUser("멋진코끼리", 3L, null)));
-            given(environment.getActiveProfiles()).willReturn(new String[]{"test"});
+            given(storageProperties.env()).willReturn("test");
             MultipartFile image = new MockMultipartFile(
                 "profileImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
             );

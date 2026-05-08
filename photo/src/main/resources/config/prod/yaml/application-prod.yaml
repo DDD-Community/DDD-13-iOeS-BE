@@ -31,6 +31,9 @@ spring:
       enabled: false
 
 app:
+  storage:
+    env: prod
+
   jwt:
     secret: ${JWT_SECRET}
 
