@@ -11,6 +11,7 @@ import com.ioes.photo.global.storage.AccessType;
 import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StoragePathUtils;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import com.ioes.photo.global.storage.UploadResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,6 +50,8 @@ public class UserArchiveService {
         );
 
         UploadResult result = storageService.upload(archiveImage, newKey);
+        eventPublisher.publishEvent(new StorageUploadRollbackEvent(result.key()));
+
         user.updateArchiveImageKey(result.key());
 
         if (NullUtils.isNotBlank(oldKey)) {

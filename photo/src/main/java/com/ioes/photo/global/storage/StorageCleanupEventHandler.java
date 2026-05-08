@@ -11,9 +11,11 @@ import java.util.Optional;
 /**
  * S3 파일 정리 이벤트 핸들러.
  *
- * StorageCleanupEvent를 수신하여 DB 트랜잭션 커밋 완료 후 S3 파일 삭제와CloudFront 캐시 무효화를 수행합니다.
- * AFTER_COMMIT 페이즈를 사용하므로 트랜잭션이 롤백되면 이벤트 자체가 무시되어 S3 파일이 불필요하게 삭제되지 않습니다.
- * CloudFrontInvalidationService는 조건부 빈(@code app.s3.distribution-id 설정 시에만 생성)이므로 Optional로 주입받아, 설정이 없는 환경에서도 정상 동작합니다.
+ * StorageCleanupEvent: DB 커밋 완료 후 구 파일 삭제 + CloudFront 무효화 (AFTER_COMMIT)
+ * StorageUploadRollbackEvent: DB 롤백 발생 시 신규 업로드 파일 보상 삭제 (AFTER_ROLLBACK)
+ *
+ * CloudFrontInvalidationService는 조건부 빈(app.s3.distribution-id 설정 시에만 생성)이므로 Optional로 주입받아,
+ * 설정이 없는 환경에서도 정상 동작합니다.
  *
  * @author 황제연
  */
@@ -29,5 +31,11 @@ public class StorageCleanupEventHandler {
     public void handleCleanup(StorageCleanupEvent event) {
         storageService.delete(event.key());
         cloudFrontService.ifPresent(service -> service.invalidate(event.key()));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_ROLLBACK)
+    public void handleUploadRollback(StorageUploadRollbackEvent event) {
+        log.warn("트랜잭션 롤백으로 인한 S3 신규 파일 보상 삭제: key={}", event.key());
+        storageService.delete(event.key());
     }
 }
