@@ -5,11 +5,12 @@ import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
+import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import com.ioes.photo.global.storage.UploadResult;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,11 +20,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 /**
  * {@link UserArchiveService} 단위 테스트.
@@ -45,7 +46,7 @@ class UserArchiveServiceTest {
 
     @Mock UserRepository userRepository;
     @Mock StorageService storageService;
-    @Mock Environment environment;
+    @Mock StorageProperties storageProperties;
     @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks UserArchiveService userArchiveService;
@@ -80,7 +81,7 @@ class UserArchiveServiceTest {
         @Test
         @DisplayName("이미지를 업로드하면 S3에 저장되고 Presigned URL을 반환한다")
         void shouldUploadAndReturnPresignedUrl() {
-            given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
+            given(storageProperties.env()).willReturn("dev");
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(null)));
             given(storageService.upload(any(), anyString()))
                 .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
@@ -93,9 +94,9 @@ class UserArchiveServiceTest {
         }
 
         @Test
-        @DisplayName("기존 이미지가 있으면 StorageCleanupEvent가 발행된다")
-        void shouldPublishCleanupEvent_whenOldKeyExists() {
-            given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
+        @DisplayName("기존 이미지가 있으면 StorageUploadRollbackEvent와 StorageCleanupEvent가 순서대로 발행된다")
+        void shouldPublishBothEvents_whenOldKeyExists() {
+            given(storageProperties.env()).willReturn("dev");
             String oldKey = "dev/private/users/1/archive/202504/old-uuid.jpg";
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(oldKey)));
             given(storageService.upload(any(), anyString()))
@@ -104,15 +105,19 @@ class UserArchiveServiceTest {
 
             userArchiveService.updateArchiveImage(USER_ID, imageFile());
 
-            ArgumentCaptor<StorageCleanupEvent> captor = ArgumentCaptor.forClass(StorageCleanupEvent.class);
-            then(eventPublisher).should().publishEvent(captor.capture());
-            assertThat(captor.getValue().key()).isEqualTo(oldKey);
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            then(eventPublisher).should(times(2)).publishEvent(captor.capture());
+            List<Object> events = captor.getAllValues();
+            assertThat(events.get(0)).isInstanceOf(StorageUploadRollbackEvent.class)
+                .satisfies(e -> assertThat(((StorageUploadRollbackEvent) e).key()).isEqualTo(ARCHIVE_KEY));
+            assertThat(events.get(1)).isInstanceOf(StorageCleanupEvent.class)
+                .satisfies(e -> assertThat(((StorageCleanupEvent) e).key()).isEqualTo(oldKey));
         }
 
         @Test
-        @DisplayName("기존 이미지가 없으면 StorageCleanupEvent가 발행되지 않는다")
-        void shouldNotPublishCleanupEvent_whenNoOldKey() {
-            given(environment.getActiveProfiles()).willReturn(new String[]{"dev"});
+        @DisplayName("기존 이미지가 없으면 StorageUploadRollbackEvent만 발행된다")
+        void shouldPublishOnlyRollbackEvent_whenNoOldKey() {
+            given(storageProperties.env()).willReturn("dev");
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(null)));
             given(storageService.upload(any(), anyString()))
                 .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
@@ -120,7 +125,9 @@ class UserArchiveServiceTest {
 
             userArchiveService.updateArchiveImage(USER_ID, imageFile());
 
-            then(eventPublisher).should(never()).publishEvent(any());
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            then(eventPublisher).should(times(1)).publishEvent(captor.capture());
+            assertThat(captor.getValue()).isInstanceOf(StorageUploadRollbackEvent.class);
         }
 
         @Test
@@ -160,7 +167,7 @@ class UserArchiveServiceTest {
             ArchiveImageResponse response = userArchiveService.getArchiveImage(USER_ID);
 
             assertThat(response.archiveImageUrl()).isNull();
-            then(storageService).should(never()).getUrl(anyString());
+            then(storageService).should(times(0)).getUrl(anyString());
         }
 
         @Test
