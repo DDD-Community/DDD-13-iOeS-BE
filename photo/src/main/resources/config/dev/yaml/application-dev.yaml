@@ -55,6 +55,7 @@ app:
   # Web Console: http://localhost:9001 (ID: minioadmin / PW: minioadmin)
   storage:
     type: s3
+    env: dev
   s3:
     endpoint: ${S3_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ROOT_USER:minioadmin}

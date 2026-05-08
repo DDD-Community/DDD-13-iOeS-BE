@@ -16,6 +16,7 @@ app:
   # 저장소 타입: s3 (MinIO 또는 AWS S3)
   storage:
     type: s3
+    env: dev   # 각 프로필 yaml에서 반드시 override (dev/test/prod)
 
   # AWS S3 / MinIO 설정 (app.storage.type=s3 일 때 사용)
   s3:
