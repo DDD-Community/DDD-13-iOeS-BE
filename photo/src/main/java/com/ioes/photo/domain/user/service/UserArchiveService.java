@@ -5,6 +5,7 @@ import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.common.util.NullUtils;
+import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.AccessType;
 import com.ioes.photo.global.storage.StorageCleanupEvent;
@@ -13,7 +14,6 @@ import com.ioes.photo.global.storage.StorageService;
 import com.ioes.photo.global.storage.UploadResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,7 +35,7 @@ public class UserArchiveService {
 
     private final UserRepository userRepository;
     private final StorageService storageService;
-    private final Environment environment;
+    private final StorageProperties storageProperties;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -44,7 +44,7 @@ public class UserArchiveService {
         String oldKey = user.getArchiveImageKey();
 
         String newKey = StoragePathUtils.generate(
-            activeEnv(), AccessType.PRIVATE, ENTITY, user.getId(), TYPE_ARCHIVE,
+            storageProperties.env(), AccessType.PRIVATE, ENTITY, user.getId(), TYPE_ARCHIVE,
             archiveImage.getOriginalFilename()
         );
 
@@ -70,10 +70,5 @@ public class UserArchiveService {
     private User findUser(Long userId) {
         return userRepository.findById(userId)
             .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-    }
-
-    private String activeEnv() {
-        String[] profiles = environment.getActiveProfiles();
-        return profiles.length > 0 ? profiles[0] : "dev";
     }
 }

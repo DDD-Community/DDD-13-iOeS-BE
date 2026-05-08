@@ -17,7 +17,6 @@ import com.ioes.photo.global.storage.UploadResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -108,7 +107,7 @@ public class UserProfileService {
         }
 
         String newKey = StoragePathUtils.generate(
-            activeEnv(), AccessType.PUBLIC, ENTITY, user.getId(), TYPE_PROFILE,
+            storageProperties.env(), AccessType.PUBLIC, ENTITY, user.getId(), TYPE_PROFILE,
             profileImage.getOriginalFilename());
 
         String oldKey = user.getProfileImageKey();
@@ -129,10 +128,4 @@ public class UserProfileService {
         return user.getProfileImageUrl();
     }
 
-    private String activeEnv(){
-        String[] profiles = environment.getActiveProfiles();
-        return profiles.length > 0
-                ? profiles[0]
-                : "dev";
-    }
 }
