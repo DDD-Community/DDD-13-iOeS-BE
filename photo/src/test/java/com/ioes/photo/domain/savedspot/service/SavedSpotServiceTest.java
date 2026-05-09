@@ -12,7 +12,6 @@ import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
-import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
@@ -221,21 +220,27 @@ class SavedSpotServiceTest {
     class FindSavedSpots {
 
         @Test
-        @DisplayName("위도만 전달하면 INVALID_INPUT_VALUE 예외를 던진다")
-        void throwsWhenOnlyLatProvided() {
-            assertThatThrownBy(() -> savedSpotService.findSavedSpots(USER_ID, 0, 37.5, null))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                    .isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE));
+        @DisplayName("위도만 전달해도 distanceKm=null로 정상 처리된다")
+        void succeedsWithNullDistance_whenOnlyLatProvided() {
+            given(savedSpotMapper.findSavedSpots(USER_ID, 37.5, null, 0, 6)).willReturn(List.of());
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(0L);
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, 37.5, null);
+
+            assertThat(response).isNotNull();
+            assertThat(response.spots()).isEmpty();
         }
 
         @Test
-        @DisplayName("경도만 전달하면 INVALID_INPUT_VALUE 예외를 던진다")
-        void throwsWhenOnlyLngProvided() {
-            assertThatThrownBy(() -> savedSpotService.findSavedSpots(USER_ID, 0, null, 127.0))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                    .isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE));
+        @DisplayName("경도만 전달해도 distanceKm=null로 정상 처리된다")
+        void succeedsWithNullDistance_whenOnlyLngProvided() {
+            given(savedSpotMapper.findSavedSpots(USER_ID, null, 127.0, 0, 6)).willReturn(List.of());
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(0L);
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, 127.0);
+
+            assertThat(response).isNotNull();
+            assertThat(response.spots()).isEmpty();
         }
 
         @Test
