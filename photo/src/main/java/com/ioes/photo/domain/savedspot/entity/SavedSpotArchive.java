@@ -17,7 +17,6 @@ import org.hibernate.annotations.SQLRestriction;
  * 사용자가 저장(북마크)한 스팟 아카이브 엔티티.
  *
  * user_id + spot_id 조합에 UNIQUE 제약을 두고, 재북마크 시 deleted_at을 초기화하는 재활성화 방식을 사용한다.
- * @SQLRestriction을 사용하지 않아 soft-delete 레코드도 findByUserIdAndSpotId로 조회 가능하다.
  *
  * @author 황제연
  */
