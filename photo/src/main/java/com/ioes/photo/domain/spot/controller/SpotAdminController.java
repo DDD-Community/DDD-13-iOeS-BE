@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "스팟 어드민", description = "스팟 내부 운영 API")
 @RestController
-@RequestMapping("/internal/spots")
+@RequestMapping("/v1/internal/spots")
 @RequiredArgsConstructor
 public class SpotAdminController {
 
