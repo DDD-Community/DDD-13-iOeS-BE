@@ -27,11 +27,11 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
 
     List<Spot> findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus status);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount + 1 WHERE s.id = :spotId")
     void incrementBookmarkCount(@Param("spotId") Long spotId);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount - 1 WHERE s.id = :spotId AND s.bookmarkCount > 0")
     void decrementBookmarkCount(@Param("spotId") Long spotId);
 
