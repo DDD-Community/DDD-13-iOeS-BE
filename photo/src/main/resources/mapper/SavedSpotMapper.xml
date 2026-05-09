@@ -5,7 +5,7 @@
 
     <select id="findSavedSpots" resultType="SavedSpotRow">
         SELECT
-            s.id            AS spot_id,
+            s.id                        AS spot_id,
             s.name,
             s.theme,
             s.latitude,
@@ -24,12 +24,12 @@
                 </otherwise>
             </choose>
                 AS distance_km,
-            sa.created_at   AS saved_at
+            sa.created_at               AS saved_at,
+            s.deleted_at IS NOT NULL    AS deleted
         FROM saved_spot_archives sa
         JOIN spots s ON s.id = sa.spot_id
         WHERE sa.user_id   = #{userId}
           AND sa.deleted_at IS NULL
-          AND s.deleted_at  IS NULL
           AND s.status      = 'B'
         ORDER BY sa.created_at DESC
         LIMIT #{size} OFFSET #{offset}
@@ -41,7 +41,6 @@
         JOIN spots s ON s.id = sa.spot_id
         WHERE sa.user_id   = #{userId}
           AND sa.deleted_at IS NULL
-          AND s.deleted_at  IS NULL
           AND s.status      = 'B'
     </select>
 

@@ -25,6 +25,7 @@ public record SavedSpotListResponse(
         @Schema(description = "스팟 위도") Double latitude,
         @Schema(description = "스팟 경도") Double longitude,
         @Schema(description = "사용자 위치 기준 거리 (km), 위치 미전달 시 null") Double distanceKm,
-        @Schema(description = "북마크 저장 시각") LocalDateTime savedAt
+        @Schema(description = "북마크 저장 시각") LocalDateTime savedAt,
+        @Schema(description = "스팟 삭제 여부") boolean deleted
     ) {}
 }
