@@ -2,9 +2,11 @@ package com.ioes.photo.domain.spot.repository;
 
 import com.ioes.photo.domain.spot.entity.Spot;
 import java.util.List;
+import java.util.Optional;
 
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,17 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
     List<Spot> findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus status);
 
     List<Spot> findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus status);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount + 1 WHERE s.id = :spotId")
+    void incrementBookmarkCount(@Param("spotId") Long spotId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount - 1 WHERE s.id = :spotId AND s.bookmarkCount > 0")
+    void decrementBookmarkCount(@Param("spotId") Long spotId);
+
+    @Query("SELECT s.bookmarkCount FROM Spot s WHERE s.id = :spotId")
+    Optional<Long> findBookmarkCountById(@Param("spotId") Long spotId);
 
     @Query(
         value = "SELECT s.* FROM spots s " +
