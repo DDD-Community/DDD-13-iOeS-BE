@@ -11,7 +11,7 @@
             s.latitude,
             s.longitude,
             <choose>
-                <when test="lat != null">
+                <when test="lat != null and lng != null">
                     ROUND(CAST(
                         ST_Distance(
                             s.location::geography,
