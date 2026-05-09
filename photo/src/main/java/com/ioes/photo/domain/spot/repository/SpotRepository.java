@@ -38,6 +38,9 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
     @Query("SELECT s.bookmarkCount FROM Spot s WHERE s.id = :spotId")
     Optional<Long> findBookmarkCountById(@Param("spotId") Long spotId);
 
+    @Query(value = "SELECT * FROM spots WHERE id = :spotId", nativeQuery = true)
+    Optional<Spot> findByIdIncludingDeleted(@Param("spotId") Long spotId);
+
     @Query(
         value = "SELECT s.* FROM spots s " +
                 "WHERE s.location && ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326) " +
