@@ -1,0 +1,125 @@
+name: Deploy (dev)
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build & Push image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=dev-latest
+            type=sha,prefix=dev-
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./photo
+          file: ./photo/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy & verify (auto-rollback on failure)
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          APP_IMAGE_TAG: dev-${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GHCR_PAT,APP_IMAGE_TAG
+          script: |
+            set -e
+            cd ${{ secrets.EC2_DEPLOY_PATH }}/..
+            git fetch origin dev
+            git checkout dev
+            git reset --hard origin/dev
+            cd ${{ secrets.EC2_DEPLOY_PATH }}
+
+            # 롤백 대비: 현재 떠있는 컨테이너의 이미지 태그 캡쳐
+            PREV_TAG=""
+            if docker inspect photo-app >/dev/null 2>&1; then
+              PREV_TAG=$(docker inspect photo-app --format '{{.Config.Image}}' | awk -F: '{print $NF}')
+              echo "Previous image tag: $PREV_TAG"
+            else
+              echo "No previous container (first deploy)"
+            fi
+
+            health_check() {
+              for i in $(seq 1 30); do
+                if curl -fsS http://localhost/api/actuator/health > /dev/null 2>&1; then
+                  echo "Health check passed (attempt $i)"
+                  return 0
+                fi
+                echo "Waiting... ($i/30)"
+                sleep 5
+              done
+              return 1
+            }
+
+            # 새 이미지 배포
+            echo "$GHCR_PAT" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            docker compose pull app
+            docker compose up -d app
+
+            if health_check; then
+              docker image prune -f
+              exit 0
+            fi
+
+            echo "Health check failed after 150s"
+            if [ -z "$PREV_TAG" ]; then
+              echo "No previous tag to rollback to"
+              exit 1
+            fi
+
+            echo "Rolling back to: $PREV_TAG"
+            export APP_IMAGE_TAG="$PREV_TAG"
+            docker compose up -d app
+            if health_check; then
+              echo "Rollback successful — pipeline will still fail to flag the bad deploy"
+            else
+              echo "Rollback also failed — manual intervention required"
+            fi
+            exit 1
