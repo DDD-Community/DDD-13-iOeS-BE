@@ -77,7 +77,7 @@ app:
       - /api-docs/**
       - /swagger-ui.html
       - /actuator/health
-      - /auth/**
+      - /v1/auth/**
 
   #  Swagger / OpenAPI
   swagger:
@@ -251,7 +251,7 @@ app:
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.ioes.photo.domain.spot.mapper
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper
   configuration:
     map-underscore-to-camel-case: true
     jdbc-type-for-null: NULL

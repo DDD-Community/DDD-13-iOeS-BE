@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "스팟", description = "스팟 조회 API")
 @Validated
 @RestController
-@RequestMapping("/spots")
+@RequestMapping("/v1/spots")
 @RequiredArgsConstructor
 public class SpotController {
 

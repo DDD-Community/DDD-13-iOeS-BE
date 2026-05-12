@@ -6,7 +6,7 @@ import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.S3StorageService;
 import com.ioes.photo.global.storage.UploadResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,7 +47,7 @@ class UserArchiveServiceIntegrationTest {
 
     @MockitoBean RedisConnectionFactory redisConnectionFactory;
     @MockitoBean ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
-    @MockitoBean StorageService storageService;
+    @MockitoBean S3StorageService storageService;
 
     @Autowired UserArchiveService userArchiveService;
     @Autowired UserRepository userRepository;
