@@ -1,13 +1,19 @@
 package com.ioes.photo.domain.spot.controller;
 
+import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse.SpotItem;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.service.SpotQueryService;
+import com.ioes.photo.external.crowd.enums.CongestionLevel;
+import com.ioes.photo.external.weather.enums.PrecipitationType;
+import com.ioes.photo.external.weather.enums.SkyStatus;
 import com.ioes.photo.global.common.response.ApiResponse;
+import com.ioes.photo.global.error.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,9 +23,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -38,6 +46,60 @@ class SpotControllerTest {
     @Mock SpotQueryService spotQueryService;
 
     @InjectMocks SpotController spotController;
+
+    // ── getSpotDetail ────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("getSpotDetail()")
+    class GetSpotDetail {
+
+        @Test
+        @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
+        void wrapsServiceResponseInApiResponse() {
+            SpotDetailResponse detail = new SpotDetailResponse(
+                1L, "한강공원", "노을이 예쁜 곳", SpotTheme.SUNSET,
+                37.55, 127.05, "서울시 마포구",
+                "https://cdn.example.com/original.jpg",
+                LocalTime.of(18, 30),
+                SkyStatus.CLEAR, PrecipitationType.NONE, 20, 23.5,
+                CongestionLevel.NORMAL, LocalTime.of(18, 55)
+            );
+            given(spotQueryService.findSpotDetail(1L)).willReturn(detail);
+
+            ApiResponse<SpotDetailResponse> response = spotController.getSpotDetail(1L);
+
+            assertThat(response.isSuccess()).isTrue();
+            assertThat(response.getData().spotId()).isEqualTo(1L);
+            assertThat(response.getData().name()).isEqualTo("한강공원");
+            assertThat(response.getData().sunsetTime()).isEqualTo(LocalTime.of(18, 55));
+        }
+
+        @Test
+        @DisplayName("PathVariable spotId를 서비스에 그대로 전달한다")
+        void passesSpotIdToService() {
+            SpotDetailResponse detail = new SpotDetailResponse(
+                42L, "테스트", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
+                null, null, null, null, null, null, null, null
+            );
+            given(spotQueryService.findSpotDetail(42L)).willReturn(detail);
+
+            spotController.getSpotDetail(42L);
+
+            then(spotQueryService).should().findSpotDetail(42L);
+        }
+
+        @Test
+        @DisplayName("서비스에서 BusinessException이 발생하면 그대로 전파된다")
+        void propagatesServiceException() {
+            given(spotQueryService.findSpotDetail(99L))
+                .willThrow(new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
+
+            assertThatThrownBy(() -> spotController.getSpotDetail(99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+    }
 
     // ── getSpotsInViewport ───────────────────────────────────────────────────
 

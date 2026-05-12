@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.controller;
 
+import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
@@ -15,6 +16,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +34,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SpotController {
 
     private final SpotQueryService spotQueryService;
+
+    @Operation(summary = "스팟 상세 조회", description = "스팟 ID로 상세 정보(이미지, 한 줄 코멘트, 기록시간, 날씨, 혼잡도, 일몰시간 등)를 반환합니다.")
+    @GetMapping("/{spotId}")
+    public ApiResponse<SpotDetailResponse> getSpotDetail(@PathVariable Long spotId) {
+        return ApiResponse.success(spotQueryService.findSpotDetail(spotId));
+    }
 
     @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다.")
     @GetMapping("/viewport")
