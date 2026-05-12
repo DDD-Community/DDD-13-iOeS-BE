@@ -6,6 +6,7 @@ import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,6 +45,9 @@ public class SpotImage {
     @Column(name = "content_type")
     private String contentType;
 
+    @Column(name = "recorded_time")
+    private LocalTime recordedTime;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
@@ -81,5 +85,9 @@ public class SpotImage {
 
     public void updateContentType(String contentType) {
         this.contentType = contentType;
+    }
+
+    public void updateRecordedTime(LocalTime recordedTime) {
+        this.recordedTime = recordedTime;
     }
 }

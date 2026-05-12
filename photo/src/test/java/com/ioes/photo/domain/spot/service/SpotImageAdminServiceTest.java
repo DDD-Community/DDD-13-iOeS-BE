@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,7 +64,7 @@ class SpotImageAdminServiceTest {
         @Test
         @DisplayName("SpotImage가 없으면 새로 생성하여 저장한다")
         void createsNewSpotImage_whenNotFound() {
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null);
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
             given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(s3StorageService.fetchBytes(IMAGE_KEY)).willReturn(ORIGINAL_DATA);
@@ -84,7 +85,7 @@ class SpotImageAdminServiceTest {
         @DisplayName("SpotImage가 이미 있으면 imageKey/filename/contentType을 업데이트하고 저장한다")
         void updatesExistingSpotImage_whenFound() {
             SpotImageSyncRequest request = new SpotImageSyncRequest(
-                "prod/public/spots/1/original/202504/new.jpg", "new.jpg", "image/jpeg");
+                "prod/public/spots/1/original/202504/new.jpg", "new.jpg", "image/jpeg", null);
             SpotImage existing = SpotImage.create(SPOT_ID, "old-key.jpg", "old.jpg", "image/png");
 
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.of(existing));
@@ -113,7 +114,7 @@ class SpotImageAdminServiceTest {
         @DisplayName("HEIC 이미지이면 heicImageResizer로 썸네일을 생성한다")
         void usesHeicResizer_whenHeicContentType() {
             SpotImageSyncRequest request = new SpotImageSyncRequest(
-                "prod/public/spots/1/original/202504/photo.heic", "photo.heic", "image/heic");
+                "prod/public/spots/1/original/202504/photo.heic", "photo.heic", "image/heic", null);
 
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
             given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -132,7 +133,7 @@ class SpotImageAdminServiceTest {
         @Test
         @DisplayName("JPEG 이미지이면 imageResizer로 썸네일을 생성한다")
         void usesImageResizer_whenJpegContentType() {
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null);
 
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
             given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -160,7 +161,7 @@ class SpotImageAdminServiceTest {
         void replacesFifthSegmentAndExtension_whenKeyHasSevenParts() {
             // prod/public/spots/1/original/202504/photo.heic → prod/public/spots/1/thumbnail/202504/photo.jpg
             String heicKey = "prod/public/spots/1/original/202504/photo.heic";
-            SpotImageSyncRequest request = new SpotImageSyncRequest(heicKey, "photo.heic", "image/heic");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(heicKey, "photo.heic", "image/heic", null);
 
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
             given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -181,7 +182,7 @@ class SpotImageAdminServiceTest {
         @DisplayName("경로 구성이 7개 미만인 imageKey는 StoragePathUtils 기반 fallback 키를 사용한다")
         void usesFallbackKey_whenKeyHasFewerThanSevenParts() {
             String shortKey = "simple/key.jpg";
-            SpotImageSyncRequest request = new SpotImageSyncRequest(shortKey, "key.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(shortKey, "key.jpg", "image/jpeg", null);
 
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
             given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -208,7 +209,7 @@ class SpotImageAdminServiceTest {
         @Test
         @DisplayName("syncImage 응답에 imageUrl과 thumbnailUrl이 포함된다")
         void returnsImageUrlAndThumbnailUrl() {
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null);
             String thumbnailKey = "prod/public/spots/1/thumbnail/202504/photo.jpg";
 
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
@@ -224,6 +225,56 @@ class SpotImageAdminServiceTest {
 
             assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/original.jpg");
             assertThat(response.thumbnailUrl()).isEqualTo("https://cdn.example.com/thumbnail.jpg");
+        }
+    }
+
+    // ── syncImage: 기록 시간 ──────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("syncImage() - 기록 시간")
+    class SyncImageRecordedTime {
+
+        @Test
+        @DisplayName("recordedTime이 전달되면 SpotImage에 저장된다")
+        void persistsRecordedTime_whenProvided() {
+            LocalTime recordedAt = LocalTime.of(18, 30);
+            SpotImageSyncRequest request = new SpotImageSyncRequest(
+                IMAGE_KEY, "photo.jpg", "image/jpeg", recordedAt);
+
+            given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.empty());
+            given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(s3StorageService.fetchBytes(IMAGE_KEY)).willReturn(ORIGINAL_DATA);
+            given(heicImageResizer.supports("image/jpeg")).willReturn(false);
+            given(imageResizer.resize(ORIGINAL_DATA, 400, 400)).willReturn(THUMBNAIL_DATA);
+            given(imageResizer.outputContentType()).willReturn("image/jpeg");
+            given(s3StorageService.getUrl(any())).willReturn("https://cdn.example.com/url");
+
+            spotImageAdminService.syncImage(SPOT_ID, request);
+
+            ArgumentCaptor<SpotImage> captor = ArgumentCaptor.forClass(SpotImage.class);
+            then(spotImageRepository).should().save(captor.capture());
+            assertThat(captor.getValue().getRecordedTime()).isEqualTo(recordedAt);
+        }
+
+        @Test
+        @DisplayName("기존 SpotImage가 있으면 recordedTime이 갱신된다")
+        void updatesRecordedTimeOnExisting() {
+            LocalTime recordedAt = LocalTime.of(5, 15);
+            SpotImage existing = SpotImage.create(SPOT_ID, "old-key.jpg", "old.jpg", "image/png");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(
+                IMAGE_KEY, "photo.jpg", "image/jpeg", recordedAt);
+
+            given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.of(existing));
+            given(spotImageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(s3StorageService.fetchBytes(any())).willReturn(ORIGINAL_DATA);
+            given(heicImageResizer.supports("image/jpeg")).willReturn(false);
+            given(imageResizer.resize(ORIGINAL_DATA, 400, 400)).willReturn(THUMBNAIL_DATA);
+            given(imageResizer.outputContentType()).willReturn("image/jpeg");
+            given(s3StorageService.getUrl(any())).willReturn("https://cdn.example.com/url");
+
+            spotImageAdminService.syncImage(SPOT_ID, request);
+
+            assertThat(existing.getRecordedTime()).isEqualTo(recordedAt);
         }
     }
 }

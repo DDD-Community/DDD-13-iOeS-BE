@@ -38,9 +38,10 @@ public class SpotInfoUpdateService {
 
     @Transactional
     public void upsertWeather(Long spotId, SkyStatus sky, PrecipitationType precipitation,
+                              Integer precipitationProbability,
                               Double temperature, LocalDateTime observedAt) {
         SpotInfo info = findOrCreate(spotId);
-        info.updateWeather(sky, precipitation, temperature, observedAt);
+        info.updateWeather(sky, precipitation, precipitationProbability, temperature, observedAt);
         spotInfoRepository.save(info);
     }
 

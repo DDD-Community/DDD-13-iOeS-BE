@@ -85,7 +85,7 @@ class SpotInfoUpdateServiceIntegrationTest {
         spotInfoUpdateService.upsertCrowd(spotId, CongestionLevel.CROWDED,
             "붐빔", 50000, 60000, crowdAt);
         spotInfoUpdateService.upsertWeather(spotId, SkyStatus.CLEAR,
-            PrecipitationType.NONE, 23.5, weatherAt);
+            PrecipitationType.NONE, 10, 23.5, weatherAt);
 
         SpotInfo saved = spotInfoRepository.findById(spotId).orElseThrow();
         assertThat(saved.getCongestionLevel()).isEqualTo(CongestionLevel.CROWDED);
@@ -94,6 +94,7 @@ class SpotInfoUpdateServiceIntegrationTest {
         assertThat(saved.getCongestionUpdatedAt()).isEqualTo(crowdAt);
         assertThat(saved.getWeatherSky()).isEqualTo(SkyStatus.CLEAR);
         assertThat(saved.getWeatherPrecipitation()).isEqualTo(PrecipitationType.NONE);
+        assertThat(saved.getPrecipitationProbability()).isEqualTo(10);
         assertThat(saved.getTemperature()).isEqualTo(23.5);
         assertThat(saved.getWeatherUpdatedAt()).isEqualTo(weatherAt);
     }
@@ -109,7 +110,7 @@ class SpotInfoUpdateServiceIntegrationTest {
         spotInfoUpdateService.upsertCrowd(spotId, CongestionLevel.RELAXED,
             "여유", 5000, 7000, crowdAt);
         spotInfoUpdateService.upsertWeather(spotId, SkyStatus.OVERCAST,
-            PrecipitationType.RAIN, 18.0, weatherAt);
+            PrecipitationType.RAIN, 80, 18.0, weatherAt);
         spotInfoUpdateService.upsertAstronomy(spotId, astronomyDate,
             LocalTime.of(5, 45), LocalTime.of(18, 50));
 

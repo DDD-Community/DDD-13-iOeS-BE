@@ -1,6 +1,8 @@
 package com.ioes.photo.domain.spot.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalTime;
 
 /**
  * 스팟 이미지 동기화 요청 DTO.
@@ -10,5 +12,6 @@ import jakarta.validation.constraints.NotBlank;
 public record SpotImageSyncRequest(
     @NotBlank String imageKey,
     String originalFilename,
-    String contentType
+    String contentType,
+    @JsonFormat(pattern = "HH:mm") LocalTime recordedTime
 ) {}
