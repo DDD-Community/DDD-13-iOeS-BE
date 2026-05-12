@@ -78,6 +78,10 @@ app:
       - /swagger-ui.html
       - /actuator/health
       - /auth/**
+    # GET 요청에 한해 비로그인 허용 — 같은 경로의 비-GET(예: POST 신고)은 인증 유지
+    public-get-urls:
+      - /spots
+      - /spots/**
 
   #  Swagger / OpenAPI
   swagger:
