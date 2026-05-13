@@ -30,7 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "사용자", description = "사용자 계정 관리 API")
 @Validated
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/v1/users")
 @RequiredArgsConstructor
 public class UserController {
 

@@ -77,11 +77,11 @@ app:
       - /api-docs/**
       - /swagger-ui.html
       - /actuator/health
-      - /auth/**
+      - /v1/auth/**
     # GET 요청에 한해 비로그인 허용 — 같은 경로의 비-GET(예: POST 신고)은 인증 유지
     public-get-urls:
-      - /spots
-      - /spots/**
+      - /v1/spots
+      - /v1/spots/**
 
   #  Swagger / OpenAPI
   swagger:
@@ -255,7 +255,7 @@ app:
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.ioes.photo.domain.spot.mapper
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper
   configuration:
     map-underscore-to-camel-case: true
     jdbc-type-for-null: NULL

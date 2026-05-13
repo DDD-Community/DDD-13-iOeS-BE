@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "스팟 신고", description = "스팟 잘못된 정보 신고 API")
 @RestController
-@RequestMapping("/spots")
+@RequestMapping("/v1/spots")
 @RequiredArgsConstructor
 public class SpotReportController {
 

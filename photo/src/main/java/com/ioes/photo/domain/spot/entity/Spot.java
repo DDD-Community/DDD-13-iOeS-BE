@@ -75,6 +75,9 @@ public class Spot extends BaseEntity {
     @Column(name = "crowd_area_name", length = 50)
     private String crowdAreaName;
 
+    @Column(name = "bookmark_count", nullable = false)
+    private long bookmarkCount = 0;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

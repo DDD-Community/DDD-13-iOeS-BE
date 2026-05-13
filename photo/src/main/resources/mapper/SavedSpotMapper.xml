@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ioes.photo.domain.savedspot.mapper.SavedSpotMapper">
+
+    <select id="findSavedSpots" resultType="SavedSpotRow">
+        SELECT
+            s.id                        AS spot_id,
+            s.name,
+            s.theme,
+            s.latitude,
+            s.longitude,
+            <choose>
+                <when test="lat != null and lng != null">
+                    ROUND(CAST(
+                        ST_Distance(
+                            s.location::geography,
+                            ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)::geography
+                        ) / 1000.0 AS numeric
+                    ), 2)
+                </when>
+                <otherwise>
+                    NULL::numeric
+                </otherwise>
+            </choose>
+                AS distance_km,
+            sa.created_at               AS saved_at,
+            s.deleted_at IS NOT NULL    AS deleted
+        FROM saved_spot_archives sa
+        JOIN spots s ON s.id = sa.spot_id
+        WHERE sa.user_id   = #{userId}
+          AND sa.deleted_at IS NULL
+          AND s.status      = 'B'
+        ORDER BY sa.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countSavedSpots" resultType="long">
+        SELECT COUNT(*)
+        FROM saved_spot_archives sa
+        JOIN spots s ON s.id = sa.spot_id
+        WHERE sa.user_id   = #{userId}
+          AND sa.deleted_at IS NULL
+          AND s.status      = 'B'
+    </select>
+
+</mapper>
