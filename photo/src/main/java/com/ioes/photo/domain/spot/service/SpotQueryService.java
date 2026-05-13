@@ -13,6 +13,7 @@ import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.mapper.SpotMapper;
 import com.ioes.photo.domain.spot.mapper.SpotRow;
+import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
@@ -41,10 +42,11 @@ public class SpotQueryService {
     private final SpotRepository spotRepository;
     private final SpotImageRepository spotImageRepository;
     private final SpotInfoRepository spotInfoRepository;
+    private final SavedSpotArchiveRepository savedSpotArchiveRepository;
     private final SpotThumbnailService spotThumbnailService;
     private final SpotMapper spotMapper;
 
-    public SpotDetailResponse findSpotDetail(Long spotId) {
+    public SpotDetailResponse findSpotDetail(Long spotId, Long userId) {
         Spot spot = spotRepository.findById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
 
@@ -55,7 +57,11 @@ public class SpotQueryService {
             .map(spotThumbnailService::getImageUrl)
             .orElse(null);
 
-        return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl);
+        boolean isBookmarked = userId != null
+            && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
+        boolean isMySpot = userId != null && userId.equals(spot.getUserId());
+
+        return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl, isBookmarked, isMySpot);
     }
 
     public SpotViewportResponse findSpotsInViewport(ViewportRequest request) {

@@ -75,6 +75,9 @@ public class Spot extends BaseEntity {
     @Column(name = "crowd_area_name", length = 50)
     private String crowdAreaName;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "bookmark_count", nullable = false)
     private long bookmarkCount = 0;
 
@@ -83,7 +86,8 @@ public class Spot extends BaseEntity {
 
     @Builder
     private Spot(String name, String comment, SpotTheme theme, Double latitude, Double longitude,
-                 String address, SpotStatus status, Integer gridNx, Integer gridNy, String crowdAreaName) {
+                 String address, SpotStatus status, Integer gridNx, Integer gridNy, String crowdAreaName,
+                 Long userId) {
         this.name = name;
         this.comment = comment;
         this.theme = theme;
@@ -95,5 +99,6 @@ public class Spot extends BaseEntity {
         this.gridNx = gridNx;
         this.gridNy = gridNy;
         this.crowdAreaName = crowdAreaName;
+        this.userId = userId;
     }
 }

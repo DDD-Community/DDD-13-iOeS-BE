@@ -22,6 +22,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -60,13 +64,16 @@ class SpotControllerTest {
                 1L, "한강공원", "노을이 예쁜 곳", SpotTheme.SUNSET,
                 37.55, 127.05, "서울시 마포구",
                 "https://cdn.example.com/original.jpg",
+                null,
                 LocalTime.of(18, 30),
-                SkyStatus.CLEAR, PrecipitationType.NONE, 20, 23.5,
-                CongestionLevel.NORMAL, LocalTime.of(18, 55)
+                SkyStatus.CLEAR, PrecipitationType.NONE, 20,
+                CongestionLevel.NORMAL, LocalTime.of(18, 55),
+                null, null, null,
+                "정보 없음", 0L, false, false
             );
-            given(spotQueryService.findSpotDetail(1L)).willReturn(detail);
+            given(spotQueryService.findSpotDetail(1L, null)).willReturn(detail);
 
-            ApiResponse<SpotDetailResponse> response = spotController.getSpotDetail(1L);
+            ApiResponse<SpotDetailResponse> response = spotController.getSpotDetail(1L, null);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spotId()).isEqualTo(1L);
@@ -79,25 +86,60 @@ class SpotControllerTest {
         void passesSpotIdToService() {
             SpotDetailResponse detail = new SpotDetailResponse(
                 42L, "테스트", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
-                null, null, null, null, null, null, null, null
+                null, null, null, null, null, null, null, null, null, null, null,
+                "정보 없음", 0L, false, false
             );
-            given(spotQueryService.findSpotDetail(42L)).willReturn(detail);
+            given(spotQueryService.findSpotDetail(42L, null)).willReturn(detail);
 
-            spotController.getSpotDetail(42L);
+            spotController.getSpotDetail(42L, null);
 
-            then(spotQueryService).should().findSpotDetail(42L);
+            then(spotQueryService).should().findSpotDetail(42L, null);
         }
 
         @Test
         @DisplayName("서비스에서 BusinessException이 발생하면 그대로 전파된다")
         void propagatesServiceException() {
-            given(spotQueryService.findSpotDetail(99L))
+            given(spotQueryService.findSpotDetail(99L, null))
                 .willThrow(new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
 
-            assertThatThrownBy(() -> spotController.getSpotDetail(99L))
+            assertThatThrownBy(() -> spotController.getSpotDetail(99L, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("인증된 사용자의 userId를 서비스에 전달한다")
+        void passesAuthenticatedUserIdToService() {
+            Authentication auth = new UsernamePasswordAuthenticationToken("42", null, List.of());
+            SpotDetailResponse detail = new SpotDetailResponse(
+                1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
+                null, null, null, null, null, null, null, null, null, null, null,
+                "정보 없음", 0L, true, true
+            );
+            given(spotQueryService.findSpotDetail(1L, 42L)).willReturn(detail);
+
+            spotController.getSpotDetail(1L, auth);
+
+            then(spotQueryService).should().findSpotDetail(1L, 42L);
+        }
+
+        @Test
+        @DisplayName("AnonymousAuthenticationToken이면 userId로 null을 전달한다")
+        void passesNullUserId_whenAnonymous() {
+            Authentication anonymous = new AnonymousAuthenticationToken(
+                "anonymousKey", "anonymousUser",
+                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
+            SpotDetailResponse detail = new SpotDetailResponse(
+                1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
+                null, null, null, null, null, null, null, null, null, null, null,
+                "정보 없음", 0L, false, false
+            );
+            given(spotQueryService.findSpotDetail(1L, null)).willReturn(detail);
+
+            spotController.getSpotDetail(1L, anonymous);
+
+            then(spotQueryService).should().findSpotDetail(1L, null);
         }
     }
 

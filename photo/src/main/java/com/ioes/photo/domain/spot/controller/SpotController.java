@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,10 +37,24 @@ public class SpotController {
 
     private final SpotQueryService spotQueryService;
 
-    @Operation(summary = "스팟 상세 조회", description = "스팟 ID로 상세 정보(이미지, 한 줄 코멘트, 기록시간, 날씨, 혼잡도, 일몰시간 등)를 반환합니다.")
+    @Operation(summary = "스팟 상세 조회", description = "스팟 ID로 상세 정보(이미지, 한 줄 코멘트, 기록일자/시간, 날씨, 혼잡도, 일몰시간, 북마크 여부 등)를 반환합니다. 비로그인 시 isBookmarked/isMySpot은 항상 false입니다.")
     @GetMapping("/{spotId}")
-    public ApiResponse<SpotDetailResponse> getSpotDetail(@PathVariable Long spotId) {
-        return ApiResponse.success(spotQueryService.findSpotDetail(spotId));
+    public ApiResponse<SpotDetailResponse> getSpotDetail(
+        @PathVariable Long spotId,
+        Authentication authentication
+    ) {
+        return ApiResponse.success(spotQueryService.findSpotDetail(spotId, extractUserId(authentication)));
+    }
+
+    private static Long extractUserId(Authentication authentication) {
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        try {
+            return Long.parseLong(authentication.getName());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다.")
