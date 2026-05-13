@@ -26,4 +26,11 @@ public class SpotThumbnailService {
         }
         return storageService.getUrl(spotImage.getThumbnailKey());
     }
+
+    public String getImageUrl(SpotImage spotImage) {
+        if (NullUtils.isBlank(spotImage.getImageKey())) {
+            return null;
+        }
+        return storageService.getUrl(spotImage.getImageKey());
+    }
 }

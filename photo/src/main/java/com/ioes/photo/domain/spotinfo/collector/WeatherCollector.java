@@ -41,6 +41,7 @@ public class WeatherCollector {
         DateTimeFormatter.ofPattern("yyyyMMddHHmm");
     private static final String CATEGORY_SKY = "SKY";
     private static final String CATEGORY_PTY = "PTY";
+    private static final String CATEGORY_POP = "POP";
     private static final String CATEGORY_TMP = "TMP";
 
     private final SpotRepository spotRepository;
@@ -87,6 +88,7 @@ public class WeatherCollector {
                 spot.getId(),
                 forecast.sky(),
                 forecast.precipitation(),
+                forecast.precipitationProbability(),
                 forecast.temperature(),
                 observedAt
             );
@@ -116,11 +118,14 @@ public class WeatherCollector {
         PrecipitationType pty = pickValue(items, CATEGORY_PTY, nearest)
             .map(PrecipitationType::fromCode)
             .orElse(null);
+        Integer pop = pickValue(items, CATEGORY_POP, nearest)
+            .map(this::parseInteger)
+            .orElse(null);
         Double temperature = pickValue(items, CATEGORY_TMP, nearest)
             .map(this::parseDouble)
             .orElse(null);
 
-        return new Forecast(sky, pty, temperature, nearest);
+        return new Forecast(sky, pty, pop, temperature, nearest);
     }
 
     private Optional<String> pickValue(List<Item> items, String category, LocalDateTime target) {
@@ -150,8 +155,17 @@ public class WeatherCollector {
         }
     }
 
+    private Integer parseInteger(String value) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private record GridKey(int nx, int ny) {}
 
     private record Forecast(SkyStatus sky, PrecipitationType precipitation,
+                            Integer precipitationProbability,
                             Double temperature, LocalDateTime observedAt) {}
 }

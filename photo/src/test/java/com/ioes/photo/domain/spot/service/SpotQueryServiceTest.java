@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.service;
 
+import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse.SpotItem;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse;
@@ -9,10 +10,18 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.mapper.SpotMapper;
 import com.ioes.photo.domain.spot.mapper.SpotRow;
+import com.ioes.photo.domain.savedspot.entity.SavedSpotArchive;
+import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
+import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
+import com.ioes.photo.external.crowd.enums.CongestionLevel;
+import com.ioes.photo.external.weather.enums.PrecipitationType;
+import com.ioes.photo.external.weather.enums.SkyStatus;
 import com.ioes.photo.global.error.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,7 +32,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,6 +55,8 @@ class SpotQueryServiceTest {
 
     @Mock SpotRepository      spotRepository;
     @Mock SpotImageRepository spotImageRepository;
+    @Mock SpotInfoRepository  spotInfoRepository;
+    @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
     @Mock SpotThumbnailService spotThumbnailService;
     @Mock SpotMapper          spotMapper;
 
@@ -263,6 +276,182 @@ class SpotQueryServiceTest {
             spotQueryService.findSpots(0, null, null, null);
 
             then(spotImageRepository).should(never()).findAllBySpotIdIn(anyList());
+        }
+    }
+
+    // ── findSpotDetail ───────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("findSpotDetail()")
+    class FindSpotDetail {
+
+        @Test
+        @DisplayName("Spot이 존재하면 이미지/날씨/혼잡도/일몰/북마크/MySpot 정보를 포함한 상세 응답을 반환한다")
+        void returnsDetailWhenSpotExists() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            ReflectionTestUtils.setField(spot, "comment", "노을이 예쁜 곳");
+            ReflectionTestUtils.setField(spot, "address", "서울시 마포구");
+            ReflectionTestUtils.setField(spot, "bookmarkCount", 5L);
+            ReflectionTestUtils.setField(spot, "userId", 42L);
+
+            SpotImage image = SpotImage.create(1L, "spots/1/original.jpg");
+            image.updateRecordedDate(java.time.LocalDate.of(2025, 5, 1));
+            image.updateRecordedTime(LocalTime.of(18, 30));
+
+            SpotInfo info = SpotInfo.create(1L);
+            info.updateWeather(SkyStatus.CLEAR, PrecipitationType.NONE, 20, 23.5,
+                java.time.LocalDateTime.of(2025, 5, 1, 17, 0));
+            info.updateCrowd(CongestionLevel.NORMAL, "보통", 1000, 2000,
+                java.time.LocalDateTime.of(2025, 5, 1, 17, 5));
+            info.updateAstronomy(java.time.LocalDate.of(2025, 5, 1), LocalTime.of(5, 45), LocalTime.of(18, 55));
+
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.of(info));
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(42L, 1L))
+                .willReturn(Optional.of(SavedSpotArchive.builder().userId(42L).spotId(1L).build()));
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, 42L);
+
+            assertThat(response.spotId()).isEqualTo(1L);
+            assertThat(response.name()).isEqualTo("테스트스팟");
+            assertThat(response.comment()).isEqualTo("노을이 예쁜 곳");
+            assertThat(response.theme()).isEqualTo(SpotTheme.SUNSET);
+            assertThat(response.latitude()).isEqualTo(37.55);
+            assertThat(response.longitude()).isEqualTo(127.05);
+            assertThat(response.address()).isEqualTo("서울시 마포구");
+            assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/original.jpg");
+            assertThat(response.recordedDate()).isEqualTo(java.time.LocalDate.of(2025, 5, 1));
+            assertThat(response.recordedTime()).isEqualTo(LocalTime.of(18, 30));
+            assertThat(response.weatherSky()).isEqualTo(SkyStatus.CLEAR);
+            assertThat(response.precipitation()).isEqualTo(PrecipitationType.NONE);
+            assertThat(response.precipitationProbability()).isEqualTo(20);
+            assertThat(response.congestionLevel()).isEqualTo(CongestionLevel.NORMAL);
+            assertThat(response.sunsetTime()).isEqualTo(LocalTime.of(18, 55));
+            assertThat(response.astronomyDate()).isEqualTo(java.time.LocalDate.of(2025, 5, 1));
+            assertThat(response.weatherUpdatedAt()).isEqualTo(java.time.LocalDateTime.of(2025, 5, 1, 17, 0));
+            assertThat(response.congestionUpdatedAt()).isEqualTo(java.time.LocalDateTime.of(2025, 5, 1, 17, 5));
+            assertThat(response.parkingInfo()).isEqualTo("정보 없음");
+            assertThat(response.bookmarkCount()).isEqualTo(5L);
+            assertThat(response.isBookmarked()).isTrue();
+            assertThat(response.isMySpot()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Spot이 존재하지 않으면 SPOT_NOT_FOUND BusinessException을 던진다")
+        void throwsSpotNotFound_whenSpotMissing() {
+            given(spotRepository.findById(99L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> spotQueryService.findSpotDetail(99L, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("SpotImage가 없으면 imageUrl/recordedDate/recordedTime은 null이다")
+        void nullsImageFields_whenSpotImageMissing() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.imageUrl()).isNull();
+            assertThat(response.recordedDate()).isNull();
+            assertThat(response.recordedTime()).isNull();
+        }
+
+        @Test
+        @DisplayName("SpotInfo가 없으면 날씨/혼잡도/일몰 필드는 모두 null이다")
+        void nullsSpotInfoFields_whenInfoMissing() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            SpotImage image = SpotImage.create(1L, "spots/1/original.jpg");
+
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.weatherSky()).isNull();
+            assertThat(response.precipitation()).isNull();
+            assertThat(response.precipitationProbability()).isNull();
+            assertThat(response.congestionLevel()).isNull();
+            assertThat(response.sunsetTime()).isNull();
+            assertThat(response.astronomyDate()).isNull();
+            assertThat(response.weatherUpdatedAt()).isNull();
+            assertThat(response.congestionUpdatedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("userId가 null이면 isBookmarked/isMySpot은 false이고 북마크 조회를 수행하지 않는다")
+        void noBookmarkLookup_whenUserIdNull() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.isBookmarked()).isFalse();
+            assertThat(response.isMySpot()).isFalse();
+            then(savedSpotArchiveRepository).should(never())
+                .findByUserIdAndSpotId(any(Long.class), any(Long.class));
+        }
+
+        @Test
+        @DisplayName("북마크 기록이 없으면 isBookmarked가 false다")
+        void isBookmarkedFalse_whenNoBookmarkExists() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(7L, 1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, 7L);
+
+            assertThat(response.isBookmarked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Spot의 userId와 다르면 isMySpot이 false다")
+        void isMySpotFalse_whenUserIdDoesNotMatch() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            ReflectionTestUtils.setField(spot, "userId", 99L);
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(7L, 1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, 7L);
+
+            assertThat(response.isMySpot()).isFalse();
+        }
+
+        @Test
+        @DisplayName("PENDING/REJECTED 상태의 Spot도 조회된다")
+        void returnsNonPublishedSpot() {
+            Spot pending = Spot.builder()
+                .name("승인대기")
+                .theme(SpotTheme.YUNSEUL)
+                .latitude(37.5)
+                .longitude(127.0)
+                .status(SpotStatus.PENDING)
+                .build();
+            ReflectionTestUtils.setField(pending, "id", 7L);
+
+            given(spotRepository.findById(7L)).willReturn(Optional.of(pending));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, null);
+
+            assertThat(response.spotId()).isEqualTo(7L);
+            assertThat(response.name()).isEqualTo("승인대기");
         }
     }
 

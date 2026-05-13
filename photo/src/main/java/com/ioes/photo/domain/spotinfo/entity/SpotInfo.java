@@ -58,6 +58,9 @@ public class SpotInfo {
     @Column(name = "weather_precipitation", length = 4)
     private PrecipitationType weatherPrecipitation;
 
+    @Column(name = "precipitation_probability")
+    private Integer precipitationProbability;
+
     @Column(name = "temperature")
     private Double temperature;
 
@@ -100,9 +103,11 @@ public class SpotInfo {
     }
 
     public void updateWeather(SkyStatus sky, PrecipitationType precipitation,
+                              Integer precipitationProbability,
                               Double temperature, LocalDateTime observedAt) {
         this.weatherSky = sky;
         this.weatherPrecipitation = precipitation;
+        this.precipitationProbability = precipitationProbability;
         this.temperature = temperature;
         this.weatherUpdatedAt = observedAt;
     }

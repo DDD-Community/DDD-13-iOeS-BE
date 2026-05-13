@@ -48,12 +48,13 @@ class SpotInfoTest {
         info.updateCrowd(CongestionLevel.CROWDED, "붐빔", 50000, 60000,
             LocalDateTime.of(2026, 4, 19, 14, 0));
 
-        info.updateWeather(SkyStatus.CLEAR, PrecipitationType.NONE, 23.5,
+        info.updateWeather(SkyStatus.CLEAR, PrecipitationType.NONE, 30, 23.5,
             LocalDateTime.of(2026, 4, 19, 15, 0));
 
         assertThat(info.getCongestionLevel()).isEqualTo(CongestionLevel.CROWDED);
         assertThat(info.getWeatherSky()).isEqualTo(SkyStatus.CLEAR);
         assertThat(info.getWeatherPrecipitation()).isEqualTo(PrecipitationType.NONE);
+        assertThat(info.getPrecipitationProbability()).isEqualTo(30);
         assertThat(info.getTemperature()).isEqualTo(23.5);
     }
 
@@ -61,7 +62,7 @@ class SpotInfoTest {
     @DisplayName("천문 업데이트는 혼잡도/날씨 필드를 건드리지 않는다")
     void updateAstronomyKeepsOthersIntact() {
         SpotInfo info = SpotInfo.create(1L);
-        info.updateWeather(SkyStatus.OVERCAST, PrecipitationType.RAIN, 18.0,
+        info.updateWeather(SkyStatus.OVERCAST, PrecipitationType.RAIN, 70, 18.0,
             LocalDateTime.of(2026, 4, 19, 15, 0));
 
         info.updateAstronomy(LocalDate.of(2026, 4, 19),

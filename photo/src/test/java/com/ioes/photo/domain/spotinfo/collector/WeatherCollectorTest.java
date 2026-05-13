@@ -24,6 +24,7 @@ import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Body;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Header;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Item;
 import com.ioes.photo.external.weather.dto.ShortTermForecastResponse.Items;
+import com.ioes.photo.external.weather.enums.PrecipitationType;
 import com.ioes.photo.external.weather.enums.SkyStatus;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -78,7 +79,27 @@ class WeatherCollectorTest {
         verify(weatherApiClient).getShortTermForecast(anyString(), anyString(), eq(60), eq(127));
         verify(weatherApiClient).getShortTermForecast(anyString(), anyString(), eq(61), eq(125));
         verify(spotInfoUpdateService, times(3)).upsertWeather(
-            any(), any(), any(), any(), any());
+            any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POP 강수확률 카테고리가 upsertWeather로 전달된다")
+    void passesPopProbabilityToUpsert() {
+        Spot a = mockSpot(1L, 60, 127);
+        given(spotRepository.findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus.PUBLISHED))
+            .willReturn(List.of(a));
+        given(weatherApiClient.getShortTermForecast(anyString(), anyString(), anyInt(), anyInt()))
+            .willReturn(forecastResponse());
+
+        weatherCollector.collect();
+
+        verify(spotInfoUpdateService).upsertWeather(
+            eq(1L),
+            eq(SkyStatus.CLEAR),
+            eq(PrecipitationType.NONE),
+            eq(20),
+            eq(23.0),
+            any());
     }
 
     @Test
@@ -115,11 +136,12 @@ class WeatherCollectorTest {
         List<Item> items = List.of(
             new Item("20260419", "1400", "SKY", fcstDate, fcstTime, SkyStatus.CLEAR.getCode(), 60, 127),
             new Item("20260419", "1400", "PTY", fcstDate, fcstTime, "0", 60, 127),
+            new Item("20260419", "1400", "POP", fcstDate, fcstTime, "20", 60, 127),
             new Item("20260419", "1400", "TMP", fcstDate, fcstTime, "23", 60, 127)
         );
         return new ShortTermForecastResponse(
             new Header("00", "NORMAL_SERVICE"),
-            new Body("XML", new Items(items), 3, 1, 3)
+            new Body("XML", new Items(items), 4, 1, 4)
         );
     }
 }

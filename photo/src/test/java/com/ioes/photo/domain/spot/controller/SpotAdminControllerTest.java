@@ -45,7 +45,7 @@ class SpotAdminControllerTest {
         @Test
         @DisplayName("서비스에 spotId와 request를 그대로 전달한다")
         void delegatesToService_withCorrectArgs() {
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null, null);
             SpotImageSyncResponse serviceResponse = new SpotImageSyncResponse(
                 "https://cdn.example.com/original.jpg",
                 "https://cdn.example.com/thumbnail.jpg"
@@ -60,7 +60,7 @@ class SpotAdminControllerTest {
         @Test
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null, null);
             SpotImageSyncResponse serviceResponse = new SpotImageSyncResponse(
                 "https://cdn.example.com/original.jpg",
                 "https://cdn.example.com/thumbnail.jpg"
@@ -78,7 +78,7 @@ class SpotAdminControllerTest {
         @DisplayName("HEIC 이미지 동기화 요청도 서비스에 그대로 전달한다")
         void delegatesHeicRequest() {
             String heicKey = "prod/public/spots/1/original/202504/photo.heic";
-            SpotImageSyncRequest request = new SpotImageSyncRequest(heicKey, "photo.heic", "image/heic");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(heicKey, "photo.heic", "image/heic", null, null);
             SpotImageSyncResponse serviceResponse = new SpotImageSyncResponse(
                 "https://cdn.example.com/original.heic",
                 "https://cdn.example.com/thumbnail.jpg"
@@ -94,7 +94,7 @@ class SpotAdminControllerTest {
         @Test
         @DisplayName("서비스에서 예외가 발생하면 그대로 전파된다")
         void propagatesExceptionFromService() {
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null, null);
             willThrow(new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "S3 오류"))
                 .given(spotImageAdminService).syncImage(SPOT_ID, request);
 
@@ -106,7 +106,7 @@ class SpotAdminControllerTest {
         @DisplayName("spotId별로 독립적으로 서비스를 호출한다")
         void callsServiceWithCorrectSpotId() {
             Long anotherSpotId = 99L;
-            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg");
+            SpotImageSyncRequest request = new SpotImageSyncRequest(IMAGE_KEY, "photo.jpg", "image/jpeg", null, null);
             SpotImageSyncResponse serviceResponse = new SpotImageSyncResponse(
                 "https://cdn.example.com/url", "https://cdn.example.com/thumb"
             );

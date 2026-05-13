@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.service;
 
+import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse.SpotItem;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse;
@@ -9,10 +10,14 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.mapper.SpotMapper;
 import com.ioes.photo.domain.spot.mapper.SpotRow;
+import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
+import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 import java.util.Collections;
@@ -36,8 +41,28 @@ public class SpotQueryService {
 
     private final SpotRepository spotRepository;
     private final SpotImageRepository spotImageRepository;
+    private final SpotInfoRepository spotInfoRepository;
+    private final SavedSpotArchiveRepository savedSpotArchiveRepository;
     private final SpotThumbnailService spotThumbnailService;
     private final SpotMapper spotMapper;
+
+    public SpotDetailResponse findSpotDetail(Long spotId, Long userId) {
+        Spot spot = spotRepository.findById(spotId)
+            .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
+
+        SpotImage spotImage = spotImageRepository.findById(spotId).orElse(null);
+        SpotInfo spotInfo = spotInfoRepository.findById(spotId).orElse(null);
+
+        String imageUrl = Optional.ofNullable(spotImage)
+            .map(spotThumbnailService::getImageUrl)
+            .orElse(null);
+
+        boolean isBookmarked = userId != null
+            && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
+        boolean isMySpot = userId != null && userId.equals(spot.getUserId());
+
+        return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl, isBookmarked, isMySpot);
+    }
 
     public SpotViewportResponse findSpotsInViewport(ViewportRequest request) {
         List<Spot> spots = spotRepository.findAllInViewport(

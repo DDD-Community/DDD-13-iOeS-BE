@@ -41,11 +41,18 @@ public class SpotImageAdminService {
                 existing.updateImageKey(request.imageKey());
                 existing.updateOriginalFilename(request.originalFilename());
                 existing.updateContentType(request.contentType());
+                existing.updateRecordedDate(request.recordedDate());
+                existing.updateRecordedTime(request.recordedTime());
                 return existing;
             })
-            .orElseGet(() -> SpotImage.create(
-                spotId, request.imageKey(), request.originalFilename(), request.contentType()
-            ));
+            .orElseGet(() -> {
+                SpotImage created = SpotImage.create(
+                    spotId, request.imageKey(), request.originalFilename(), request.contentType()
+                );
+                created.updateRecordedDate(request.recordedDate());
+                created.updateRecordedTime(request.recordedTime());
+                return created;
+            });
 
         spotImage = spotImageRepository.save(spotImage);
 
