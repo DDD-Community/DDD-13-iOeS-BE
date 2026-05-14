@@ -108,9 +108,9 @@ public class SpotQueryService {
 
         String status = SpotStatus.PUBLISHED.getCode();
         String themeCode = theme != null ? theme.getCode() : null;
-        String sortName = sort != null ? sort.name() : SortType.RECOMMENDED.name();
+        String sortCode = sort != null ? sort.getCode() : SortType.RECOMMENDED.getCode();
 
-        List<SpotRow> rows = spotMapper.findSpots(status, themeCode, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortName);
+        List<SpotRow> rows = spotMapper.findSpots(status, themeCode, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotRow::id).toList());
 
         List<SpotItem> items = rows.stream()
