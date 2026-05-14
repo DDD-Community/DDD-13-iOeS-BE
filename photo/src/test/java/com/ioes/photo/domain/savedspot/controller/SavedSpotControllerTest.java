@@ -11,8 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -36,10 +34,6 @@ class SavedSpotControllerTest {
     private static final Long USER_ID = 1L;
     private static final Long SPOT_ID = 10L;
 
-    private Authentication auth() {
-        return new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null, List.of());
-    }
-
     // ── addBookmark ──────────────────────────────────────────────────────────
 
     @Nested
@@ -47,11 +41,11 @@ class SavedSpotControllerTest {
     class AddBookmark {
 
         @Test
-        @DisplayName("서비스에 userId와 spotId를 그대로 전달한다")
+        @DisplayName("userId와 spotId를 서비스에 그대로 전달한다")
         void delegatesToService_withCorrectArgs() {
             given(savedSpotService.addBookmark(USER_ID, SPOT_ID)).willReturn(new BookmarkResponse(5L));
 
-            savedSpotController.addBookmark(auth(), SPOT_ID);
+            savedSpotController.addBookmark(USER_ID, SPOT_ID);
 
             then(savedSpotService).should().addBookmark(USER_ID, SPOT_ID);
         }
@@ -61,7 +55,7 @@ class SavedSpotControllerTest {
         void wrapsResponseInApiResponse() {
             given(savedSpotService.addBookmark(USER_ID, SPOT_ID)).willReturn(new BookmarkResponse(5L));
 
-            ApiResponse<BookmarkResponse> response = savedSpotController.addBookmark(auth(), SPOT_ID);
+            ApiResponse<BookmarkResponse> response = savedSpotController.addBookmark(USER_ID, SPOT_ID);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().bookmarkCount()).isEqualTo(5L);
@@ -75,11 +69,11 @@ class SavedSpotControllerTest {
     class RemoveBookmark {
 
         @Test
-        @DisplayName("서비스에 userId와 spotId를 그대로 전달한다")
+        @DisplayName("userId와 spotId를 서비스에 그대로 전달한다")
         void delegatesToService_withCorrectArgs() {
             given(savedSpotService.removeBookmark(USER_ID, SPOT_ID)).willReturn(new BookmarkResponse(4L));
 
-            savedSpotController.removeBookmark(auth(), SPOT_ID);
+            savedSpotController.removeBookmark(USER_ID, SPOT_ID);
 
             then(savedSpotService).should().removeBookmark(USER_ID, SPOT_ID);
         }
@@ -89,7 +83,7 @@ class SavedSpotControllerTest {
         void wrapsResponseInApiResponse() {
             given(savedSpotService.removeBookmark(USER_ID, SPOT_ID)).willReturn(new BookmarkResponse(4L));
 
-            ApiResponse<BookmarkResponse> response = savedSpotController.removeBookmark(auth(), SPOT_ID);
+            ApiResponse<BookmarkResponse> response = savedSpotController.removeBookmark(USER_ID, SPOT_ID);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().bookmarkCount()).isEqualTo(4L);
@@ -103,12 +97,12 @@ class SavedSpotControllerTest {
     class GetSavedSpots {
 
         @Test
-        @DisplayName("서비스에 userId, page, lat, lng를 그대로 전달한다")
+        @DisplayName("userId, page, lat, lng를 서비스에 그대로 전달한다")
         void delegatesToService_withCorrectArgs() {
             given(savedSpotService.findSavedSpots(USER_ID, 0, 37.5, 127.0))
                 .willReturn(new SavedSpotListResponse(List.of(), 0, false));
 
-            savedSpotController.getSavedSpots(auth(), 0, 37.5, 127.0);
+            savedSpotController.getSavedSpots(USER_ID, 0, 37.5, 127.0);
 
             then(savedSpotService).should().findSavedSpots(USER_ID, 0, 37.5, 127.0);
         }
@@ -120,7 +114,7 @@ class SavedSpotControllerTest {
                 .willReturn(new SavedSpotListResponse(List.of(), 0, false));
 
             ApiResponse<SavedSpotListResponse> response =
-                savedSpotController.getSavedSpots(auth(), 0, null, null);
+                savedSpotController.getSavedSpots(USER_ID, 0, null, null);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spots()).isEmpty();
@@ -132,10 +126,7 @@ class SavedSpotControllerTest {
             given(savedSpotService.findSavedSpots(USER_ID, 0, null, null))
                 .willReturn(new SavedSpotListResponse(List.of(), 0, true));
 
-            ApiResponse<SavedSpotListResponse> response =
-                savedSpotController.getSavedSpots(auth(), 0, null, null);
-
-            assertThat(response.getData().hasNext()).isTrue();
+            assertThat(savedSpotController.getSavedSpots(USER_ID, 0, null, null).getData().hasNext()).isTrue();
         }
     }
 }

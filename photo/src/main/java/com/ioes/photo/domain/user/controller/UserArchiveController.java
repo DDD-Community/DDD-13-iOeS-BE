@@ -2,6 +2,7 @@ package com.ioes.photo.domain.user.controller;
 
 import com.ioes.photo.domain.user.dto.ArchiveImageResponse;
 import com.ioes.photo.domain.user.service.UserArchiveService;
+import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,7 +10,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,19 +34,17 @@ public class UserArchiveController {
     @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping(value = "/me/archive", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ArchiveImageResponse> updateArchiveImage(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @Parameter(description = "보관함 이미지 파일")
         @RequestPart("archiveImage") MultipartFile archiveImage
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(userArchiveService.updateArchiveImage(userId, archiveImage));
     }
 
     @Operation(summary = "보관함 이미지 조회", description = "보관함 이미지의 Presigned URL을 반환합니다. 이미지가 없으면 null을 반환합니다.")
     @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/me/archive")
-    public ApiResponse<ArchiveImageResponse> getArchiveImage(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+    public ApiResponse<ArchiveImageResponse> getArchiveImage(@CurrentUserId Long userId) {
         return ApiResponse.success(userArchiveService.getArchiveImage(userId));
     }
 }

@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -73,6 +74,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(CommonErrorCode.METHOD_NOT_ALLOWED.getStatus())
             .body(ApiResponse.error(CommonErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException e) {
+        log.warn("AuthenticationException: {}", e.getMessage());
+        return ResponseEntity
+            .status(CommonErrorCode.UNAUTHORIZED.getStatus())
+            .body(ApiResponse.error(CommonErrorCode.UNAUTHORIZED, e.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
