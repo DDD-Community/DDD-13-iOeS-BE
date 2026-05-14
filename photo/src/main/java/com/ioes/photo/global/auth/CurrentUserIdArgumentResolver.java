@@ -2,6 +2,7 @@ package com.ioes.photo.global.auth;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -34,7 +35,7 @@ public class CurrentUserIdArgumentResolver implements HandlerMethodArgumentResol
         try {
             return Long.parseLong(authentication.getName());
         } catch (NumberFormatException e) {
-            return null;
+            throw new BadCredentialsException("유효하지 않은 사용자 ID 형식입니다: " + authentication.getName());
         }
     }
 }
