@@ -283,7 +283,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 모두 null이면 정상 처리된다")
         void successWhenBothCoordinatesNull() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.name()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
@@ -295,25 +295,25 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 모두 있고 DISTANCE 정렬이면 mapper에 전달한다")
         void passesLatLngToMapperWhenDistanceSort() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.name()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode()))
                 .willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, 37.5, 127.0, SortType.DISTANCE);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.name());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode());
         }
 
         @Test
         @DisplayName("테마 필터가 있으면 mapper에 테마 코드를 전달한다")
         void passesThemeCodeToMapper() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.name()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode())).willReturn(0L);
 
             spotQueryService.findSpots(0, SpotTheme.SUNSET, null, null, SortType.RECOMMENDED);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.name());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
@@ -327,7 +327,7 @@ class SpotQueryServiceTest {
                 new SpotRow(5L, "스팟E", "SS", null),
                 new SpotRow(6L, "스팟F", "SS", null)
             );
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.name())).willReturn(rows);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(rows);
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(7L);
             given(spotImageRepository.findAllBySpotIdIn(any())).willReturn(List.of());
 
@@ -339,7 +339,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("전체 개수가 다음 페이지 기준 이하면 hasNext가 false다")
         void hasNextFalse_whenLastPage() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.name())).willReturn(List.of());
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(6L);
 
             SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
@@ -350,18 +350,18 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("page=1이면 offset=6으로 mapper를 호출한다")
         void passesCorrectOffsetForPage1() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.name())).willReturn(List.of());
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
             spotQueryService.findSpots(1, null, null, null, SortType.RECOMMENDED);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.name());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("응답에 요청한 page 번호가 그대로 포함된다")
         void responseContainsRequestedPage() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 12, 6, SortType.RECOMMENDED.name())).willReturn(List.of());
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 12, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
             SpotListResponse response = spotQueryService.findSpots(2, null, null, null, SortType.RECOMMENDED);
@@ -374,7 +374,7 @@ class SpotQueryServiceTest {
         void mapsSpotRowToSpotItemCorrectly() {
             SpotImage image = SpotImage.create(1L, "key.jpg");
             SpotRow row = new SpotRow(1L, "한강공원", "SS", 1.5);
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.name())).willReturn(List.of(row));
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of(row));
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L))).willReturn(List.of(image));
             given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumb.jpg");
@@ -393,7 +393,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("SpotRow 결과가 비어있으면 이미지 조회를 수행하지 않는다")
         void skipsImageQuery_whenNoRows() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.name())).willReturn(List.of());
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);

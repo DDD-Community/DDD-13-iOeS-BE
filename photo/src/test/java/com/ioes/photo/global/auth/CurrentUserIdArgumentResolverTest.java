@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,6 +14,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * CurrentUserIdArgumentResolver 단위 테스트.
@@ -90,6 +92,17 @@ class CurrentUserIdArgumentResolverTest {
         Object result = resolver.resolveArgument(null, null, null, null);
 
         assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("userId가 Long으로 파싱 불가능한 토큰이면 BadCredentialsException을 던진다")
+    void throwsBadCredentials_whenNameIsNotLong() {
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken("not-a-number", null, List.of())
+        );
+
+        assertThatThrownBy(() -> resolver.resolveArgument(null, null, null, null))
+            .isInstanceOf(BadCredentialsException.class);
     }
 
     // ── helper ──────────────────────────────────────────────────────────────
