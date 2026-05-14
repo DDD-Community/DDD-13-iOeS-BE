@@ -88,7 +88,7 @@ jobs:
 
             health_check() {
               for i in $(seq 1 30); do
-                if curl -fsS http://localhost/api/actuator/health > /dev/null 2>&1; then
+                if curl -fsSk https://localhost/api/actuator/health > /dev/null 2>&1; then
                   echo "Health check passed (attempt $i)"
                   return 0
                 fi
@@ -101,7 +101,7 @@ jobs:
             # 새 이미지 배포
             echo "$GHCR_PAT" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
             docker compose pull app
-            docker compose up -d app
+            docker compose up -d app nginx
 
             if health_check; then
               docker image prune -f
