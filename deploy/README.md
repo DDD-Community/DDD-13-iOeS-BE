@@ -212,31 +212,56 @@ docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" \
 
 ---
 
-## TLS(HTTPS) 적용 — 도메인 확보 후
+## TLS(HTTPS) 적용 — Cloudflare 방식
 
-1. 도메인 구매 → A 레코드에 EC2 퍼블릭 IP 등록
-2. certbot으로 인증서 발급:
+도메인: `pickflow-api.us` (Cloudflare Registrar)
+구성: **Cloudflare(Edge SSL) → nginx(443, Origin Cert) → app:8080**
 
-   ```bash
-   docker run --rm -it \
-     -v /etc/letsencrypt:/etc/letsencrypt \
-     -v $(pwd)/nginx/certbot:/var/www/certbot \
-     -p 80:80 \
-     certbot/certbot certonly --standalone -d your-domain.com \
-       --agree-tos -m you@example.com --no-eff-email
-   ```
+### 1) Cloudflare 측 설정 (대시보드)
 
-3. `deploy/docker-compose.yml`의 nginx 서비스에 인증서 볼륨 마운트 추가:
+- **DNS → 레코드**: A 레코드 추가 (이름 `@`, IP = EC2 EIP, 프록시됨 ON)
+- **SSL/TLS → 개요**: 모드를 **전체(엄격함)** 으로 설정
+- **SSL/TLS → 원본 서버 → 인증서 만들기**:
+  - 호스트 이름: `pickflow-api.us, *.pickflow-api.us`
+  - 유효 기간: 15년
+  - 발급된 **원본 인증서**와 **프라이빗 키**를 로컬에 저장
 
-   ```yaml
-   nginx:
-     volumes:
-       - /etc/letsencrypt:/etc/letsencrypt:ro
-       - ./nginx/certbot:/var/www/certbot
-   ```
+### 2) EC2에 인증서 업로드
 
-4. `deploy/nginx/conf.d/app.conf`에서 HTTPS 블록 주석 해제, HTTP는 301 리다이렉트로 전환
-5. `docker compose up -d nginx`로 반영
+```bash
+# 로컬에서 EC2로 전송
+scp -i <pem키> origin.pem origin.key \
+  <ec2-user>@<EIP>:/tmp/
+
+# EC2에서
+ssh -i <pem키> <ec2-user>@<EIP>
+cd <레포>/deploy
+mkdir -p nginx/certs
+sudo mv /tmp/origin.pem nginx/certs/
+sudo mv /tmp/origin.key nginx/certs/
+sudo chmod 600 nginx/certs/origin.key
+```
+
+> `nginx/certs/`는 `.gitignore`에 이미 제외돼 있어 커밋되지 않습니다.
+
+### 3) nginx 재시작
+
+```bash
+docker compose up -d nginx
+docker compose logs nginx   # 에러 없는지 확인
+```
+
+### 4) 검증
+
+```bash
+curl https://pickflow-api.us/api/actuator/health
+# → {"status":"UP"}
+```
+
+### 5) EC2 보안그룹 강화 (선택, 권장)
+
+80/443 인바운드를 **Cloudflare IPv4 대역**(https://www.cloudflare.com/ips-v4)만 허용하도록 제한.
+이러면 EIP 직접 우회 접근이 차단됩니다.
 
 ---
 
