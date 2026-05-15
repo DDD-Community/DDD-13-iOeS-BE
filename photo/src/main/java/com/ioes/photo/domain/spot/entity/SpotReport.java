@@ -30,7 +30,7 @@ public class SpotReport extends BaseEntity {
     @Column(nullable = false, length = 1)
     private SpotReportStatus status;
 
-    @Column(nullable = false, length = 5000)
+    @Column(nullable = false, length = 200)
     private String content;
 
     @Builder
