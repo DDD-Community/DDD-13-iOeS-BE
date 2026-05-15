@@ -2,7 +2,6 @@ package com.ioes.photo.domain.spot.controller;
 
 import com.ioes.photo.domain.spot.dto.SpotReportRequest;
 import com.ioes.photo.domain.spot.dto.SpotReportResponse;
-import com.ioes.photo.domain.spot.enums.SpotReportType;
 import com.ioes.photo.domain.spot.service.SpotReportService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.error.code.CommonErrorCode;
@@ -45,9 +44,9 @@ class SpotReportControllerTest {
     class ReportTest {
 
         @Test
-        @DisplayName("userId, spotId, request를 서비스에 그대로 전달한다")
-        void delegatesToService_withCorrectArgs() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.LOCATION_ERROR, "내용");
+        @DisplayName("userId와 spotId를 서비스에 그대로 전달한다")
+        void passesUserIdAndSpotIdToService() {
+            SpotReportRequest request = new SpotReportRequest("신고 내용입니다");
             given(spotReportService.report(USER_ID, SPOT_ID, request))
                 .willReturn(new SpotReportResponse(REPORT_ID));
 
@@ -59,7 +58,7 @@ class SpotReportControllerTest {
         @Test
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.WRONG_NAME, "이름이 틀려요");
+            SpotReportRequest request = new SpotReportRequest("이름이 틀렸어요");
             given(spotReportService.report(USER_ID, SPOT_ID, request))
                 .willReturn(new SpotReportResponse(REPORT_ID));
 
@@ -71,28 +70,27 @@ class SpotReportControllerTest {
         }
 
         @Test
+        @DisplayName("다른 spotId도 서비스에 그대로 전달한다")
+        void passesAnotherSpotIdToService() {
+            Long anotherSpotId = 99L;
+            SpotReportRequest request = new SpotReportRequest("위치가 잘못됐어요");
+            given(spotReportService.report(USER_ID, anotherSpotId, request))
+                .willReturn(new SpotReportResponse(REPORT_ID));
+
+            spotReportController.report(USER_ID, anotherSpotId, request);
+
+            then(spotReportService).should().report(USER_ID, anotherSpotId, request);
+        }
+
+        @Test
         @DisplayName("서비스에서 BusinessException이 발생하면 그대로 전파된다")
         void propagatesBusinessExceptionFromService() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.LOCATION_ERROR, "내용");
+            SpotReportRequest request = new SpotReportRequest("신고 내용입니다");
             willThrow(new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "스팟 없음"))
                 .given(spotReportService).report(USER_ID, SPOT_ID, request);
 
             assertThatThrownBy(() -> spotReportController.report(USER_ID, SPOT_ID, request))
                 .isInstanceOf(BusinessException.class);
-        }
-
-        @Test
-        @DisplayName("신고 유형별로 서비스에 request를 그대로 전달한다")
-        void passesAllReportTypes() {
-            for (SpotReportType type : SpotReportType.values()) {
-                SpotReportRequest request = new SpotReportRequest(type, "내용");
-                given(spotReportService.report(USER_ID, SPOT_ID, request))
-                    .willReturn(new SpotReportResponse(REPORT_ID));
-
-                spotReportController.report(USER_ID, SPOT_ID, request);
-
-                then(spotReportService).should().report(USER_ID, SPOT_ID, request);
-            }
         }
     }
 }

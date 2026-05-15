@@ -51,9 +51,10 @@ class UserArchiveServiceTest {
 
     @InjectMocks UserArchiveService userArchiveService;
 
-    private static final Long USER_ID = 1L;
+    private static final Long   USER_ID       = 1L;
     private static final String PRESIGNED_URL = "https://s3.example.com/archive/presigned?token=abc";
-    private static final String ARCHIVE_KEY = "dev/private/users/1/archive/202505/uuid.jpg";
+    private static final String ARCHIVE_KEY   = "dev/private/users/1/archive/202505/uuid.jpg";
+    private static final String DEFAULT_NAME  = User.DEFAULT_ARCHIVE_NAME;
 
     private User buildUser(String archiveImageKey) {
         User user = User.builder()
@@ -79,8 +80,8 @@ class UserArchiveServiceTest {
     class UpdateArchiveImage {
 
         @Test
-        @DisplayName("이미지를 업로드하면 S3에 저장되고 Presigned URL을 반환한다")
-        void shouldUploadAndReturnPresignedUrl() {
+        @DisplayName("이미지를 업로드하면 S3에 저장되고 보관함 이름과 Presigned URL을 반환한다")
+        void shouldUploadAndReturnResponse() {
             given(storageProperties.env()).willReturn("dev");
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(null)));
             given(storageService.upload(any(), anyString()))
@@ -90,6 +91,7 @@ class UserArchiveServiceTest {
             ArchiveImageResponse response = userArchiveService.updateArchiveImage(USER_ID, imageFile());
 
             then(storageService).should().upload(any(MultipartFile.class), anyString());
+            assertThat(response.archiveName()).isEqualTo(DEFAULT_NAME);
             assertThat(response.archiveImageUrl()).isEqualTo(PRESIGNED_URL);
         }
 
@@ -149,13 +151,14 @@ class UserArchiveServiceTest {
     class GetArchiveImage {
 
         @Test
-        @DisplayName("archiveImageKey가 있으면 Presigned URL을 반환한다")
+        @DisplayName("archiveImageKey가 있으면 보관함 이름과 Presigned URL을 반환한다")
         void shouldReturnPresignedUrl_whenKeyExists() {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(ARCHIVE_KEY)));
             given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
 
             ArchiveImageResponse response = userArchiveService.getArchiveImage(USER_ID);
 
+            assertThat(response.archiveName()).isEqualTo(DEFAULT_NAME);
             assertThat(response.archiveImageUrl()).isEqualTo(PRESIGNED_URL);
         }
 
@@ -166,6 +169,7 @@ class UserArchiveServiceTest {
 
             ArchiveImageResponse response = userArchiveService.getArchiveImage(USER_ID);
 
+            assertThat(response.archiveName()).isEqualTo(DEFAULT_NAME);
             assertThat(response.archiveImageUrl()).isNull();
             then(storageService).should(times(0)).getUrl(anyString());
         }
@@ -176,6 +180,49 @@ class UserArchiveServiceTest {
             given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> userArchiveService.getArchiveImage(USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND));
+        }
+    }
+
+    // ── updateArchiveName ─────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("updateArchiveName()")
+    class UpdateArchiveName {
+
+        @Test
+        @DisplayName("이름 수정 시 변경된 이름과 현재 이미지 URL을 반환한다")
+        void shouldReturnUpdatedName_whenImageExists() {
+            String newName = "제주 여행 스팟";
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(ARCHIVE_KEY)));
+            given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
+
+            ArchiveImageResponse response = userArchiveService.updateArchiveName(USER_ID, newName);
+
+            assertThat(response.archiveName()).isEqualTo(newName);
+            assertThat(response.archiveImageUrl()).isEqualTo(PRESIGNED_URL);
+        }
+
+        @Test
+        @DisplayName("이미지가 없을 때 이름 수정 시 archiveImageUrl은 null이다")
+        void shouldReturnNullUrl_whenNoImage() {
+            String newName = "서울 스팟 모음";
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(null)));
+
+            ArchiveImageResponse response = userArchiveService.updateArchiveName(USER_ID, newName);
+
+            assertThat(response.archiveName()).isEqualTo(newName);
+            assertThat(response.archiveImageUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 userId이면 USER_NOT_FOUND 예외를 던진다")
+        void shouldThrow_whenUserNotFound() {
+            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userArchiveService.updateArchiveName(USER_ID, "새 이름"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(UserErrorCode.USER_NOT_FOUND));

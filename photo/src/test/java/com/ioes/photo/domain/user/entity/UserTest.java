@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.user.entity;
 
+import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -62,6 +63,37 @@ class UserTest {
                 .build();
 
             assertThat(user.getDeletedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("생성 직후 archiveName은 기본값 '나의 보관함'이다")
+        void shouldHaveDefaultArchiveName_whenCreated() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .build();
+
+            assertThat(user.getArchiveName()).isEqualTo(User.DEFAULT_ARCHIVE_NAME);
+        }
+    }
+
+    // ── updateArchiveName ─────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("updateArchiveName()")
+    class UpdateArchiveName {
+
+        @Test
+        @DisplayName("보관함 이름을 정상적으로 변경한다")
+        void shouldUpdateArchiveName() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .build();
+
+            user.updateArchiveName("제주 여행 스팟");
+
+            assertThat(user.getArchiveName()).isEqualTo("제주 여행 스팟");
         }
     }
 
