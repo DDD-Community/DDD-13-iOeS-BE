@@ -83,7 +83,7 @@ class UserProfileServiceUpdateProfileTest {
         void shouldThrow_whenUserNotFound() {
             given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> userService.updateProfile(USER_ID, new UpdateProfileRequest(null, null), null))
+            assertThatThrownBy(() -> userService.updateProfile(USER_ID, new UpdateProfileRequest(null), null))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(UserErrorCode.USER_NOT_FOUND));
@@ -106,7 +106,7 @@ class UserProfileServiceUpdateProfileTest {
         @DisplayName("새 닉네임으로 변경 시 닉네임이 업데이트되고 hashTag는 null이 된다")
         void shouldUpdateNicknameAndClearHashTag() {
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest("포근한여우", null), null
+                USER_ID, new UpdateProfileRequest("포근한여우"), null
             );
 
             assertThat(response.displayName()).isEqualTo("포근한여우");
@@ -116,7 +116,7 @@ class UserProfileServiceUpdateProfileTest {
         @DisplayName("기존에 hashTag가 있어도 닉네임 변경 시 hashTag가 제거된다")
         void shouldClearHashTag_whenNicknameChangedFromGenerated() {
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest("새닉네임", null), null
+                USER_ID, new UpdateProfileRequest("새닉네임"), null
             );
 
             assertThat(response.displayName()).isEqualTo("새닉네임");
@@ -126,7 +126,7 @@ class UserProfileServiceUpdateProfileTest {
         @DisplayName("현재 닉네임과 동일하면 업데이트되지 않는다")
         void shouldNotUpdate_whenNicknameUnchanged() {
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest("멋진코끼리", null), null
+                USER_ID, new UpdateProfileRequest("멋진코끼리"), null
             );
 
             assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
@@ -136,57 +136,10 @@ class UserProfileServiceUpdateProfileTest {
         @DisplayName("닉네임이 null이면 기존 닉네임과 hashTag가 유지된다")
         void shouldKeepNickname_whenNicknameIsNull() {
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest(null, null), null
+                USER_ID, new UpdateProfileRequest(null), null
             );
 
             assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
-        }
-    }
-
-    // ── 이메일 업데이트 ───────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("이메일 업데이트")
-    class EmailUpdate {
-
-        @Test
-        @DisplayName("이메일이 없을 때 새 이메일을 등록할 수 있다")
-        void shouldRegisterEmail_whenNotSet() {
-            given(userRepository.findById(USER_ID))
-                .willReturn(Optional.of(baseUser("테스트유저", null, null)));
-
-            UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest(null, "new@example.com"), null
-            );
-
-            assertThat(response.email()).isEqualTo("new@example.com");
-        }
-
-        @Test
-        @DisplayName("이미 이메일이 등록되어 있으면 EMAIL_ALREADY_REGISTERED 예외를 던진다")
-        void shouldThrow_whenEmailAlreadyRegistered() {
-            given(userRepository.findById(USER_ID))
-                .willReturn(Optional.of(baseUser("테스트유저", null, "existing@example.com")));
-
-            assertThatThrownBy(() -> userService.updateProfile(
-                USER_ID, new UpdateProfileRequest(null, "new@example.com"), null
-            ))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                    .isEqualTo(UserErrorCode.EMAIL_ALREADY_REGISTERED));
-        }
-
-        @Test
-        @DisplayName("이메일이 null이면 기존 이메일이 유지된다")
-        void shouldKeepEmail_whenEmailIsNull() {
-            given(userRepository.findById(USER_ID))
-                .willReturn(Optional.of(baseUser("테스트유저", null, "original@example.com")));
-
-            UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest(null, null), null
-            );
-
-            assertThat(response.email()).isEqualTo("original@example.com");
         }
     }
 
@@ -216,7 +169,7 @@ class UserProfileServiceUpdateProfileTest {
                 .willReturn("https://storage.example.com/photo.jpg");
 
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest(null, null), image
+                USER_ID, new UpdateProfileRequest(null), image
             );
 
             then(storageService).should().upload(any(MultipartFile.class), anyString());
@@ -230,7 +183,7 @@ class UserProfileServiceUpdateProfileTest {
         @Test
         @DisplayName("이미지 파일이 null이면 StorageService를 호출하지 않는다")
         void shouldNotUploadImage_whenFileIsNull() {
-            userService.updateProfile(USER_ID, new UpdateProfileRequest(null, null), null);
+            userService.updateProfile(USER_ID, new UpdateProfileRequest(null), null);
 
             then(storageService).should(never()).upload(any(), anyString());
         }
@@ -242,7 +195,7 @@ class UserProfileServiceUpdateProfileTest {
                 "profileImage", "empty.jpg", "image/jpeg", new byte[0]
             );
 
-            userService.updateProfile(USER_ID, new UpdateProfileRequest(null, null), emptyImage);
+            userService.updateProfile(USER_ID, new UpdateProfileRequest(null), emptyImage);
 
             then(storageService).should(never()).upload(any(), anyString());
         }
@@ -255,7 +208,7 @@ class UserProfileServiceUpdateProfileTest {
     class CombinedUpdate {
 
         @Test
-        @DisplayName("닉네임, 이메일, 이미지를 동시에 업데이트할 수 있다")
+        @DisplayName("닉네임과 이미지를 동시에 업데이트할 수 있다")
         void shouldUpdateAllFieldsAtOnce() {
             given(userRepository.findById(USER_ID))
                 .willReturn(Optional.of(baseUser("멋진코끼리", 3L, null)));
@@ -269,11 +222,10 @@ class UserProfileServiceUpdateProfileTest {
                 .willReturn("https://storage.example.com/photo.jpg");
 
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest("새닉네임", "new@example.com"), image
+                USER_ID, new UpdateProfileRequest("새닉네임"), image
             );
 
             assertThat(response.displayName()).isEqualTo("새닉네임");
-            assertThat(response.email()).isEqualTo("new@example.com");
             assertThat(response.profileImageUrl()).isEqualTo("https://storage.example.com/photo.jpg");
         }
 
@@ -284,11 +236,10 @@ class UserProfileServiceUpdateProfileTest {
                 .willReturn(Optional.of(baseUser("멋진코끼리", 3L, "test@example.com")));
 
             UpdateProfileResponse response = userService.updateProfile(
-                USER_ID, new UpdateProfileRequest(null, null), null
+                USER_ID, new UpdateProfileRequest(null), null
             );
 
             assertThat(response.displayName()).isEqualTo("멋진코끼리#3");
-            assertThat(response.email()).isEqualTo("test@example.com");
             assertThat(response.profileImageUrl()).isEqualTo("https://original.com/image.jpg");
             then(storageService).should(never()).upload(any(), anyString());
         }

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.Map;
 
@@ -169,11 +170,17 @@ class AuthControllerTest {
         @Test
         @DisplayName("Refresh Token 무효화 후 성공 응답을 반환한다")
         void shouldReturnSuccess() {
+            MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+
             ApiResponse<Void> response = authController.logout(
-                new LogoutRequest("token-to-invalidate")
+                new LogoutRequest("token-to-invalidate"),
+                httpRequest
             );
 
-            then(tokenService).should().invalidateRefreshToken("token-to-invalidate");
+            then(tokenService).should().logout(
+                org.mockito.ArgumentMatchers.eq("token-to-invalidate"),
+                org.mockito.ArgumentMatchers.isNull()
+            );
             assertThat(response.isSuccess()).isTrue();
         }
     }

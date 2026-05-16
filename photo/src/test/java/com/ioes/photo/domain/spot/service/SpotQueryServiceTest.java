@@ -23,10 +23,12 @@ import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
+import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.external.crowd.enums.CongestionLevel;
 import com.ioes.photo.external.weather.enums.PrecipitationType;
 import com.ioes.photo.external.weather.enums.SkyStatus;
 import com.ioes.photo.global.error.exception.BusinessException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalTime;
@@ -54,6 +58,7 @@ import static org.mockito.Mockito.never;
  * @author 황제연
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("SpotQueryService 단위 테스트")
 class SpotQueryServiceTest {
 
@@ -63,10 +68,17 @@ class SpotQueryServiceTest {
     @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
     @Mock SpotThumbnailService spotThumbnailService;
     @Mock SpotMapper          spotMapper;
+    @Mock UserRepository      userRepository;
 
     @InjectMocks SpotQueryService spotQueryService;
 
     private static final String PUBLISHED_CODE = SpotStatus.PUBLISHED.getCode();
+
+    @BeforeEach
+    void setUpUserRepository() {
+        // 기본적으로 모든 업로더가 활성 상태라고 가정 (탈퇴 유저 처리 테스트 제외)
+        given(userRepository.findActiveIdsByIdIn(any())).willAnswer(inv -> inv.getArgument(0));
+    }
 
     // ── findSpotsInViewport ──────────────────────────────────────────────────
 
