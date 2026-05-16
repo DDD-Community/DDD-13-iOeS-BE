@@ -72,7 +72,10 @@ app:
       - /api-docs/**
       - /swagger-ui.html
       - /actuator/**
-      - /v1/auth/**
+      - /v1/auth/oauth/*/authorize
+      - /v1/auth/oauth/*/callback
+      - /v1/auth/oauth/apple/callback
+      - /v1/auth/refresh
       - /v1/users/restore
 
 logging:

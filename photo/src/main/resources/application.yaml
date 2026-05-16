@@ -77,7 +77,10 @@ app:
       - /api-docs/**
       - /swagger-ui.html
       - /actuator/health
-      - /v1/auth/**
+      - /v1/auth/oauth/*/authorize
+      - /v1/auth/oauth/*/callback
+      - /v1/auth/oauth/apple/callback
+      - /v1/auth/refresh
       - /v1/users/restore
     # GET 요청에 한해 비로그인 허용 — 같은 경로의 비-GET(예: POST 신고)은 인증 유지
     public-get-urls:
