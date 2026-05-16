@@ -26,4 +26,6 @@ public interface SavedSpotArchiveRepository extends JpaRepository<SavedSpotArchi
         @Param("userId") Long userId,
         @Param("spotId") Long spotId
     );
+
+    long countByUserId(Long userId);
 }
