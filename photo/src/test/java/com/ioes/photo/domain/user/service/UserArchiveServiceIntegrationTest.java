@@ -28,7 +28,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 
 /**
- * {@link UserArchiveService} 통합 테스트 — 실제 JPA + H2로 보관함 이미지 저장/조회 검증.
+ * {@link UserArchiveService} 통합 테스트 — 실제 JPA + H2로 보관함 저장/조회/이름 수정 검증.
  *
  * @author 황제연
  */
@@ -37,7 +37,7 @@ import static org.mockito.BDDMockito.given;
 class UserArchiveServiceIntegrationTest {
 
     private static final String PRESIGNED_URL = "https://s3.example.com/archive/presigned?token=abc";
-    private static final String ARCHIVE_KEY = "dev/private/users/1/archive/202505/uuid.jpg";
+    private static final String ARCHIVE_KEY   = "dev/private/users/1/archive/202505/uuid.jpg";
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
@@ -59,7 +59,7 @@ class UserArchiveServiceIntegrationTest {
     }
 
     @Test
-    @DisplayName("보관함 이미지를 업로드하면 DB에 archiveImageKey가 저장된다")
+    @DisplayName("보관함 이미지를 업로드하면 DB에 archiveImageKey가 저장되고 기본 보관함 이름을 반환한다")
     void updateArchiveImage_savesKeyToDb() {
         User user = userRepository.save(buildUser());
         given(storageService.upload(any(), anyString()))
@@ -71,13 +71,14 @@ class UserArchiveServiceIntegrationTest {
         );
         ArchiveImageResponse response = userArchiveService.updateArchiveImage(user.getId(), imageFile);
 
+        assertThat(response.archiveName()).isEqualTo(User.DEFAULT_ARCHIVE_NAME);
         assertThat(response.archiveImageUrl()).isEqualTo(PRESIGNED_URL);
         User saved = userRepository.findById(user.getId()).orElseThrow();
         assertThat(saved.getArchiveImageKey()).isEqualTo(ARCHIVE_KEY);
     }
 
     @Test
-    @DisplayName("이미지 업로드 후 조회하면 Presigned URL을 반환한다")
+    @DisplayName("이미지 업로드 후 조회하면 보관함 이름과 Presigned URL을 반환한다")
     void getArchiveImage_returnsPresignedUrl_afterUpdate() {
         User user = userRepository.save(buildUser());
         given(storageService.upload(any(), anyString()))
@@ -90,16 +91,18 @@ class UserArchiveServiceIntegrationTest {
         userArchiveService.updateArchiveImage(user.getId(), imageFile);
 
         ArchiveImageResponse response = userArchiveService.getArchiveImage(user.getId());
+        assertThat(response.archiveName()).isEqualTo(User.DEFAULT_ARCHIVE_NAME);
         assertThat(response.archiveImageUrl()).isEqualTo(PRESIGNED_URL);
     }
 
     @Test
-    @DisplayName("보관함 이미지가 없는 사용자를 조회하면 archiveImageUrl이 null이다")
+    @DisplayName("보관함 이미지가 없는 사용자를 조회하면 archiveImageUrl이 null이고 기본 이름을 반환한다")
     void getArchiveImage_returnsNull_whenNoImage() {
         User user = userRepository.save(buildUser());
 
         ArchiveImageResponse response = userArchiveService.getArchiveImage(user.getId());
 
+        assertThat(response.archiveName()).isEqualTo(User.DEFAULT_ARCHIVE_NAME);
         assertThat(response.archiveImageUrl()).isNull();
     }
 
@@ -123,6 +126,19 @@ class UserArchiveServiceIntegrationTest {
 
         User saved = userRepository.findById(user.getId()).orElseThrow();
         assertThat(saved.getArchiveImageKey()).isEqualTo(secondKey);
+    }
+
+    @Test
+    @DisplayName("보관함 이름을 수정하면 DB에 반영되고 변경된 이름을 반환한다")
+    void updateArchiveName_savesNameToDb() {
+        User user = userRepository.save(buildUser());
+        String newName = "제주 여행 스팟";
+
+        ArchiveImageResponse response = userArchiveService.updateArchiveName(user.getId(), newName);
+
+        assertThat(response.archiveName()).isEqualTo(newName);
+        User saved = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(saved.getArchiveName()).isEqualTo(newName);
     }
 
     @Test

@@ -33,7 +33,7 @@ public class SpotReportController {
 
     @Operation(
         summary = "스팟 신고",
-        description = "잘못된 정보가 있는 스팟을 신고합니다. 신고 유형: LOCATION_ERROR(위치 오류), WRONG_NAME(잘못된 이름), ETC(기타)"
+        description = "잘못된 정보가 있는 스팟을 신고합니다. 신고 내용은 5자 이상 입력해야 합니다."
     )
     @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping("/{spotId}/reports")

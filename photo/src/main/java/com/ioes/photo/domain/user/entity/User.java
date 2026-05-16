@@ -42,6 +42,8 @@ import org.hibernate.annotations.SQLRestriction;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
+    public static final String DEFAULT_ARCHIVE_NAME = "나의 보관함";
+
     @Column(nullable = false, length = 4)
     private OAuthProvider provider;
 
@@ -65,6 +67,9 @@ public class User extends BaseEntity {
 
     @Column
     private String archiveImageKey; // 보관함 이미지 (PRIVATE, S3 키 저장)
+
+    @Column(name = "archive_name", nullable = false, length = 20)
+    private String archiveName = DEFAULT_ARCHIVE_NAME;
 
     @Column
     private LocalDateTime deletedAt;
@@ -99,10 +104,7 @@ public class User extends BaseEntity {
         }
     }
 
-    /**
-     * 사용자 업로드 프로필 이미지를 S3 키 방식으로 교체합니다.
-     * OAuth 공급자 URL({@code profileImageUrl})을 초기화하고 S3 키를 저장합니다.
-     */
+
     public void updateProfileImageKey(String key) {
         this.profileImageKey = key;
         this.profileImageUrl = null;
@@ -110,6 +112,10 @@ public class User extends BaseEntity {
 
     public void updateArchiveImageKey(String key) {
         this.archiveImageKey = key;
+    }
+
+    public void updateArchiveName(String archiveName) {
+        this.archiveName = archiveName;
     }
 
 }

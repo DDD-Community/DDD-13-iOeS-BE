@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 사용자 보관함 이미지 서비스.
+ * 사용자 보관함 서비스.
  *
  * 보관함 이미지는 PRIVATE 접근으로 관리되며, 조회 시 Presigned URL을 동적으로 생성합니다.
  * S3 경로: {env}/private/users/{userId}/archive/{yyyyMM}/{uuid}.{ext}
@@ -58,7 +58,7 @@ public class UserArchiveService {
             eventPublisher.publishEvent(new StorageCleanupEvent(oldKey));
         }
 
-        return ArchiveImageResponse.of(storageService.getUrl(result.key()));
+        return ArchiveImageResponse.of(user.getArchiveName(), storageService.getUrl(result.key()));
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +67,17 @@ public class UserArchiveService {
         String url = NullUtils.isNotBlank(user.getArchiveImageKey())
                 ? storageService.getUrl(user.getArchiveImageKey())
                 : null;
-        return ArchiveImageResponse.of(url);
+        return ArchiveImageResponse.of(user.getArchiveName(), url);
+    }
+
+    @Transactional
+    public ArchiveImageResponse updateArchiveName(Long userId, String archiveName) {
+        User user = findUser(userId);
+        user.updateArchiveName(archiveName);
+        String url = NullUtils.isNotBlank(user.getArchiveImageKey())
+                ? storageService.getUrl(user.getArchiveImageKey())
+                : null;
+        return ArchiveImageResponse.of(archiveName, url);
     }
 
     private User findUser(Long userId) {
