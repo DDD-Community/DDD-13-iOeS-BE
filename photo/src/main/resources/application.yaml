@@ -243,6 +243,7 @@ app:
     refresh-key-prefix: "refresh:"
     user-tokens-key-prefix: "userTokens:"
     provider-rt-key-prefix: "provider_rt:"
+    blacklist-key-prefix: "blacklist:"
     restore-token-expiration-ms: 300000  # 5분
 
   # MDC 키 이름 (logback 패턴의 %X{키이름}과 반드시 일치)
