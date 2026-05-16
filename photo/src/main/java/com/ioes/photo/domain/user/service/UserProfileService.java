@@ -66,6 +66,19 @@ public class UserProfileService {
     }
 
     @Transactional
+    public void restoreAccount(String restoreToken) {
+        if (!jwtProvider.validateToken(restoreToken)
+            || !JwtProvider.TOKEN_TYPE_RESTORE.equals(jwtProvider.extractTokenType(restoreToken))) {
+            throw new BusinessException(UserErrorCode.RESTORE_TOKEN_INVALID);
+        }
+        Long userId = Long.parseLong(jwtProvider.extractSubject(restoreToken));
+        userRepository.findByIdIncludingDeleted(userId)
+            .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        userRepository.restoreById(userId);
+        log.info("계정 복구 완료: userId={}", userId);
+    }
+
+    @Transactional
     public void deleteAccount(Long userId) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
