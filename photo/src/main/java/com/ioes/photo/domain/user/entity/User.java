@@ -91,15 +91,12 @@ public class User extends BaseEntity {
                 : nickname;
     }
 
-    public void updateProfile(String email, String nickname, String profileImageUrl) {
-        if (NullUtils.isNotBlank(email)) {
-            this.email = email;
-        }
-        if (NullUtils.isNotBlank(nickname)){
+    public void updateProfile(String nickname, String profileImageUrl) {
+        if (NullUtils.isNotBlank(nickname)) {
             this.nickname = nickname;
             this.hashTag = null;
         }
-        if (NullUtils.isNotBlank(profileImageUrl)){
+        if (NullUtils.isNotBlank(profileImageUrl)) {
             this.profileImageUrl = profileImageUrl;
         }
     }
