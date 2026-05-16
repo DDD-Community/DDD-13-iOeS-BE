@@ -1,5 +1,8 @@
 package com.ioes.photo.domain.user.service;
 
+import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
+import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.user.dto.MypageHomeResponse;
 import com.ioes.photo.domain.user.dto.UpdateProfileRequest;
 import com.ioes.photo.domain.user.dto.UpdateProfileResponse;
 import com.ioes.photo.domain.user.entity.User;
@@ -9,6 +12,7 @@ import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.config.s3.properties.StorageProperties;
+import com.ioes.photo.global.config.security.JwtProvider;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.AccessType;
 import com.ioes.photo.global.storage.StorageCleanupEvent;
@@ -51,6 +55,18 @@ public class UserProfileService {
     private final OAuthService oAuthService;
     private final StorageProperties storageProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final SavedSpotArchiveRepository savedSpotArchiveRepository;
+    private final SpotRepository spotRepository;
+    private final JwtProvider jwtProvider;
+
+    @Transactional(readOnly = true)
+    public MypageHomeResponse getMyPageHome(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        long savedSpotCount = savedSpotArchiveRepository.countByUserId(userId);
+        long recordedSpotCount = spotRepository.countByUserId(userId);
+        return MypageHomeResponse.of(user, resolveProfileImageUrl(user), savedSpotCount, recordedSpotCount);
+    }
 
     @Transactional
     public UpdateProfileResponse updateProfile(Long userId, UpdateProfileRequest request,
@@ -58,8 +74,7 @@ public class UserProfileService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
-        updateNicknameIfPresent(user, request.nickname());
-        updateEmailIfPresent(user, request.email());
+        updateNicknameIfPresent(user, userId, request.nickname());
         updateProfileImageIfPresent(user, profileImage);
 
         return UpdateProfileResponse.from(user, resolveProfileImageUrl(user));
@@ -99,21 +114,14 @@ public class UserProfileService {
         log.info("회원탈퇴 완료: userId={}", userId);
     }
 
-    private void updateNicknameIfPresent(User user, String nickname) {
+    private void updateNicknameIfPresent(User user, Long userId, String nickname) {
         if (NullUtils.isBlank(nickname) || nickname.equals(user.getNickname())) {
             return;
         }
-        user.updateProfile(null, nickname, null);
-    }
-
-    private void updateEmailIfPresent(User user, String email) {
-        if (NullUtils.isBlank(email)) {
-            return;
+        if (userRepository.existsByNicknameAndIdNot(nickname, userId)) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_NICKNAME);
         }
-        if (NullUtils.isNotBlank(user.getEmail())) {
-            throw new BusinessException(UserErrorCode.EMAIL_ALREADY_REGISTERED);
-        }
-        user.updateProfile(email, null, null);
+        user.updateProfile(nickname, null);
     }
 
     private void updateProfileImageIfPresent(User user, MultipartFile profileImage) {

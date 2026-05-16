@@ -32,6 +32,12 @@ public class UserAccountService {
         return userRepository.findByProviderAndProviderUserId(provider, providerId);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<User> findDeletedUser(OAuthProvider provider, String providerId) {
+        return userRepository.findByProviderAndProviderUserIdIncludingDeleted(provider.getCode(), providerId)
+            .filter(user -> user.getDeletedAt() != null);
+    }
+
     @Transactional
     public User createUser(OAuthUserInfo info) {
         NicknameGenerator.Result resolved = resolveNickname(info);
