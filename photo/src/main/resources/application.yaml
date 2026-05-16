@@ -83,6 +83,8 @@ app:
     public-get-urls:
       - /v1/spots
       - /v1/spots/**
+      - /v1/bbs/posts
+      - /v1/bbs/posts/**
 
   #  Swagger / OpenAPI
   swagger:
