@@ -38,4 +38,8 @@ public class ApiResponse<T> {
     public static ApiResponse<Void> error(ErrorCode errorCode, String message) {
         return new ApiResponse<>(false, errorCode.getCode(), message, null);
     }
+
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, String message, T data) {
+        return new ApiResponse<>(false, errorCode.getCode(), message, data);
+    }
 }
