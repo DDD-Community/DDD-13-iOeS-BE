@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.dto;
 
+import com.ioes.photo.global.common.annotation.TruncateDecimal;
 import java.util.List;
 
 /**
@@ -18,6 +19,6 @@ public record SpotListResponse(
         String name,
         String theme,
         String thumbnailUrl,
-        Double distanceKm
+        @TruncateDecimal Double distanceKm
     ) {}
 }
