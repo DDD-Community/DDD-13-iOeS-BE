@@ -71,9 +71,9 @@ app:
       - /swagger-ui/**
       - /api-docs/**
       - /swagger-ui.html
-      - /actuator/health
       - /actuator/**
-      - /auth/**
+      - /v1/auth/**
+      - /v1/users/restore
 
 logging:
   config: classpath:config/dev/logback/logback-dev.xml
