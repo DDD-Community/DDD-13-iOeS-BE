@@ -17,5 +17,6 @@ public record TokenProperties(
     String refreshKeyPrefix,
     String userTokensKeyPrefix,
     String providerRtKeyPrefix
+    long restoreTokenExpirationMs
 ) {
 }

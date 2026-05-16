@@ -1,7 +1,9 @@
 package com.ioes.photo.global.error.handler;
 
+import com.ioes.photo.domain.user.dto.AccountDeletedResponse;
 import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.error.code.CommonErrorCode;
+import com.ioes.photo.global.error.exception.AccountDeletedException;
 import com.ioes.photo.global.error.exception.BusinessException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
@@ -24,6 +26,14 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccountDeletedException.class)
+    public ResponseEntity<ApiResponse<AccountDeletedResponse>> handleAccountDeletedException(AccountDeletedException e) {
+        log.warn("AccountDeletedException: {}", e.getMessage());
+        return ResponseEntity
+            .status(e.getErrorCode().getStatus())
+            .body(ApiResponse.error(e.getErrorCode(), e.getMessage(), new AccountDeletedResponse(e.getRestoreToken())));
+    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {

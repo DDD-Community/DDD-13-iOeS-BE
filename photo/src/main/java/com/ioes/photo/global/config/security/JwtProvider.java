@@ -1,6 +1,7 @@
 package com.ioes.photo.global.config.security;
 
 import com.ioes.photo.global.config.security.properties.JwtProperties;
+import com.ioes.photo.global.config.security.properties.TokenProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -27,7 +28,12 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtProvider {
 
+    public static final String TOKEN_TYPE_CLAIM = "type";
+    public static final String TOKEN_TYPE_ACCESS = "ACCESS";
+    public static final String TOKEN_TYPE_RESTORE = "RESTORE";
+
     private final JwtProperties jwtProperties;
+    private final TokenProperties tokenProperties;
     private SecretKey cachedSecretKey;
 
     @PostConstruct
@@ -45,10 +51,36 @@ public class JwtProvider {
         Date now = new Date();
         return Jwts.builder()
             .subject(subject)
+            .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS)
             .issuedAt(now)
             .expiration(new Date(now.getTime() + jwtProperties.expirationMs()))
             .signWith(secretKey())
             .compact();
+    }
+
+    public String generateRestoreToken(String subject) {
+        Date now = new Date();
+        return Jwts.builder()
+            .subject(subject)
+            .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_RESTORE)
+            .issuedAt(now)
+            .expiration(new Date(now.getTime() + tokenProperties.restoreTokenExpirationMs()))
+            .signWith(secretKey())
+            .compact();
+    }
+
+    public String extractTokenType(String token) {
+        return (String) parseClaims(token).get(TOKEN_TYPE_CLAIM);
+    }
+
+    public long getRemainingValidityMs(String token) {
+        try {
+            Date expiration = parseClaims(token).getExpiration();
+            long remaining = expiration.getTime() - System.currentTimeMillis();
+            return Math.max(remaining, 0);
+        } catch (JwtException | IllegalArgumentException e) {
+            return 0;
+        }
     }
 
     /**

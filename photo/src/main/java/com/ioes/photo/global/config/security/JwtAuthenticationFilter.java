@@ -1,12 +1,13 @@
 package com.ioes.photo.global.config.security;
 
+import com.ioes.photo.global.auth.BearerTokenExtractor;
+import com.ioes.photo.global.auth.token.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -28,17 +29,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String BEARER_PREFIX = "Bearer ";
-
     private final JwtProvider jwtProvider;
+    private final TokenService tokenService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String token = extractToken(request);
+        String token = BearerTokenExtractor.extract(request);
 
-        if (token != null && jwtProvider.validateToken(token)) {
+        if (token != null && jwtProvider.validateToken(token) && isAccessToken(token) && !tokenService.isBlacklisted(token)) {
             String subject = jwtProvider.extractSubject(token);
             UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(subject, null, List.of());
@@ -48,11 +48,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String extractToken(HttpServletRequest request) {
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
-            return header.substring(BEARER_PREFIX.length());
-        }
-        return null;
+    private boolean isAccessToken(String token) {
+        return JwtProvider.TOKEN_TYPE_ACCESS.equals(jwtProvider.extractTokenType(token));
     }
+
 }

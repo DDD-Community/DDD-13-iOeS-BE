@@ -6,7 +6,9 @@ import com.ioes.photo.domain.user.service.NicknameProperties;
 import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
+import com.ioes.photo.global.config.security.JwtProvider;
 import com.ioes.photo.global.error.code.CommonErrorCode;
+import com.ioes.photo.global.error.exception.AccountDeletedException;
 import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +46,7 @@ public class OAuthService {
     private final UserAccountService userAccountService;
     private final TokenService tokenService;
     private final NicknameProperties nicknameProperties;
+    private final JwtProvider jwtProvider;
 
     public String getAuthorizationUrl(OAuthProvider provider) {
         String state = generateState();
@@ -95,10 +98,14 @@ public class OAuthService {
     }
 
     private TokenResponse processLogin(OAuthUserInfo userInfo) {
-        Optional<User> existing = userAccountService.findExistingUser(userInfo.provider(), userInfo.providerId());
+        Optional<User> deletedUser = userAccountService.findDeletedUser(userInfo.provider(), userInfo.providerId());
+        if (deletedUser.isPresent()) {
+            String restoreToken = jwtProvider.generateRestoreToken(deletedUser.get().getId().toString());
+            throw new AccountDeletedException(restoreToken);
+        }
 
-        User user = existing
-            .orElseGet(() -> createUserWithRetry(userInfo));
+        Optional<User> existing = userAccountService.findExistingUser(userInfo.provider(), userInfo.providerId());
+        User user = existing.orElseGet(() -> createUserWithRetry(userInfo));
 
         String userId = user.getId().toString();
         if (userInfo.providerRefreshToken() != null) {

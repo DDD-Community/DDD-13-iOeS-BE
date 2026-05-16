@@ -8,6 +8,7 @@ import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
@@ -60,6 +61,20 @@ public class UserController {
     @DeleteMapping("/me")
     public ApiResponse<Void> deleteAccount(@CurrentUserId Long userId) {
         userService.deleteAccount(userId);
+        return ApiResponse.success();
+    }
+
+    @Operation(summary = "탈퇴 계정 복구", description = "소셜 로그인 탈퇴 감지 시 발급된 restoreToken으로 계정을 복구합니다. 복구 후 소셜 로그인을 재시도해야 합니다.")
+    @SecurityRequirements
+    @PatchMapping("/restore")
+    public ApiResponse<Void> restoreAccount(
+        @Parameter(description = "계정 복구용 일회성 토큰")
+        @RequestParam @NotBlank String restoreToken
+    ) {
+        userService.restoreAccount(restoreToken);
+        return ApiResponse.success();
+    }
+
         return ApiResponse.success();
     }
 }
