@@ -3,6 +3,7 @@ package com.ioes.photo.domain.spot.controller;
 import com.ioes.photo.domain.spot.dto.SpotReportRequest;
 import com.ioes.photo.domain.spot.dto.SpotReportResponse;
 import com.ioes.photo.domain.spot.service.SpotReportService;
+import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -10,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,11 +39,10 @@ public class SpotReportController {
     @PostMapping("/{spotId}/reports")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SpotReportResponse> report(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @PathVariable Long spotId,
         @RequestBody @Valid SpotReportRequest request
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(spotReportService.report(userId, spotId, request));
     }
 }

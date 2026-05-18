@@ -33,14 +33,14 @@
         </where>
         ORDER BY
         <choose>
-            <when test="lat != null">
+            <when test="sort != null and sort == 'D'">
                 ST_Distance(
                     s.location::geography,
                     ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)::geography
                 )
             </when>
             <otherwise>
-                s.created_at DESC
+                s.bookmark_count DESC
             </otherwise>
         </choose>
         LIMIT #{size} OFFSET #{offset}
@@ -56,6 +56,46 @@
                 AND s.theme = #{theme}
             </if>
         </where>
+    </select>
+
+    <select id="findSpotsInViewport" resultType="SpotViewportRow">
+    /* 뷰포트 조회 동적쿼리 */
+        SELECT s.id, s.latitude, s.longitude, s.user_id
+        FROM spots s
+        WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
+            AND s.status = #{status}
+            AND s.deleted_at IS NULL
+            <if test="theme != null">
+                AND s.theme = #{theme}
+            </if>
+    </select>
+
+    <select id="findSpotPreview" resultType="SpotPreviewRow">
+    /* 스팟 미리보기 단건 조회 */
+        SELECT
+            s.id,
+            s.name,
+            s.theme,
+            s.user_id,
+            s.bookmark_count,
+            s.address AS address_simple,
+            <choose>
+                <when test="lat != null">
+                    ROUND(CAST(
+                        ST_Distance(
+                            s.location::geography,
+                            ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)::geography
+                        ) / 1000.0 AS numeric
+                    ), 2)
+                </when>
+                <otherwise>
+                    NULL::numeric
+                </otherwise>
+            </choose>
+                AS distance_km
+        FROM spots s
+        WHERE s.id = #{spotId}
+            AND s.deleted_at IS NULL
     </select>
 
 </mapper>

@@ -3,6 +3,7 @@ package com.ioes.photo.domain.savedspot.controller;
 import com.ioes.photo.domain.savedspot.dto.BookmarkResponse;
 import com.ioes.photo.domain.savedspot.dto.SavedSpotListResponse;
 import com.ioes.photo.domain.savedspot.service.SavedSpotService;
+import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.common.validation.Latitude;
 import com.ioes.photo.global.common.validation.Longitude;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,10 +42,9 @@ public class SavedSpotController {
     @PostMapping("/spots/{spotId}/bookmarks")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BookmarkResponse> addBookmark(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @PathVariable Long spotId
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(savedSpotService.addBookmark(userId, spotId));
     }
 
@@ -53,10 +52,9 @@ public class SavedSpotController {
     @SecurityRequirement(name = "Bearer Authentication")
     @DeleteMapping("/spots/{spotId}/bookmarks")
     public ApiResponse<BookmarkResponse> removeBookmark(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @PathVariable Long spotId
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(savedSpotService.removeBookmark(userId, spotId));
     }
 
@@ -67,12 +65,11 @@ public class SavedSpotController {
     @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/users/me/saved-spots")
     public ApiResponse<SavedSpotListResponse> getSavedSpots(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @RequestParam(defaultValue = "0") @Min(0) int page,
         @RequestParam(required = false) @Latitude Double latitude,
         @RequestParam(required = false) @Longitude Double longitude
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(savedSpotService.findSavedSpots(userId, page, latitude, longitude));
     }
 }
