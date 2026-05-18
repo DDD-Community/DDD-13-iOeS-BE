@@ -176,9 +176,8 @@ class UserTest {
         void shouldUpdateNonNullFields() {
             User user = baseUser();
 
-            user.updateProfile("new@test.com", "새닉네임", "https://new.com/image.jpg");
+            user.updateProfile("새닉네임", "https://new.com/image.jpg");
 
-            assertThat(user.getEmail()).isEqualTo("new@test.com");
             assertThat(user.getNickname()).isEqualTo("새닉네임");
             assertThat(user.getProfileImageUrl()).isEqualTo("https://new.com/image.jpg");
         }
@@ -188,21 +187,19 @@ class UserTest {
         void shouldNotUpdateNullFields() {
             User user = baseUser();
 
-            user.updateProfile(null, null, null);
+            user.updateProfile(null, null);
 
-            assertThat(user.getEmail()).isEqualTo("original@test.com");
             assertThat(user.getNickname()).isEqualTo("원래닉네임");
             assertThat(user.getProfileImageUrl()).isEqualTo("https://original.com/image.jpg");
         }
 
         @Test
-        @DisplayName("일부 필드만 업데이트할 수 있다")
+        @DisplayName("닉네임만 업데이트할 수 있다")
         void shouldUpdatePartialFields() {
             User user = baseUser();
 
-            user.updateProfile(null, "업데이트된닉네임", null);
+            user.updateProfile("업데이트된닉네임", null);
 
-            assertThat(user.getEmail()).isEqualTo("original@test.com");
             assertThat(user.getNickname()).isEqualTo("업데이트된닉네임");
             assertThat(user.getProfileImageUrl()).isEqualTo("https://original.com/image.jpg");
         }
@@ -212,7 +209,7 @@ class UserTest {
         void shouldNotAffectDeletedAt_whenUpdatingProfile() {
             User user = baseUser();
 
-            user.updateProfile("new@test.com", "새닉네임", null);
+            user.updateProfile("새닉네임", null);
 
             assertThat(user.getDeletedAt()).isNull();
         }

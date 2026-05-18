@@ -9,8 +9,10 @@ import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -90,11 +92,14 @@ public class AuthController {
 
     @Operation(
         summary = "로그아웃",
-        description = "Refresh Token을 무효화합니다. Access Token은 만료까지 유효합니다."
+        description = "Refresh Token을 무효화하고 Access Token을 블랙리스트에 등록합니다."
     )
+    @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequest request) {
-        tokenService.invalidateRefreshToken(request.refreshToken());
+    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequest request,
+                                    HttpServletRequest httpRequest) {
+        String accessToken = BearerTokenExtractor.extract(httpRequest);
+        tokenService.logout(request.refreshToken(), accessToken);
         return ApiResponse.success();
     }
 }

@@ -22,12 +22,11 @@ import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
+import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -49,6 +48,7 @@ public class SpotQueryService {
     private final SavedSpotArchiveRepository savedSpotArchiveRepository;
     private final SpotThumbnailService spotThumbnailService;
     private final SpotMapper spotMapper;
+    private final UserRepository userRepository;
 
     public SpotDetailResponse findSpotDetail(Long spotId, Long userId) {
         Spot spot = spotRepository.findById(spotId)
@@ -63,7 +63,8 @@ public class SpotQueryService {
 
         boolean isBookmarked = userId != null
             && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
-        boolean isMySpot = userId != null && userId.equals(spot.getUserId());
+        Long resolvedUploaderId = resolveActiveUploaderId(spot.getUserId());
+        boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
 
         return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl, isBookmarked, isMySpot);
     }
@@ -78,9 +79,11 @@ public class SpotQueryService {
         );
 
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotViewportRow::id).toList());
+        Set<Long> activeUploaderIds = resolveActiveUploaderIds(
+            rows.stream().map(SpotViewportRow::userId).collect(Collectors.toSet()));
 
         List<SpotSummary> summaries = rows.stream()
-            .map(row -> toSpotSummary(row, imageMap, userId))
+            .map(row -> toSpotSummary(row, imageMap, userId, activeUploaderIds))
             .toList();
 
         return new SpotViewportResponse(summaries);
@@ -91,10 +94,14 @@ public class SpotQueryService {
         if (row == null) {
             throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
         }
-        boolean isMySpot = userId != null && userId.equals(row.userId());
+        Long resolvedUploaderId = resolveActiveUploaderId(row.userId());
+        boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
+        String imageUrl = spotImageRepository.findById(spotId)
+            .map(spotThumbnailService::getThumbnailUrl)
+            .orElse(null);
         return new SpotPreviewResponse(
             row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
-            row.bookmarkCount(), row.distanceKm(), row.addressSimple(), null, null
+            row.bookmarkCount(), row.distanceKm(), imageUrl, row.addressSimple(), null, null
         );
     }
 
@@ -128,10 +135,33 @@ public class SpotQueryService {
             .stream().collect(Collectors.toMap(SpotImage::getSpotId, image -> image));
     }
 
-    private SpotSummary toSpotSummary(SpotViewportRow row, Map<Long, SpotImage> imageMap, Long userId) {
+    private SpotSummary toSpotSummary(SpotViewportRow row, Map<Long, SpotImage> imageMap,
+                                      Long userId, Set<Long> activeUploaderIds) {
         String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
-        boolean isMySpot = userId != null && userId.equals(row.userId());
+        boolean isMySpot = userId != null
+                && activeUploaderIds.contains(row.userId()) && userId.equals(row.userId());
         return new SpotSummary(row.id(), thumbnailUrl, row.latitude(), row.longitude(), isMySpot);
+    }
+
+    private Long resolveActiveUploaderId(Long uploaderUserId) {
+        if (uploaderUserId == null) {
+            return null;
+        }
+        Set<Long> activeIds = userRepository.findActiveIdsByIdIn(Set.of(uploaderUserId));
+        return activeIds.contains(uploaderUserId)
+                ? uploaderUserId
+                : null;
+    }
+
+    private Set<Long> resolveActiveUploaderIds(Set<Long> uploaderUserIds) {
+        if (uploaderUserIds == null || uploaderUserIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<Long> nonNull = uploaderUserIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNull.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return userRepository.findActiveIdsByIdIn(nonNull);
     }
 
     private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap) {

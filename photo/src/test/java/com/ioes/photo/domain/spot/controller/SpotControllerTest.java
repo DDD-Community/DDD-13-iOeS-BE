@@ -186,7 +186,7 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             SpotPreviewResponse preview = new SpotPreviewResponse(
-                1L, "한강공원", false, SpotTheme.SUNSET, 5L, 1.2, "서울시 마포구", null, null
+                1L, "한강공원", false, SpotTheme.SUNSET, 5L, 1.2, null, "서울시 마포구", null, null
             );
             given(spotQueryService.findSpotPreview(1L, 37.5, 127.0, null)).willReturn(preview);
 
@@ -200,7 +200,7 @@ class SpotControllerTest {
         @DisplayName("spotId, 위치, userId를 서비스에 그대로 전달한다")
         void passesAllParamsToService() {
             given(spotQueryService.findSpotPreview(1L, null, null, 42L))
-                .willReturn(new SpotPreviewResponse(1L, "스팟", true, SpotTheme.SUNSET, 0L, null, null, null, null));
+                .willReturn(new SpotPreviewResponse(1L, "스팟", true, SpotTheme.SUNSET, 0L, null, null, null, null, null));
 
             spotController.getSpotPreview(1L, null, null, 42L);
 

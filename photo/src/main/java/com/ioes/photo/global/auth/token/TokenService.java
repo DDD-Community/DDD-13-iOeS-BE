@@ -48,6 +48,13 @@ public class TokenService {
         return issueTokens(userId);
     }
 
+    public void logout(String refreshToken, String accessToken) {
+        invalidateRefreshToken(refreshToken);
+        if (accessToken != null) {
+            addToBlacklist(accessToken);
+        }
+    }
+
     public void invalidateRefreshToken(String refreshToken) {
         String key = tokenProperties.refreshKeyPrefix() + refreshToken;
         String userId = redisTemplate.opsForValue().get(key);
@@ -58,6 +65,25 @@ public class TokenService {
         log.debug("Refresh Token 무효화: {}",
                 Boolean.TRUE.equals(deleted) ? "성공"
                 : "이미 만료됨");
+    }
+
+    public void addToBlacklist(String accessToken) {
+        long remainingMs = jwtProvider.getRemainingValidityMs(accessToken);
+        if (remainingMs > 0) {
+            redisTemplate.opsForValue().set(
+                tokenProperties.blacklistKeyPrefix() + accessToken,
+                "blacklisted",
+                remainingMs,
+                TimeUnit.MILLISECONDS
+            );
+            log.debug("Access Token 블랙리스트 등록 완료, TTL={}ms", remainingMs);
+        }
+    }
+
+    public boolean isBlacklisted(String accessToken) {
+        return Boolean.TRUE.equals(
+            redisTemplate.hasKey(tokenProperties.blacklistKeyPrefix() + accessToken)
+        );
     }
 
     public void invalidateAllUserTokens(String userId) {

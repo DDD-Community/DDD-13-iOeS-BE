@@ -23,10 +23,12 @@ import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
+import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.external.crowd.enums.CongestionLevel;
 import com.ioes.photo.external.weather.enums.PrecipitationType;
 import com.ioes.photo.external.weather.enums.SkyStatus;
 import com.ioes.photo.global.error.exception.BusinessException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalTime;
@@ -54,6 +58,7 @@ import static org.mockito.Mockito.never;
  * @author 황제연
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("SpotQueryService 단위 테스트")
 class SpotQueryServiceTest {
 
@@ -63,10 +68,17 @@ class SpotQueryServiceTest {
     @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
     @Mock SpotThumbnailService spotThumbnailService;
     @Mock SpotMapper          spotMapper;
+    @Mock UserRepository      userRepository;
 
     @InjectMocks SpotQueryService spotQueryService;
 
     private static final String PUBLISHED_CODE = SpotStatus.PUBLISHED.getCode();
+
+    @BeforeEach
+    void setUpUserRepository() {
+        // 기본적으로 모든 업로더가 활성 상태라고 가정 (탈퇴 유저 처리 테스트 제외)
+        given(userRepository.findActiveIdsByIdIn(any())).willAnswer(inv -> inv.getArgument(0));
+    }
 
     // ── findSpotsInViewport ──────────────────────────────────────────────────
 
@@ -182,7 +194,10 @@ class SpotQueryServiceTest {
         @DisplayName("스팟이 존재하면 미리보기 응답을 반환한다")
         void returnsPreview_whenSpotExists() {
             SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, 1.2, "서울시 마포구");
+            SpotImage image = SpotImage.create(1L, "prod/public/spots/1/thumbnail/key.jpg");
             given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
+            given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumbnail.jpg");
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, 37.5, 127.0, null);
 
@@ -192,9 +207,22 @@ class SpotQueryServiceTest {
             assertThat(response.theme()).isEqualTo(SpotTheme.SUNSET);
             assertThat(response.bookmarkCount()).isEqualTo(5L);
             assertThat(response.distanceKm()).isEqualTo(1.2);
+            assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/thumbnail.jpg");
             assertThat(response.addressSimple()).isEqualTo("서울시 마포구");
             assertThat(response.addressRoad()).isNull();
             assertThat(response.addressJibun()).isNull();
+        }
+
+        @Test
+        @DisplayName("이미지가 없는 스팟의 imageUrl은 null이다")
+        void imageUrlNull_whenNoImage() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구");
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
+
+            assertThat(response.imageUrl()).isNull();
         }
 
         @Test
@@ -213,6 +241,7 @@ class SpotQueryServiceTest {
         void isMySpotTrue_whenUserIsOwner() {
             SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, null, "서울시 마포구");
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, 42L);
 
@@ -224,6 +253,7 @@ class SpotQueryServiceTest {
         void isMySpotFalse_whenDifferentUser() {
             SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, 5L, null, "서울시 마포구");
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, 42L);
 
@@ -235,6 +265,7 @@ class SpotQueryServiceTest {
         void distanceKmNull_whenNoCoordinates() {
             SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구");
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
 
@@ -246,6 +277,7 @@ class SpotQueryServiceTest {
         void isMySpotFalse_whenUserIdNull() {
             SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, 1.2, "서울시 마포구");
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
 

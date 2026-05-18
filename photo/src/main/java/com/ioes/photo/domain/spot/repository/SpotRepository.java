@@ -38,4 +38,6 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
 
     @Query(value = "SELECT * FROM spots WHERE id = :spotId", nativeQuery = true)
     Optional<Spot> findByIdIncludingDeleted(@Param("spotId") Long spotId);
+
+    long countByUserId(Long userId);
 }
