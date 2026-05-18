@@ -86,10 +86,14 @@ public class UserProfileService {
             || !JwtProvider.TOKEN_TYPE_RESTORE.equals(jwtProvider.extractTokenType(restoreToken))) {
             throw new BusinessException(UserErrorCode.RESTORE_TOKEN_INVALID);
         }
+        if (tokenService.isBlacklisted(restoreToken)) {
+            throw new BusinessException(UserErrorCode.RESTORE_TOKEN_INVALID);
+        }
         Long userId = Long.parseLong(jwtProvider.extractSubject(restoreToken));
         userRepository.findByIdIncludingDeleted(userId)
             .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         userRepository.restoreById(userId);
+        tokenService.addToBlacklist(restoreToken);
         log.info("계정 복구 완료: userId={}", userId);
     }
 
