@@ -34,6 +34,7 @@ import org.locationtech.jts.geom.PrecisionModel;
         @Index(name = "idx_spots_theme", columnList = "theme"),
         @Index(name = "idx_spots_status", columnList = "status"),
         @Index(name = "idx_spots_crowd_area_name", columnList = "crowd_area_name"),
+        @Index(name = "idx_spots_user_id", columnList = "user_id"),
     }
 )
 @SQLRestriction("deleted_at IS NULL")
