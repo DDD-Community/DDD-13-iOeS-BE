@@ -1,7 +1,6 @@
 package com.ioes.photo.domain.spot.entity;
 
 import com.ioes.photo.domain.spot.enums.SpotReportStatus;
-import com.ioes.photo.domain.spot.enums.SpotReportType;
 import com.ioes.photo.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,20 +27,16 @@ public class SpotReport extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(nullable = false, length = 2)
-    private SpotReportType type;
-
     @Column(nullable = false, length = 1)
     private SpotReportStatus status;
 
-    @Column(nullable = false, length = 5000)
+    @Column(nullable = false, length = 200)
     private String content;
 
     @Builder
-    private SpotReport(Long spotId, Long userId, SpotReportType type, String content) {
+    private SpotReport(Long spotId, Long userId, String content) {
         this.spotId = spotId;
         this.userId = userId;
-        this.type = type;
         this.status = SpotReportStatus.PENDING;
         this.content = content;
     }
