@@ -25,6 +25,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -84,18 +85,34 @@ class UserProfileServiceRestoreTest {
     class RestoreAccount {
 
         @Test
-        @DisplayName("유효한 RESTORE 토큰이면 계정을 복구한다")
+        @DisplayName("유효한 RESTORE 토큰이면 계정을 복구하고 토큰을 블랙리스트에 등록한다")
         void shouldRestoreAccount_whenValidRestoreToken() {
             String restoreToken = "valid-restore-token";
             User user = buildUser();
             given(jwtProvider.validateToken(restoreToken)).willReturn(true);
             given(jwtProvider.extractTokenType(restoreToken)).willReturn(JwtProvider.TOKEN_TYPE_RESTORE);
+            given(tokenService.isBlacklisted(restoreToken)).willReturn(false);
             given(jwtProvider.extractSubject(restoreToken)).willReturn(USER_ID.toString());
             given(userRepository.findByIdIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
 
             userService.restoreAccount(restoreToken);
 
             then(userRepository).should().restoreById(USER_ID);
+            then(tokenService).should().addToBlacklist(restoreToken);
+        }
+
+        @Test
+        @DisplayName("이미 사용된 RESTORE 토큰이면 RESTORE_TOKEN_INVALID 예외를 던진다")
+        void shouldThrow_whenRestoreTokenAlreadyUsed() {
+            String usedToken = "already-used-restore-token";
+            given(jwtProvider.validateToken(usedToken)).willReturn(true);
+            given(jwtProvider.extractTokenType(usedToken)).willReturn(JwtProvider.TOKEN_TYPE_RESTORE);
+            given(tokenService.isBlacklisted(usedToken)).willReturn(true);
+
+            assertThatThrownBy(() -> userService.restoreAccount(usedToken))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                    .isEqualTo(UserErrorCode.RESTORE_TOKEN_INVALID));
         }
 
         @Test
