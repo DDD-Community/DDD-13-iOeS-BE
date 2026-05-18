@@ -96,9 +96,12 @@ public class SpotQueryService {
         }
         Long resolvedUploaderId = resolveActiveUploaderId(row.userId());
         boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
+        String imageUrl = spotImageRepository.findById(spotId)
+            .map(spotThumbnailService::getThumbnailUrl)
+            .orElse(null);
         return new SpotPreviewResponse(
             row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
-            row.bookmarkCount(), row.distanceKm(), row.addressSimple(), null, null
+            row.bookmarkCount(), row.distanceKm(), imageUrl, row.addressSimple(), null, null
         );
     }
 
