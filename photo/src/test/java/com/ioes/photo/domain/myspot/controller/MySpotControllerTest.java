@@ -20,8 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 
 /**
  * {@link MySpotController} 단위 테스트.
@@ -38,10 +36,6 @@ class MySpotControllerTest {
 
     private static final Long USER_ID = 1L;
 
-    private Authentication auth() {
-        return new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null, List.of());
-    }
-
     @Nested
     @DisplayName("getMySpots()")
     class GetMySpots {
@@ -52,7 +46,7 @@ class MySpotControllerTest {
             given(mySpotService.findMySpots(USER_ID, 0, 37.5, 127.0))
                 .willReturn(new MySpotListResponse(List.of(), 0, false));
 
-            mySpotController.getMySpots(auth(), 0, 37.5, 127.0);
+            mySpotController.getMySpots(USER_ID, 0, 37.5, 127.0);
 
             then(mySpotService).should().findMySpots(USER_ID, 0, 37.5, 127.0);
         }
@@ -64,7 +58,7 @@ class MySpotControllerTest {
                 .willReturn(new MySpotListResponse(List.of(), 0, false));
 
             ApiResponse<MySpotListResponse> response =
-                mySpotController.getMySpots(auth(), 0, null, null);
+                mySpotController.getMySpots(USER_ID, 0, null, null);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spots()).isEmpty();
@@ -77,7 +71,7 @@ class MySpotControllerTest {
                 .willReturn(new MySpotListResponse(List.of(), 0, true));
 
             ApiResponse<MySpotListResponse> response =
-                mySpotController.getMySpots(auth(), 0, null, null);
+                mySpotController.getMySpots(USER_ID, 0, null, null);
 
             assertThat(response.getData().hasNext()).isTrue();
         }
@@ -110,7 +104,7 @@ class MySpotControllerTest {
             given(mySpotService.createMySpot(USER_ID, req))
                 .willReturn(new CreateMySpotResponse(10L, SpotStatus.PENDING.name(), "img", "thumb"));
 
-            mySpotController.createMySpot(auth(), req);
+            mySpotController.createMySpot(USER_ID, req);
 
             then(mySpotService).should().createMySpot(USER_ID, req);
         }
@@ -121,7 +115,7 @@ class MySpotControllerTest {
             given(mySpotService.createMySpot(eq(USER_ID), org.mockito.ArgumentMatchers.any()))
                 .willReturn(new CreateMySpotResponse(10L, SpotStatus.PENDING.name(), "img", "thumb"));
 
-            ApiResponse<CreateMySpotResponse> response = mySpotController.createMySpot(auth(), request());
+            ApiResponse<CreateMySpotResponse> response = mySpotController.createMySpot(USER_ID, request());
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spotId()).isEqualTo(10L);

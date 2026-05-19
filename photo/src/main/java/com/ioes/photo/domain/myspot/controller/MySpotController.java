@@ -4,6 +4,7 @@ import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.service.MySpotService;
+import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.common.validation.Latitude;
 import com.ioes.photo.global.common.validation.Longitude;
@@ -14,7 +15,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,18 +41,17 @@ public class MySpotController {
     @Operation(
         summary = "나만의 스팟 목록 조회",
         description = "사용자가 등록한 스팟 목록을 6개 단위로 페이징 조회합니다. "
-            + "검수 대기(PENDING) 및 공개(PUBLISHED) 상태를 노출하며 반려(REJECTED)는 제외됩니다. "
+            + "검수 대기(PENDING), 공개(PUBLISHED), 반려(REJECTED) 상태를 모두 노출합니다. "
             + "위도/경도를 함께 전달하면 거리(km)도 함께 반환됩니다."
     )
     @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/users/me/my-spots")
     public ApiResponse<MySpotListResponse> getMySpots(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @RequestParam(defaultValue = "0") @Min(0) int page,
         @RequestParam(required = false) @Latitude Double latitude,
         @RequestParam(required = false) @Longitude Double longitude
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(mySpotService.findMySpots(userId, page, latitude, longitude));
     }
 
@@ -65,10 +64,9 @@ public class MySpotController {
     @PostMapping("/users/me/my-spots")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CreateMySpotResponse> createMySpot(
-        Authentication authentication,
+        @CurrentUserId Long userId,
         @RequestBody @Valid CreateMySpotRequest request
     ) {
-        Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(mySpotService.createMySpot(userId, request));
     }
 }

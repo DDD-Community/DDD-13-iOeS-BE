@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.myspot.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -19,6 +20,8 @@ import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
+import com.ioes.photo.global.error.code.CommonErrorCode;
+import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageService;
 import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import java.lang.reflect.Field;
@@ -56,7 +59,8 @@ class MySpotServiceTest {
     private static final Long SPOT_ID = 10L;
     private static final List<String> VISIBLE_CODES = List.of(
         SpotStatus.PENDING.getCode(),
-        SpotStatus.PUBLISHED.getCode()
+        SpotStatus.PUBLISHED.getCode(),
+        SpotStatus.REJECTED.getCode()
     );
 
     @Nested
@@ -77,25 +81,21 @@ class MySpotServiceTest {
         }
 
         @Test
-        @DisplayName("위도만 전달해도 distanceKm=null로 정상 처리된다")
-        void succeedsWithNullDistance_whenOnlyLatProvided() {
-            given(mySpotMapper.findMySpots(USER_ID, 37.5, null, VISIBLE_CODES, 0, 6)).willReturn(List.of());
-            given(mySpotMapper.countMySpots(USER_ID, VISIBLE_CODES)).willReturn(0L);
-
-            MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, 37.5, null);
-
-            assertThat(response.spots()).isEmpty();
+        @DisplayName("위도만 전달되면 INVALID_INPUT_VALUE 예외를 던진다")
+        void throwsWhenOnlyLatProvided() {
+            assertThatThrownBy(() -> mySpotService.findMySpots(USER_ID, 0, 37.5, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE);
         }
 
         @Test
-        @DisplayName("경도만 전달해도 distanceKm=null로 정상 처리된다")
-        void succeedsWithNullDistance_whenOnlyLngProvided() {
-            given(mySpotMapper.findMySpots(USER_ID, null, 127.0, VISIBLE_CODES, 0, 6)).willReturn(List.of());
-            given(mySpotMapper.countMySpots(USER_ID, VISIBLE_CODES)).willReturn(0L);
-
-            MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, null, 127.0);
-
-            assertThat(response.spots()).isEmpty();
+        @DisplayName("경도만 전달되면 INVALID_INPUT_VALUE 예외를 던진다")
+        void throwsWhenOnlyLngProvided() {
+            assertThatThrownBy(() -> mySpotService.findMySpots(USER_ID, 0, null, 127.0))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE);
         }
 
         @Test
@@ -151,6 +151,19 @@ class MySpotServiceTest {
             MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, null, null);
 
             assertThat(response.spots().get(0).status()).isEqualTo("PUBLISHED");
+        }
+
+        @Test
+        @DisplayName("REJECTED 상태 스팟의 status는 REJECTED 이름으로 변환된다")
+        void includesRejectedSpot_withEnumName() {
+            MySpotRow row = buildRow(SPOT_ID, SpotStatus.REJECTED.getCode());
+            given(mySpotMapper.findMySpots(USER_ID, null, null, VISIBLE_CODES, 0, 6)).willReturn(List.of(row));
+            given(mySpotMapper.countMySpots(USER_ID, VISIBLE_CODES)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).status()).isEqualTo("REJECTED");
         }
 
         @Test

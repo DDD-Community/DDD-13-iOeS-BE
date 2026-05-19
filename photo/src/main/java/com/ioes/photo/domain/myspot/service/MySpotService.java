@@ -15,6 +15,8 @@ import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.global.common.util.NullUtils;
+import com.ioes.photo.global.error.code.CommonErrorCode;
+import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.StorageService;
 import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import java.util.Collections;
@@ -30,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 나만의 스팟(사용자가 등록한 스팟) 서비스.
  *
- * 조회: 검수 대기(PENDING)와 공개(PUBLISHED) 상태를 모두 노출하며, 반려(REJECTED) 상태는 제외한다.
+ * 조회: 사용자가 등록한 모든 상태(PENDING/PUBLISHED/REJECTED)의 스팟을 노출한다.
  * 등록: PENDING 상태로 저장하며, 클라이언트가 S3에 직접 업로드한 이미지 키를 받아 sync한다.
  *
  * @author 김성민
@@ -43,7 +45,8 @@ public class MySpotService {
     private static final int PAGE_SIZE = 6;
     private static final List<String> VISIBLE_STATUS_CODES = List.of(
         SpotStatus.PENDING.getCode(),
-        SpotStatus.PUBLISHED.getCode()
+        SpotStatus.PUBLISHED.getCode(),
+        SpotStatus.REJECTED.getCode()
     );
 
     private final MySpotMapper mySpotMapper;
@@ -54,6 +57,10 @@ public class MySpotService {
     private final ApplicationEventPublisher eventPublisher;
 
     public MySpotListResponse findMySpots(Long userId, int page, Double latitude, Double longitude) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "위도와 경도는 함께 입력해야 합니다.");
+        }
+
         List<MySpotRow> rows = mySpotMapper.findMySpots(
             userId, latitude, longitude, VISIBLE_STATUS_CODES, page * PAGE_SIZE, PAGE_SIZE
         );

@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.myspot.dto;
 
+import com.ioes.photo.global.common.annotation.TruncateDecimal;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,8 +25,8 @@ public record MySpotListResponse(
         @Schema(description = "원본 이미지 URL (없으면 null)") String imageUrl,
         @Schema(description = "스팟 위도") Double latitude,
         @Schema(description = "스팟 경도") Double longitude,
-        @Schema(description = "사용자 위치 기준 거리 (km), 위치 미전달 시 null") Double distanceKm,
+        @Schema(description = "사용자 위치 기준 거리 (km), 위치 미전달 시 null") @TruncateDecimal Double distanceKm,
         @Schema(description = "스팟 등록 시각") LocalDateTime createdAt,
-        @Schema(description = "스팟 상태 (PENDING=검수대기, PUBLISHED=공개)") String status
+        @Schema(description = "스팟 상태 (PENDING=검수대기, PUBLISHED=공개, REJECTED=반려)") String status
     ) {}
 }
