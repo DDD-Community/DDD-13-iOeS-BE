@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.user.entity;
 
+import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -62,6 +63,37 @@ class UserTest {
                 .build();
 
             assertThat(user.getDeletedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("생성 직후 archiveName은 기본값 '나의 보관함'이다")
+        void shouldHaveDefaultArchiveName_whenCreated() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .build();
+
+            assertThat(user.getArchiveName()).isEqualTo(User.DEFAULT_ARCHIVE_NAME);
+        }
+    }
+
+    // ── updateArchiveName ─────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("updateArchiveName()")
+    class UpdateArchiveName {
+
+        @Test
+        @DisplayName("보관함 이름을 정상적으로 변경한다")
+        void shouldUpdateArchiveName() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .build();
+
+            user.updateArchiveName("제주 여행 스팟");
+
+            assertThat(user.getArchiveName()).isEqualTo("제주 여행 스팟");
         }
     }
 
@@ -144,9 +176,8 @@ class UserTest {
         void shouldUpdateNonNullFields() {
             User user = baseUser();
 
-            user.updateProfile("new@test.com", "새닉네임", "https://new.com/image.jpg");
+            user.updateProfile("새닉네임", "https://new.com/image.jpg");
 
-            assertThat(user.getEmail()).isEqualTo("new@test.com");
             assertThat(user.getNickname()).isEqualTo("새닉네임");
             assertThat(user.getProfileImageUrl()).isEqualTo("https://new.com/image.jpg");
         }
@@ -156,21 +187,19 @@ class UserTest {
         void shouldNotUpdateNullFields() {
             User user = baseUser();
 
-            user.updateProfile(null, null, null);
+            user.updateProfile(null, null);
 
-            assertThat(user.getEmail()).isEqualTo("original@test.com");
             assertThat(user.getNickname()).isEqualTo("원래닉네임");
             assertThat(user.getProfileImageUrl()).isEqualTo("https://original.com/image.jpg");
         }
 
         @Test
-        @DisplayName("일부 필드만 업데이트할 수 있다")
+        @DisplayName("닉네임만 업데이트할 수 있다")
         void shouldUpdatePartialFields() {
             User user = baseUser();
 
-            user.updateProfile(null, "업데이트된닉네임", null);
+            user.updateProfile("업데이트된닉네임", null);
 
-            assertThat(user.getEmail()).isEqualTo("original@test.com");
             assertThat(user.getNickname()).isEqualTo("업데이트된닉네임");
             assertThat(user.getProfileImageUrl()).isEqualTo("https://original.com/image.jpg");
         }
@@ -180,7 +209,7 @@ class UserTest {
         void shouldNotAffectDeletedAt_whenUpdatingProfile() {
             User user = baseUser();
 
-            user.updateProfile("new@test.com", "새닉네임", null);
+            user.updateProfile("새닉네임", null);
 
             assertThat(user.getDeletedAt()).isNull();
         }

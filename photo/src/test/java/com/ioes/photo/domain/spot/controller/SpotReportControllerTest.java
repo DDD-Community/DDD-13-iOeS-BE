@@ -2,7 +2,6 @@ package com.ioes.photo.domain.spot.controller;
 
 import com.ioes.photo.domain.spot.dto.SpotReportRequest;
 import com.ioes.photo.domain.spot.dto.SpotReportResponse;
-import com.ioes.photo.domain.spot.enums.SpotReportType;
 import com.ioes.photo.domain.spot.service.SpotReportService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.error.code.CommonErrorCode;
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.Authentication;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,13 +30,12 @@ import static org.mockito.BDDMockito.willThrow;
 class SpotReportControllerTest {
 
     @Mock SpotReportService spotReportService;
-    @Mock Authentication    authentication;
 
     @InjectMocks SpotReportController spotReportController;
 
-    private static final Long   USER_ID   = 42L;
-    private static final Long   SPOT_ID   = 7L;
-    private static final Long   REPORT_ID = 100L;
+    private static final Long USER_ID   = 42L;
+    private static final Long SPOT_ID   = 7L;
+    private static final Long REPORT_ID = 100L;
 
     // ── report ────────────────────────────────────────────────────────────────
 
@@ -47,14 +44,13 @@ class SpotReportControllerTest {
     class ReportTest {
 
         @Test
-        @DisplayName("Authentication에서 userId를 파싱하여 서비스에 전달한다")
-        void parsesUserIdFromAuthentication() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.LOCATION_ERROR, "내용");
-            given(authentication.getName()).willReturn(USER_ID.toString());
+        @DisplayName("userId와 spotId를 서비스에 그대로 전달한다")
+        void passesUserIdAndSpotIdToService() {
+            SpotReportRequest request = new SpotReportRequest("신고 내용입니다");
             given(spotReportService.report(USER_ID, SPOT_ID, request))
                 .willReturn(new SpotReportResponse(REPORT_ID));
 
-            spotReportController.report(authentication, SPOT_ID, request);
+            spotReportController.report(USER_ID, SPOT_ID, request);
 
             then(spotReportService).should().report(USER_ID, SPOT_ID, request);
         }
@@ -62,28 +58,26 @@ class SpotReportControllerTest {
         @Test
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.WRONG_NAME, "이름이 틀려요");
-            given(authentication.getName()).willReturn(USER_ID.toString());
+            SpotReportRequest request = new SpotReportRequest("이름이 틀렸어요");
             given(spotReportService.report(USER_ID, SPOT_ID, request))
                 .willReturn(new SpotReportResponse(REPORT_ID));
 
             ApiResponse<SpotReportResponse> response =
-                spotReportController.report(authentication, SPOT_ID, request);
+                spotReportController.report(USER_ID, SPOT_ID, request);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().reportId()).isEqualTo(REPORT_ID);
         }
 
         @Test
-        @DisplayName("spotId를 서비스에 그대로 전달한다")
-        void passesSpotIdToService() {
+        @DisplayName("다른 spotId도 서비스에 그대로 전달한다")
+        void passesAnotherSpotIdToService() {
             Long anotherSpotId = 99L;
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.ETC, "내용");
-            given(authentication.getName()).willReturn(USER_ID.toString());
+            SpotReportRequest request = new SpotReportRequest("위치가 잘못됐어요");
             given(spotReportService.report(USER_ID, anotherSpotId, request))
                 .willReturn(new SpotReportResponse(REPORT_ID));
 
-            spotReportController.report(authentication, anotherSpotId, request);
+            spotReportController.report(USER_ID, anotherSpotId, request);
 
             then(spotReportService).should().report(USER_ID, anotherSpotId, request);
         }
@@ -91,28 +85,12 @@ class SpotReportControllerTest {
         @Test
         @DisplayName("서비스에서 BusinessException이 발생하면 그대로 전파된다")
         void propagatesBusinessExceptionFromService() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.LOCATION_ERROR, "내용");
-            given(authentication.getName()).willReturn(USER_ID.toString());
+            SpotReportRequest request = new SpotReportRequest("신고 내용입니다");
             willThrow(new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "스팟 없음"))
                 .given(spotReportService).report(USER_ID, SPOT_ID, request);
 
-            assertThatThrownBy(() -> spotReportController.report(authentication, SPOT_ID, request))
+            assertThatThrownBy(() -> spotReportController.report(USER_ID, SPOT_ID, request))
                 .isInstanceOf(BusinessException.class);
-        }
-
-        @Test
-        @DisplayName("신고 유형별로 서비스에 request를 그대로 전달한다")
-        void passesAllReportTypes() {
-            for (SpotReportType type : SpotReportType.values()) {
-                SpotReportRequest request = new SpotReportRequest(type, "내용");
-                given(authentication.getName()).willReturn(USER_ID.toString());
-                given(spotReportService.report(USER_ID, SPOT_ID, request))
-                    .willReturn(new SpotReportResponse(REPORT_ID));
-
-                spotReportController.report(authentication, SPOT_ID, request);
-
-                then(spotReportService).should().report(USER_ID, SPOT_ID, request);
-            }
         }
     }
 }

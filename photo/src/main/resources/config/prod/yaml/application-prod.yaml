@@ -54,7 +54,11 @@ app:
   security:
     public-urls:
       - /actuator/health
-      - /auth/**
+      - /v1/auth/oauth/*/authorize
+      - /v1/auth/oauth/*/callback
+      - /v1/auth/oauth/apple/callback
+      - /v1/auth/refresh
+      - /v1/users/restore
 
 logging:
   config: classpath:config/prod/logback/logback-prod.xml

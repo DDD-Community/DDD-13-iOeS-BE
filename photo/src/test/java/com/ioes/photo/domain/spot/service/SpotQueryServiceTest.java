@@ -3,26 +3,32 @@ package com.ioes.photo.domain.spot.service;
 import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse.SpotItem;
+import com.ioes.photo.domain.spot.dto.SpotPreviewResponse;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.mapper.SpotMapper;
+import com.ioes.photo.domain.spot.mapper.SpotPreviewRow;
 import com.ioes.photo.domain.spot.mapper.SpotRow;
+import com.ioes.photo.domain.spot.mapper.SpotViewportRow;
 import com.ioes.photo.domain.savedspot.entity.SavedSpotArchive;
 import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
+import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.external.crowd.enums.CongestionLevel;
 import com.ioes.photo.external.weather.enums.PrecipitationType;
 import com.ioes.photo.external.weather.enums.SkyStatus;
 import com.ioes.photo.global.error.exception.BusinessException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,6 +36,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalTime;
@@ -50,6 +58,7 @@ import static org.mockito.Mockito.never;
  * @author 황제연
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("SpotQueryService 단위 테스트")
 class SpotQueryServiceTest {
 
@@ -59,11 +68,17 @@ class SpotQueryServiceTest {
     @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
     @Mock SpotThumbnailService spotThumbnailService;
     @Mock SpotMapper          spotMapper;
+    @Mock UserRepository      userRepository;
 
     @InjectMocks SpotQueryService spotQueryService;
 
     private static final String PUBLISHED_CODE = SpotStatus.PUBLISHED.getCode();
-    private static final String PUBLISHED_NAME = SpotStatus.PUBLISHED.name();
+
+    @BeforeEach
+    void setUpUserRepository() {
+        // 기본적으로 모든 업로더가 활성 상태라고 가정 (탈퇴 유저 처리 테스트 제외)
+        given(userRepository.findActiveIdsByIdIn(any())).willAnswer(inv -> inv.getArgument(0));
+    }
 
     // ── findSpotsInViewport ──────────────────────────────────────────────────
 
@@ -77,17 +92,17 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("뷰포트 내 스팟이 있으면 thumbnailUrl을 포함한 SpotSummary 목록을 반환한다")
         void returnsSummariesWithThumbnail_whenSpotsFound() {
-            Spot spot = buildSpot(1L, 37.55, 127.05);
+            SpotViewportRow row = new SpotViewportRow(1L, 37.55, 127.05, null);
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/thumbnail/key.jpg");
 
-            given(spotRepository.findAllInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE))
-                .willReturn(List.of(spot));
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null))
+                .willReturn(List.of(row));
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L)))
                 .willReturn(List.of(image));
             given(spotThumbnailService.getThumbnailUrl(image))
                 .willReturn("https://cdn.example.com/thumbnail.jpg");
 
-            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport);
+            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport, null, null);
 
             assertThat(response.spots()).hasSize(1);
             SpotSummary summary = response.spots().get(0);
@@ -95,19 +110,50 @@ class SpotQueryServiceTest {
             assertThat(summary.spotImageUrl()).isEqualTo("https://cdn.example.com/thumbnail.jpg");
             assertThat(summary.latitude()).isEqualTo(37.55);
             assertThat(summary.longitude()).isEqualTo(127.05);
+            assertThat(summary.isMySpot()).isFalse();
+        }
+
+        @Test
+        @DisplayName("로그인 사용자의 스팟이면 isMySpot이 true다")
+        void isMySpotTrue_whenSpotBelongsToUser() {
+            SpotViewportRow row = new SpotViewportRow(1L, 37.55, 127.05, 42L);
+
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null))
+                .willReturn(List.of(row));
+            given(spotImageRepository.findAllBySpotIdIn(List.of(1L)))
+                .willReturn(List.of());
+
+            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport, null, 42L);
+
+            assertThat(response.spots().get(0).isMySpot()).isTrue();
+        }
+
+        @Test
+        @DisplayName("다른 사용자의 스팟이면 isMySpot이 false다")
+        void isMySpotFalse_whenSpotBelongsToDifferentUser() {
+            SpotViewportRow row = new SpotViewportRow(1L, 37.55, 127.05, 99L);
+
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null))
+                .willReturn(List.of(row));
+            given(spotImageRepository.findAllBySpotIdIn(List.of(1L)))
+                .willReturn(List.of());
+
+            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport, null, 42L);
+
+            assertThat(response.spots().get(0).isMySpot()).isFalse();
         }
 
         @Test
         @DisplayName("이미지가 없는 스팟의 thumbnailUrl은 null이다")
         void returnsNullThumbnail_whenNoImage() {
-            Spot spot = buildSpot(2L, 37.55, 127.05);
+            SpotViewportRow row = new SpotViewportRow(2L, 37.55, 127.05, null);
 
-            given(spotRepository.findAllInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE))
-                .willReturn(List.of(spot));
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null))
+                .willReturn(List.of(row));
             given(spotImageRepository.findAllBySpotIdIn(List.of(2L)))
                 .willReturn(List.of());
 
-            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport);
+            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport, null, null);
 
             assertThat(response.spots()).hasSize(1);
             assertThat(response.spots().get(0).spotImageUrl()).isNull();
@@ -116,24 +162,126 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("뷰포트 내 스팟이 없으면 빈 목록을 반환하고 이미지 조회는 수행하지 않는다")
         void returnsEmpty_whenNoSpotsFound() {
-            given(spotRepository.findAllInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null))
                 .willReturn(List.of());
 
-            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport);
+            SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport, null, null);
 
             assertThat(response.spots()).isEmpty();
             then(spotImageRepository).should(never()).findAllBySpotIdIn(anyList());
         }
 
         @Test
-        @DisplayName("repository에 올바른 min/max 좌표와 PUBLISHED 코드를 전달한다")
-        void passesCorrectParamsToRepository() {
-            given(spotRepository.findAllInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE))
+        @DisplayName("theme 필터를 mapper에 코드값으로 전달한다")
+        void passesThemeCodeToMapper() {
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, SpotTheme.SUNSET.getCode()))
                 .willReturn(List.of());
 
-            spotQueryService.findSpotsInViewport(viewport);
+            spotQueryService.findSpotsInViewport(viewport, SpotTheme.SUNSET, null);
 
-            then(spotRepository).should().findAllInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE);
+            then(spotMapper).should()
+                .findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, SpotTheme.SUNSET.getCode());
+        }
+    }
+
+    // ── findSpotPreview ──────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("findSpotPreview()")
+    class FindSpotPreview {
+
+        @Test
+        @DisplayName("스팟이 존재하면 미리보기 응답을 반환한다")
+        void returnsPreview_whenSpotExists() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, 1.2, "서울시 마포구");
+            SpotImage image = SpotImage.create(1L, "prod/public/spots/1/thumbnail/key.jpg");
+            given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
+            given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumbnail.jpg");
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, 37.5, 127.0, null);
+
+            assertThat(response.spotId()).isEqualTo(1L);
+            assertThat(response.name()).isEqualTo("한강공원");
+            assertThat(response.isMySpot()).isFalse();
+            assertThat(response.theme()).isEqualTo(SpotTheme.SUNSET);
+            assertThat(response.bookmarkCount()).isEqualTo(5L);
+            assertThat(response.distanceKm()).isEqualTo(1.2);
+            assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/thumbnail.jpg");
+            assertThat(response.addressSimple()).isEqualTo("서울시 마포구");
+            assertThat(response.addressRoad()).isNull();
+            assertThat(response.addressJibun()).isNull();
+        }
+
+        @Test
+        @DisplayName("이미지가 없는 스팟의 imageUrl은 null이다")
+        void imageUrlNull_whenNoImage() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구");
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
+
+            assertThat(response.imageUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("스팟이 존재하지 않으면 SPOT_NOT_FOUND 예외를 던진다")
+        void throwsSpotNotFound_whenRowNull() {
+            given(spotMapper.findSpotPreview(99L, null, null)).willReturn(null);
+
+            assertThatThrownBy(() -> spotQueryService.findSpotPreview(99L, null, null, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("로그인 사용자가 스팟 등록자면 isMySpot이 true다")
+        void isMySpotTrue_whenUserIsOwner() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, null, "서울시 마포구");
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, 42L);
+
+            assertThat(response.isMySpot()).isTrue();
+        }
+
+        @Test
+        @DisplayName("다른 사용자면 isMySpot이 false다")
+        void isMySpotFalse_whenDifferentUser() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, 5L, null, "서울시 마포구");
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, 42L);
+
+            assertThat(response.isMySpot()).isFalse();
+        }
+
+        @Test
+        @DisplayName("위도/경도 미제공 시 distanceKm는 null이다")
+        void distanceKmNull_whenNoCoordinates() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구");
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
+
+            assertThat(response.distanceKm()).isNull();
+        }
+
+        @Test
+        @DisplayName("userId가 null이면 isMySpot은 false다")
+        void isMySpotFalse_whenUserIdNull() {
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, 1.2, "서울시 마포구");
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
+
+            assertThat(response.isMySpot()).isFalse();
         }
     }
 
@@ -146,51 +294,58 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도만 전달하면 INVALID_INPUT_VALUE 예외를 던진다")
         void throwsWhenOnlyLatProvided() {
-            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, 37.5, null))
+            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, 37.5, null, SortType.RECOMMENDED))
                 .isInstanceOf(BusinessException.class);
         }
 
         @Test
         @DisplayName("경도만 전달하면 INVALID_INPUT_VALUE 예외를 던진다")
         void throwsWhenOnlyLngProvided() {
-            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, 127.0))
+            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, 127.0, SortType.RECOMMENDED))
+                .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("DISTANCE 정렬에 위치 없으면 INVALID_INPUT_VALUE 예외를 던진다")
+        void throwsWhenDistanceSortWithoutCoordinates() {
+            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, null, SortType.DISTANCE))
                 .isInstanceOf(BusinessException.class);
         }
 
         @Test
         @DisplayName("위도/경도 모두 null이면 정상 처리된다")
         void successWhenBothCoordinatesNull() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 0, 6))
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
 
             assertThat(response).isNotNull();
         }
 
         @Test
-        @DisplayName("위도/경도 모두 있으면 mapper에 전달하여 거리순으로 조회한다")
-        void passesLatLngToMapper() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, 37.5, 127.0, 0, 6))
+        @DisplayName("위도/경도 모두 있고 DISTANCE 정렬이면 mapper에 전달한다")
+        void passesLatLngToMapperWhenDistanceSort() {
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            spotQueryService.findSpots(0, null, 37.5, 127.0);
+            spotQueryService.findSpots(0, null, 37.5, 127.0, SortType.DISTANCE);
 
-            then(spotMapper).should().findSpots(PUBLISHED_NAME, null, 37.5, 127.0, 0, 6);
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode());
         }
 
         @Test
-        @DisplayName("테마 필터가 있으면 mapper에 theme 이름을 전달한다")
-        void passesThemeToMapper() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, SpotTheme.SUNSET.name(), null, null, 0, 6))
+        @DisplayName("테마 필터가 있으면 mapper에 테마 코드를 전달한다")
+        void passesThemeCodeToMapper() {
+            given(spotMapper.findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, SpotTheme.SUNSET.name())).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode())).willReturn(0L);
 
-            spotQueryService.findSpots(0, SpotTheme.SUNSET, null, null);
+            spotQueryService.findSpots(0, SpotTheme.SUNSET, null, null, SortType.RECOMMENDED);
 
-            then(spotMapper).should().findSpots(PUBLISHED_NAME, SpotTheme.SUNSET.name(), null, null, 0, 6);
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
@@ -204,11 +359,11 @@ class SpotQueryServiceTest {
                 new SpotRow(5L, "스팟E", "SS", null),
                 new SpotRow(6L, "스팟F", "SS", null)
             );
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 0, 6)).willReturn(rows);
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(7L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(rows);
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(7L);
             given(spotImageRepository.findAllBySpotIdIn(any())).willReturn(List.of());
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
 
             assertThat(response.hasNext()).isTrue();
         }
@@ -216,10 +371,10 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("전체 개수가 다음 페이지 기준 이하면 hasNext가 false다")
         void hasNextFalse_whenLastPage() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 0, 6)).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(6L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(6L);
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
 
             assertThat(response.hasNext()).isFalse();
         }
@@ -227,21 +382,21 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("page=1이면 offset=6으로 mapper를 호출한다")
         void passesCorrectOffsetForPage1() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 6, 6)).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(0L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            spotQueryService.findSpots(1, null, null, null);
+            spotQueryService.findSpots(1, null, null, null, SortType.RECOMMENDED);
 
-            then(spotMapper).should().findSpots(PUBLISHED_NAME, null, null, null, 6, 6);
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("응답에 요청한 page 번호가 그대로 포함된다")
         void responseContainsRequestedPage() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 12, 6)).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(0L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 12, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            SpotListResponse response = spotQueryService.findSpots(2, null, null, null);
+            SpotListResponse response = spotQueryService.findSpots(2, null, null, null, SortType.RECOMMENDED);
 
             assertThat(response.page()).isEqualTo(2);
         }
@@ -251,12 +406,12 @@ class SpotQueryServiceTest {
         void mapsSpotRowToSpotItemCorrectly() {
             SpotImage image = SpotImage.create(1L, "key.jpg");
             SpotRow row = new SpotRow(1L, "한강공원", "SS", 1.5);
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 0, 6)).willReturn(List.of(row));
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(1L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of(row));
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L))).willReturn(List.of(image));
             given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumb.jpg");
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
 
             assertThat(response.spots()).hasSize(1);
             SpotItem item = response.spots().get(0);
@@ -270,10 +425,10 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("SpotRow 결과가 비어있으면 이미지 조회를 수행하지 않는다")
         void skipsImageQuery_whenNoRows() {
-            given(spotMapper.findSpots(PUBLISHED_NAME, null, null, null, 0, 6)).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_NAME, null)).willReturn(0L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            spotQueryService.findSpots(0, null, null, null);
+            spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
 
             then(spotImageRepository).should(never()).findAllBySpotIdIn(anyList());
         }

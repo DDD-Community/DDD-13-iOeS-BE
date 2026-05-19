@@ -300,4 +300,81 @@ class TokenServiceTest {
             assertThat(tokenService.isRefreshTokenValid("null-case")).isFalse();
         }
     }
+
+    // ── logout ────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("logout()")
+    class Logout {
+
+        private static final String BLACKLIST_PREFIX = "blacklist:";
+        private static final long REMAINING_MS = 3600000L;
+
+        @BeforeEach
+        void setUpBlacklist() {
+            given(tokenProperties.blacklistKeyPrefix()).willReturn(BLACKLIST_PREFIX);
+        }
+
+        @Test
+        @DisplayName("Refresh Token을 무효화하고 Access Token을 블랙리스트에 등록한다")
+        void shouldInvalidateRefreshAndBlacklistAccess() {
+            String refreshToken = "refresh-to-logout";
+            given(valueOperations.get(REFRESH_PREFIX + refreshToken)).willReturn(TEST_USER_ID);
+            given(redisTemplate.delete(REFRESH_PREFIX + refreshToken)).willReturn(true);
+            given(jwtProvider.getRemainingValidityMs(TEST_ACCESS_TOKEN)).willReturn(REMAINING_MS);
+
+            tokenService.logout(refreshToken, TEST_ACCESS_TOKEN);
+
+            then(redisTemplate).should().delete(REFRESH_PREFIX + refreshToken);
+            then(valueOperations).should().set(
+                eq(BLACKLIST_PREFIX + TEST_ACCESS_TOKEN),
+                eq("blacklisted"),
+                eq(REMAINING_MS),
+                eq(TimeUnit.MILLISECONDS)
+            );
+        }
+
+        @Test
+        @DisplayName("Access Token이 null이면 블랙리스트 등록 없이 Refresh Token만 무효화한다")
+        void shouldOnlyInvalidateRefresh_whenAccessTokenNull() {
+            String refreshToken = "refresh-only";
+            given(valueOperations.get(REFRESH_PREFIX + refreshToken)).willReturn(TEST_USER_ID);
+            given(redisTemplate.delete(REFRESH_PREFIX + refreshToken)).willReturn(true);
+
+            tokenService.logout(refreshToken, null);
+
+            then(redisTemplate).should().delete(REFRESH_PREFIX + refreshToken);
+            then(valueOperations).should(never()).set(startsWith(BLACKLIST_PREFIX), any(), anyLong(), any());
+        }
+    }
+
+    // ── isBlacklisted ─────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("isBlacklisted()")
+    class IsBlacklisted {
+
+        private static final String BLACKLIST_PREFIX = "blacklist:";
+
+        @BeforeEach
+        void setUpBlacklist() {
+            given(tokenProperties.blacklistKeyPrefix()).willReturn(BLACKLIST_PREFIX);
+        }
+
+        @Test
+        @DisplayName("블랙리스트에 있는 토큰이면 true를 반환한다")
+        void shouldReturnTrue_whenBlacklisted() {
+            given(redisTemplate.hasKey(BLACKLIST_PREFIX + TEST_ACCESS_TOKEN)).willReturn(Boolean.TRUE);
+
+            assertThat(tokenService.isBlacklisted(TEST_ACCESS_TOKEN)).isTrue();
+        }
+
+        @Test
+        @DisplayName("블랙리스트에 없는 토큰이면 false를 반환한다")
+        void shouldReturnFalse_whenNotBlacklisted() {
+            given(redisTemplate.hasKey(BLACKLIST_PREFIX + TEST_ACCESS_TOKEN)).willReturn(Boolean.FALSE);
+
+            assertThat(tokenService.isBlacklisted(TEST_ACCESS_TOKEN)).isFalse();
+        }
+    }
 }

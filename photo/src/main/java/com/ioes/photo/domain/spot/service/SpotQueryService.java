@@ -3,27 +3,30 @@ package com.ioes.photo.domain.spot.service;
 import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse.SpotItem;
+import com.ioes.photo.domain.spot.dto.SpotPreviewResponse;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse;
 import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.mapper.SpotMapper;
+import com.ioes.photo.domain.spot.mapper.SpotPreviewRow;
 import com.ioes.photo.domain.spot.mapper.SpotRow;
+import com.ioes.photo.domain.spot.mapper.SpotViewportRow;
 import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
+import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,6 +48,7 @@ public class SpotQueryService {
     private final SavedSpotArchiveRepository savedSpotArchiveRepository;
     private final SpotThumbnailService spotThumbnailService;
     private final SpotMapper spotMapper;
+    private final UserRepository userRepository;
 
     public SpotDetailResponse findSpotDetail(Long spotId, Long userId) {
         Spot spot = spotRepository.findById(spotId)
@@ -59,45 +63,68 @@ public class SpotQueryService {
 
         boolean isBookmarked = userId != null
             && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
-        boolean isMySpot = userId != null && userId.equals(spot.getUserId());
+        Long resolvedUploaderId = resolveActiveUploaderId(spot.getUserId());
+        boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
 
         return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl, isBookmarked, isMySpot);
     }
 
-    public SpotViewportResponse findSpotsInViewport(ViewportRequest request) {
-        List<Spot> spots = spotRepository.findAllInViewport(
+    public SpotViewportResponse findSpotsInViewport(ViewportRequest request, SpotTheme theme, Long userId) {
+        String themeCode = theme != null ? theme.getCode() : null;
+        List<SpotViewportRow> rows = spotMapper.findSpotsInViewport(
             request.minLat(), request.maxLat(),
             request.minLng(), request.maxLng(),
-            SpotStatus.PUBLISHED.getCode()
+            SpotStatus.PUBLISHED.getCode(),
+            themeCode
         );
 
-        Map<Long, SpotImage> imageMap = loadImageMap(spots.stream().map(Spot::getId).toList());
+        Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotViewportRow::id).toList());
+        Set<Long> activeUploaderIds = resolveActiveUploaderIds(
+            rows.stream().map(SpotViewportRow::userId).collect(Collectors.toSet()));
 
-        List<SpotSummary> summaries = spots.stream()
-            .map(spot -> toSpotSummary(spot, imageMap))
+        List<SpotSummary> summaries = rows.stream()
+            .map(row -> toSpotSummary(row, imageMap, userId, activeUploaderIds))
             .toList();
 
         return new SpotViewportResponse(summaries);
     }
 
-    public SpotListResponse findSpots(int page, SpotTheme theme, Double latitude, Double longitude) {
+    public SpotPreviewResponse findSpotPreview(Long spotId, Double latitude, Double longitude, Long userId) {
+        SpotPreviewRow row = spotMapper.findSpotPreview(spotId, latitude, longitude);
+        if (row == null) {
+            throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+        Long resolvedUploaderId = resolveActiveUploaderId(row.userId());
+        boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
+        String imageUrl = spotImageRepository.findById(spotId)
+            .map(spotThumbnailService::getThumbnailUrl)
+            .orElse(null);
+        return new SpotPreviewResponse(
+            row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
+            row.bookmarkCount(), row.distanceKm(), imageUrl, row.addressSimple(), null, null
+        );
+    }
+
+    public SpotListResponse findSpots(int page, SpotTheme theme, Double latitude, Double longitude, SortType sort) {
         if ((latitude == null) != (longitude == null)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "위도와 경도는 함께 입력해야 합니다.");
         }
+        if (sort == SortType.DISTANCE && latitude == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "거리순 정렬 시 위도와 경도는 필수입니다.");
+        }
 
-        String status = SpotStatus.PUBLISHED.name();
-        String themeStr = theme != null
-                ? theme.name()
-                : null;
+        String status = SpotStatus.PUBLISHED.getCode();
+        String themeCode = theme != null ? theme.getCode() : null;
+        String sortCode = sort != null ? sort.getCode() : SortType.RECOMMENDED.getCode();
 
-        List<SpotRow> rows = spotMapper.findSpots(status, themeStr, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE);
+        List<SpotRow> rows = spotMapper.findSpots(status, themeCode, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotRow::id).toList());
 
         List<SpotItem> items = rows.stream()
             .map(row -> toSpotItem(row, imageMap))
             .toList();
 
-        return new SpotListResponse(items, page, spotMapper.countSpots(status, themeStr) > (long) (page + 1) * LIST_PAGE_SIZE);
+        return new SpotListResponse(items, page, spotMapper.countSpots(status, themeCode) > (long) (page + 1) * LIST_PAGE_SIZE);
     }
 
     private Map<Long, SpotImage> loadImageMap(List<Long> spotIds) {
@@ -108,9 +135,33 @@ public class SpotQueryService {
             .stream().collect(Collectors.toMap(SpotImage::getSpotId, image -> image));
     }
 
-    private SpotSummary toSpotSummary(Spot spot, Map<Long, SpotImage> imageMap) {
-        String thumbnailUrl = thumbnailUrl(imageMap.get(spot.getId()));
-        return new SpotSummary(spot.getId(), thumbnailUrl, spot.getLatitude(), spot.getLongitude());
+    private SpotSummary toSpotSummary(SpotViewportRow row, Map<Long, SpotImage> imageMap,
+                                      Long userId, Set<Long> activeUploaderIds) {
+        String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
+        boolean isMySpot = userId != null
+                && activeUploaderIds.contains(row.userId()) && userId.equals(row.userId());
+        return new SpotSummary(row.id(), thumbnailUrl, row.latitude(), row.longitude(), isMySpot);
+    }
+
+    private Long resolveActiveUploaderId(Long uploaderUserId) {
+        if (uploaderUserId == null) {
+            return null;
+        }
+        Set<Long> activeIds = userRepository.findActiveIdsByIdIn(Set.of(uploaderUserId));
+        return activeIds.contains(uploaderUserId)
+                ? uploaderUserId
+                : null;
+    }
+
+    private Set<Long> resolveActiveUploaderIds(Set<Long> uploaderUserIds) {
+        if (uploaderUserIds == null || uploaderUserIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<Long> nonNull = uploaderUserIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNull.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return userRepository.findActiveIdsByIdIn(nonNull);
     }
 
     private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap) {

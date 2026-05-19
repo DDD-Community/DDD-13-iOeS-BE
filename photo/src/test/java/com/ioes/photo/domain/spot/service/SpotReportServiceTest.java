@@ -5,9 +5,9 @@ import com.ioes.photo.domain.spot.dto.SpotReportResponse;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotReport;
 import com.ioes.photo.domain.spot.enums.SpotReportStatus;
-import com.ioes.photo.domain.spot.enums.SpotReportType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.repository.SpotReportRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.global.error.exception.BusinessException;
@@ -43,9 +43,9 @@ class SpotReportServiceTest {
 
     @InjectMocks SpotReportService spotReportService;
 
-    private static final Long   USER_ID  = 42L;
-    private static final Long   SPOT_ID  = 7L;
-    private static final Long   REPORT_ID = 100L;
+    private static final Long USER_ID   = 42L;
+    private static final Long SPOT_ID   = 7L;
+    private static final Long REPORT_ID = 100L;
 
     // ── report ───────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ class SpotReportServiceTest {
         @Test
         @DisplayName("PUBLISHED 스팟에 신고하면 저장된 리포트 id를 반환한다")
         void returnsReportId_whenSpotIsPublished() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.LOCATION_ERROR, "위치가 잘못됐어요");
+            SpotReportRequest request = new SpotReportRequest("위치가 잘못됐어요");
             Spot publishedSpot = buildSpot(SPOT_ID, SpotStatus.PUBLISHED);
             SpotReport saved = buildReport(REPORT_ID);
 
@@ -69,44 +69,50 @@ class SpotReportServiceTest {
         }
 
         @Test
-        @DisplayName("존재하지 않는 스팟이면 BusinessException을 던진다")
+        @DisplayName("존재하지 않는 스팟이면 SPOT_NOT_FOUND 예외를 던진다")
         void throwsBusinessException_whenSpotNotFound() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.ETC, "내용");
+            SpotReportRequest request = new SpotReportRequest("내용입니다");
 
             given(spotRepository.findById(SPOT_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> spotReportService.report(USER_ID, SPOT_ID, request))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND));
         }
 
         @Test
-        @DisplayName("PENDING 상태의 스팟이면 BusinessException을 던진다")
+        @DisplayName("PENDING 상태의 스팟이면 SPOT_NOT_PUBLISHED 예외를 던진다")
         void throwsBusinessException_whenSpotIsPending() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.WRONG_NAME, "내용");
+            SpotReportRequest request = new SpotReportRequest("내용입니다");
             Spot pendingSpot = buildSpot(SPOT_ID, SpotStatus.PENDING);
 
             given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(pendingSpot));
 
             assertThatThrownBy(() -> spotReportService.report(USER_ID, SPOT_ID, request))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SpotErrorCode.SPOT_NOT_PUBLISHED));
         }
 
         @Test
-        @DisplayName("REJECTED 상태의 스팟이면 BusinessException을 던진다")
+        @DisplayName("REJECTED 상태의 스팟이면 SPOT_NOT_PUBLISHED 예외를 던진다")
         void throwsBusinessException_whenSpotIsRejected() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.ETC, "내용");
+            SpotReportRequest request = new SpotReportRequest("내용입니다");
             Spot rejectedSpot = buildSpot(SPOT_ID, SpotStatus.REJECTED);
 
             given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(rejectedSpot));
 
             assertThatThrownBy(() -> spotReportService.report(USER_ID, SPOT_ID, request))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SpotErrorCode.SPOT_NOT_PUBLISHED));
         }
 
         @Test
         @DisplayName("신고 시 status는 PENDING으로 초기화된다")
         void setsStatusToPending_onCreate() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.LOCATION_ERROR, "내용");
+            SpotReportRequest request = new SpotReportRequest("신고 내용입니다");
             Spot publishedSpot = buildSpot(SPOT_ID, SpotStatus.PUBLISHED);
             SpotReport saved = buildReport(REPORT_ID);
 
@@ -121,9 +127,9 @@ class SpotReportServiceTest {
         }
 
         @Test
-        @DisplayName("신고 엔티티에 userId, spotId, type, content가 올바르게 설정된다")
+        @DisplayName("신고 엔티티에 userId, spotId, content가 올바르게 설정된다")
         void setsAllFieldsCorrectly() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.WRONG_NAME, "이름이 틀려요");
+            SpotReportRequest request = new SpotReportRequest("이름이 틀려요");
             Spot publishedSpot = buildSpot(SPOT_ID, SpotStatus.PUBLISHED);
             SpotReport saved = buildReport(REPORT_ID);
 
@@ -138,25 +144,7 @@ class SpotReportServiceTest {
             SpotReport captured = captor.getValue();
             assertThat(captured.getUserId()).isEqualTo(USER_ID);
             assertThat(captured.getSpotId()).isEqualTo(SPOT_ID);
-            assertThat(captured.getType()).isEqualTo(SpotReportType.WRONG_NAME);
             assertThat(captured.getContent()).isEqualTo("이름이 틀려요");
-        }
-
-        @Test
-        @DisplayName("신고 유형 ETC도 정상 저장된다")
-        void savesEtcReportType() {
-            SpotReportRequest request = new SpotReportRequest(SpotReportType.ETC, "기타 사유");
-            Spot publishedSpot = buildSpot(SPOT_ID, SpotStatus.PUBLISHED);
-            SpotReport saved = buildReport(REPORT_ID);
-
-            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(publishedSpot));
-            given(spotReportRepository.save(any(SpotReport.class))).willReturn(saved);
-
-            spotReportService.report(USER_ID, SPOT_ID, request);
-
-            ArgumentCaptor<SpotReport> captor = ArgumentCaptor.forClass(SpotReport.class);
-            then(spotReportRepository).should().save(captor.capture());
-            assertThat(captor.getValue().getType()).isEqualTo(SpotReportType.ETC);
         }
     }
 
@@ -178,7 +166,6 @@ class SpotReportServiceTest {
         SpotReport report = SpotReport.builder()
             .spotId(SPOT_ID)
             .userId(USER_ID)
-            .type(SpotReportType.LOCATION_ERROR)
             .content("내용")
             .build();
         ReflectionTestUtils.setField(report, "id", id);
