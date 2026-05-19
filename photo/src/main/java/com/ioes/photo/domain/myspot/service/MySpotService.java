@@ -1,27 +1,37 @@
 package com.ioes.photo.domain.myspot.service;
 
+import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
+import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse.MySpotItem;
 import com.ioes.photo.domain.myspot.mapper.MySpotMapper;
 import com.ioes.photo.domain.myspot.mapper.MySpotRow;
+import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
+import com.ioes.photo.domain.spot.dto.SpotImageSyncResponse;
+import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
+import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 나만의 스팟(사용자가 등록한 스팟) 조회 서비스.
+ * 나만의 스팟(사용자가 등록한 스팟) 서비스.
  *
- * 검수 대기(PENDING)와 공개(PUBLISHED) 상태를 모두 노출하며, 반려(REJECTED) 상태는 제외한다.
+ * 조회: 검수 대기(PENDING)와 공개(PUBLISHED) 상태를 모두 노출하며, 반려(REJECTED) 상태는 제외한다.
+ * 등록: PENDING 상태로 저장하며, 클라이언트가 S3에 직접 업로드한 이미지 키를 받아 sync한다.
  *
  * @author 김성민
  */
@@ -39,6 +49,9 @@ public class MySpotService {
     private final MySpotMapper mySpotMapper;
     private final SpotImageRepository spotImageRepository;
     private final StorageService storageService;
+    private final SpotRepository spotRepository;
+    private final SpotImageAdminService spotImageAdminService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public MySpotListResponse findMySpots(Long userId, int page, Double latitude, Double longitude) {
         List<MySpotRow> rows = mySpotMapper.findMySpots(
@@ -54,6 +67,40 @@ public class MySpotService {
         boolean hasNext = mySpotMapper.countMySpots(userId, VISIBLE_STATUS_CODES)
             > (long) (page + 1) * PAGE_SIZE;
         return new MySpotListResponse(items, page, hasNext);
+    }
+
+    @Transactional
+    public CreateMySpotResponse createMySpot(Long userId, CreateMySpotRequest request) {
+        Spot spot = spotRepository.save(Spot.builder()
+            .name(request.name())
+            .comment(request.comment())
+            .theme(request.theme())
+            .latitude(request.latitude())
+            .longitude(request.longitude())
+            .address(request.address())
+            .status(SpotStatus.PENDING)
+            .userId(userId)
+            .build());
+
+        eventPublisher.publishEvent(new StorageUploadRollbackEvent(request.imageKey()));
+
+        SpotImageSyncResponse sync = spotImageAdminService.syncImage(
+            spot.getId(),
+            new SpotImageSyncRequest(
+                request.imageKey(),
+                request.originalFilename(),
+                request.contentType(),
+                request.recordedDate(),
+                request.recordedTime()
+            )
+        );
+
+        return new CreateMySpotResponse(
+            spot.getId(),
+            SpotStatus.PENDING.name(),
+            sync.imageUrl(),
+            sync.thumbnailUrl()
+        );
     }
 
     private Map<Long, SpotImage> loadImageMap(List<Long> spotIds) {

@@ -1,5 +1,7 @@
 package com.ioes.photo.domain.myspot.controller;
 
+import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
+import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.service.MySpotService;
 import com.ioes.photo.global.common.response.ApiResponse;
@@ -8,21 +10,26 @@ import com.ioes.photo.global.common.validation.Longitude;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 나만의 스팟 조회 컨트롤러.
+ * 나만의 스팟 컨트롤러.
  *
  * @author 김성민
  */
-@Tag(name = "나만의 스팟", description = "사용자가 등록한 스팟 조회 API")
+@Tag(name = "나만의 스팟", description = "사용자가 등록한 스팟 조회/등록 API")
 @Validated
 @RestController
 @RequestMapping("/v1")
@@ -47,5 +54,21 @@ public class MySpotController {
     ) {
         Long userId = Long.parseLong(authentication.getName());
         return ApiResponse.success(mySpotService.findMySpots(userId, page, latitude, longitude));
+    }
+
+    @Operation(
+        summary = "나만의 스팟 등록",
+        description = "사용자가 S3에 직접 업로드한 이미지 키와 메타데이터로 스팟을 등록합니다. "
+            + "등록 직후 상태는 PENDING이며 운영자 검수 후 PUBLISHED/REJECTED로 전이됩니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping("/users/me/my-spots")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<CreateMySpotResponse> createMySpot(
+        Authentication authentication,
+        @RequestBody @Valid CreateMySpotRequest request
+    ) {
+        Long userId = Long.parseLong(authentication.getName());
+        return ApiResponse.success(mySpotService.createMySpot(userId, request));
     }
 }
