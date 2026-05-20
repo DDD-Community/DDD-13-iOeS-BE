@@ -55,6 +55,7 @@ app:
       - /v1/auth/apple
       - /v1/auth/refresh
       - /v1/users/restore
+      - /v1/internal/**
 
 logging:
   config: classpath:config/prod/logback/logback-prod.xml
