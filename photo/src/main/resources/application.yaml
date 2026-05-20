@@ -8,8 +8,8 @@ spring:
       - "optional:classpath:config/prod/yaml/application-prod.yaml"
   servlet:
     multipart:
-      max-file-size: 10MB        # app.file.max-size 와 반드시 일치
-      max-request-size: 11MB     # 폼 필드 포함 전체 요청 크기
+      max-file-size: 100MB       # 배치 업로드 ZIP 수용. 일반 사용자 이미지 크기는 서비스 계층에서 별도 검증(app.file.max-size)
+      max-request-size: 110MB    # 폼 필드 포함 전체 요청 크기
 
 # 파일 업로드
 app:
@@ -77,9 +77,8 @@ app:
       - /api-docs/**
       - /swagger-ui.html
       - /actuator/health
-      - /v1/auth/oauth/*/authorize
-      - /v1/auth/oauth/*/callback
-      - /v1/auth/oauth/apple/callback
+      - /v1/auth/kakao
+      - /v1/auth/apple
       - /v1/auth/refresh
       - /v1/users/restore
     # GET 요청에 한해 비로그인 허용 — 같은 경로의 비-GET(예: POST 신고)은 인증 유지
@@ -229,12 +228,6 @@ app:
       min: 1
       max: 99999
       max-attempts: 5
-
-  # OAuth State/PKCE Redis 저장
-  oauth:
-    state:
-      key-prefix: "oauth_state:"
-      ttl-seconds: 300
 
   # JWT
   jwt:

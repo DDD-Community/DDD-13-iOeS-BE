@@ -40,25 +40,22 @@ app:
   oauth:
     kakao:
       client-id: ${KAKAO_CLIENT_ID}
-      client-secret: ${KAKAO_CLIENT_SECRET}
-      redirect-uri: ${KAKAO_REDIRECT_URI}
-      admin-key: ${KAKAO_ADMIN_KEY}
+      admin-key: ${KAKAO_ADMIN_KEY:}
     apple:
       client-id: ${APPLE_CLIENT_ID}
       team-id: ${APPLE_TEAM_ID}
       key-id: ${APPLE_KEY_ID}
       private-key: ${APPLE_PRIVATE_KEY}
-      redirect-uri: ${APPLE_REDIRECT_URI}
       client-secret-ttl-ms: 600000
 
   security:
     public-urls:
       - /actuator/health
-      - /v1/auth/oauth/*/authorize
-      - /v1/auth/oauth/*/callback
-      - /v1/auth/oauth/apple/callback
+      - /v1/auth/kakao
+      - /v1/auth/apple
       - /v1/auth/refresh
       - /v1/users/restore
+      - /v1/internal/**
 
 logging:
   config: classpath:config/prod/logback/logback-prod.xml
