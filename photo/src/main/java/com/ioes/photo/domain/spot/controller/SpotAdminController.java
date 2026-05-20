@@ -2,9 +2,11 @@ package com.ioes.photo.domain.spot.controller;
 
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
+import com.ioes.photo.domain.spot.dto.SpotBatchUploadResponse;
 import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.dto.SpotImageSyncResponse;
 import com.ioes.photo.domain.spot.service.SpotAdminService;
+import com.ioes.photo.domain.spot.service.SpotBatchUploadService;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,12 +15,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 스팟 어드민 컨트롤러.
@@ -36,6 +41,7 @@ public class SpotAdminController {
 
     private final SpotAdminService spotAdminService;
     private final SpotImageAdminService spotImageAdminService;
+    private final SpotBatchUploadService spotBatchUploadService;
 
     @Operation(
         summary = "스팟 배치 등록",
@@ -48,6 +54,21 @@ public class SpotAdminController {
         @RequestBody @Valid SpotAdminCreateRequest request
     ) {
         return ApiResponse.success(spotAdminService.createSpots(request));
+    }
+
+    @Operation(
+        summary = "스팟 배치 업로드",
+        description = "Excel(스팟 정보)과 ZIP(이미지)을 함께 업로드하여 스팟과 대표 이미지를 일괄 등록합니다. " +
+            "ZIP 파일명 규칙: {3자리숫자}_{스팟명}.{확장자} — 숫자가 Excel id(spot_001)와 매핑됩니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping(value = "/batch-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<SpotBatchUploadResponse> batchUpload(
+        @RequestPart("excel") MultipartFile excel,
+        @RequestPart("images") MultipartFile images
+    ) {
+        return ApiResponse.success(spotBatchUploadService.batchUpload(excel, images));
     }
 
     @Operation(

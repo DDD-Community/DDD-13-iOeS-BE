@@ -57,6 +57,8 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	// Excel 파싱 (배치 업로드)
+	implementation 'org.apache.poi:poi-ooxml:5.3.0'
 	// XML (JAXB + Jackson XML)
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 	implementation 'jakarta.xml.bind:jakarta.xml.bind-api'
