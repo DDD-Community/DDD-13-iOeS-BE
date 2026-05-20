@@ -29,8 +29,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 /**
  * {@link KakaoOAuthClient} 단위 테스트.
  *
- * HTTP 레이어는 MockRestServiceServer로 인터셉트하며,
- * 비즈니스 로직(URL 구성, 응답 파싱, 필드 매핑, revoke)을 검증합니다.
+ * 네이티브 SDK 플로우: 앱이 Kakao SDK로 발급받은 accessToken을 전달하면
+ * 백엔드가 Kakao API를 호출해 사용자 정보를 조회합니다.
  *
  * @author 황제연
  */
@@ -39,7 +39,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @DisplayName("KakaoOAuthClient 단위 테스트")
 class KakaoOAuthClientTest {
 
-    private static final String KAKAO_TOKEN_URL     = "https://kauth.kakao.com/oauth/token";
     private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
     private static final String KAKAO_UNLINK_URL    = "https://kapi.kakao.com/v1/user/unlink";
 
@@ -51,12 +50,7 @@ class KakaoOAuthClientTest {
 
     @BeforeEach
     void setUp() {
-        kakaoProps = new OAuthProperties.Kakao(
-            "test-client-id",
-            "test-client-secret",
-            "http://localhost/auth/oauth/kakao/callback",
-            "test-admin-key"
-        );
+        kakaoProps = new OAuthProperties.Kakao("test-client-id", "test-admin-key");
         given(oAuthProperties.kakao()).willReturn(kakaoProps);
 
         RestClient.Builder builder = RestClient.builder();
@@ -72,36 +66,6 @@ class KakaoOAuthClientTest {
         assertThat(kakaoOAuthClient.getProvider()).isEqualTo(OAuthProvider.KAKAO);
     }
 
-    // ── buildAuthorizationUrl ─────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("buildAuthorizationUrl()")
-    class BuildAuthorizationUrl {
-
-        @Test
-        @DisplayName("Kakao 인증 URL에 필수 파라미터가 포함된다")
-        void shouldContainRequiredParams() {
-            String url = kakaoOAuthClient.buildAuthorizationUrl("test-state", "test-challenge");
-
-            assertThat(url)
-                .contains("https://kauth.kakao.com/oauth/authorize")
-                .contains("response_type=code")
-                .contains("client_id=" + kakaoProps.clientId())
-                .contains("redirect_uri=" + kakaoProps.redirectUri());
-        }
-
-        @Test
-        @DisplayName("State와 PKCE code_challenge가 URL에 포함된다")
-        void shouldContainStateAndPkce() {
-            String url = kakaoOAuthClient.buildAuthorizationUrl("my-state", "my-challenge");
-
-            assertThat(url)
-                .contains("state=my-state")
-                .contains("code_challenge=my-challenge")
-                .contains("code_challenge_method=S256");
-        }
-    }
-
     // ── getUserInfo ───────────────────────────────────────────────────────
 
     @Nested
@@ -109,18 +73,18 @@ class KakaoOAuthClientTest {
     class GetUserInfo {
 
         @Test
-        @DisplayName("인증 코드로 사용자 정보를 조회하면 OAuthUserInfo를 반환한다")
-        void shouldReturnOAuthUserInfo() {
-            server.expect(requestTo(KAKAO_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(tokenJson("kakao-refresh-token"), MediaType.APPLICATION_JSON));
-            server.expect(requestTo(KAKAO_USER_INFO_URL)).andExpect(method(HttpMethod.GET))
+        @DisplayName("accessToken을 Bearer 헤더로 Kakao API를 호출하여 OAuthUserInfo를 반환한다")
+        void shouldCallKakaoApiWithBearerToken() {
+            server.expect(requestTo(KAKAO_USER_INFO_URL))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer kakao-sdk-access-token"))
                 .andRespond(withSuccess("""
                     {"id":12345,"kakao_account":{"email":"test@kakao.com","email_verified":true,
                      "profile":{"nickname":"테스트유저","profile_image_url":"https://profile.kakao.com/image.jpg"}}}
                     """, MediaType.APPLICATION_JSON));
 
             OAuthUserInfo result = kakaoOAuthClient.getUserInfo(
-                Map.of("code", "auth-code-123", "code_verifier", "verifier-xyz")
+                Map.of("accessToken", "kakao-sdk-access-token")
             );
 
             assertThat(result.provider()).isEqualTo(OAuthProvider.KAKAO);
@@ -128,18 +92,16 @@ class KakaoOAuthClientTest {
             assertThat(result.email()).isEqualTo("test@kakao.com");
             assertThat(result.nickname()).isEqualTo("테스트유저");
             assertThat(result.profileImageUrl()).isEqualTo("https://profile.kakao.com/image.jpg");
-            assertThat(result.providerRefreshToken()).isEqualTo("kakao-refresh-token");
+            assertThat(result.providerRefreshToken()).isNull();
         }
 
         @Test
         @DisplayName("카카오 계정 정보가 null이면 email, nickname, profileImageUrl이 null이다")
         void shouldHandleNullKakaoAccount() {
-            server.expect(requestTo(KAKAO_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(tokenJson("refresh"), MediaType.APPLICATION_JSON));
             server.expect(requestTo(KAKAO_USER_INFO_URL)).andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"id\":99}", MediaType.APPLICATION_JSON));
 
-            OAuthUserInfo result = kakaoOAuthClient.getUserInfo(Map.of("code", "code", "code_verifier", "v"));
+            OAuthUserInfo result = kakaoOAuthClient.getUserInfo(Map.of("accessToken", "token"));
 
             assertThat(result.providerId()).isEqualTo("99");
             assertThat(result.email()).isNull();
@@ -150,14 +112,12 @@ class KakaoOAuthClientTest {
         @Test
         @DisplayName("카카오 계정은 있지만 프로필이 null이면 nickname, profileImageUrl이 null이다")
         void shouldHandleNullProfile_whenAccountExists() {
-            server.expect(requestTo(KAKAO_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(tokenJson("refresh"), MediaType.APPLICATION_JSON));
             server.expect(requestTo(KAKAO_USER_INFO_URL)).andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                     {"id":77,"kakao_account":{"email":"email@kakao.com","email_verified":true}}
                     """, MediaType.APPLICATION_JSON));
 
-            OAuthUserInfo result = kakaoOAuthClient.getUserInfo(Map.of("code", "code", "code_verifier", "v"));
+            OAuthUserInfo result = kakaoOAuthClient.getUserInfo(Map.of("accessToken", "token"));
 
             assertThat(result.email()).isEqualTo("email@kakao.com");
             assertThat(result.nickname()).isNull();
@@ -167,12 +127,10 @@ class KakaoOAuthClientTest {
         @Test
         @DisplayName("providerId는 Long 타입 id를 String으로 변환한다")
         void shouldConvertLongIdToString() {
-            server.expect(requestTo(KAKAO_TOKEN_URL)).andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(tokenJson("refresh"), MediaType.APPLICATION_JSON));
             server.expect(requestTo(KAKAO_USER_INFO_URL)).andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"id\":9876543210}", MediaType.APPLICATION_JSON));
 
-            OAuthUserInfo result = kakaoOAuthClient.getUserInfo(Map.of("code", "code", "code_verifier", "v"));
+            OAuthUserInfo result = kakaoOAuthClient.getUserInfo(Map.of("accessToken", "token"));
 
             assertThat(result.providerId()).isEqualTo("9876543210");
         }
@@ -200,22 +158,11 @@ class KakaoOAuthClientTest {
         @Test
         @DisplayName("관리자 키가 없으면 API 호출 없이 경고 로그만 남긴다")
         void shouldSkip_whenAdminKeyBlank() {
-            OAuthProperties.Kakao propsNoAdminKey = new OAuthProperties.Kakao(
-                "client-id", "client-secret", "http://redirect", null
-            );
+            OAuthProperties.Kakao propsNoAdminKey = new OAuthProperties.Kakao("client-id", null);
             given(oAuthProperties.kakao()).willReturn(propsNoAdminKey);
 
             // 서버 expectation 없음 → 호출되면 AssertionError
             kakaoOAuthClient.revokeConnection("12345", null);
         }
-    }
-
-    // ── helper ───────────────────────────────────────────────────────────
-
-    private String tokenJson(String refreshToken) {
-        return """
-            {"token_type":"bearer","access_token":"kakao-access-token","expires_in":3600,
-             "refresh_token":"%s","refresh_token_expires_in":5184000}
-            """.formatted(refreshToken);
     }
 }
