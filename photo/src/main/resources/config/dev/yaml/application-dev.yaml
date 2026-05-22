@@ -18,8 +18,8 @@ spring:
       connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: update
-    defer-datasource-initialization: true
+      ddl-auto: validate
+    defer-datasource-initialization: false
     show-sql: true
     open-in-view: false
     properties:
@@ -27,8 +27,7 @@ spring:
         format_sql: true
   sql:
     init:
-      mode: always
-      schema-locations: classpath:db/spatial-index.sql
+      mode: never
   docker:
     compose:
       enabled: true

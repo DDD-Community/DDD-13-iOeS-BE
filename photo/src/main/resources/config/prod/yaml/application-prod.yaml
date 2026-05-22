@@ -18,14 +18,15 @@ spring:
       connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: update
-    defer-datasource-initialization: true
+      ddl-auto: none
+    defer-datasource-initialization: false
     show-sql: false
     open-in-view: false
   sql:
     init:
-      mode: always
-      schema-locations: classpath:db/spatial-index.sql
+      mode: never
+  flyway:
+    clean-disabled: true
   docker:
     compose:
       enabled: false

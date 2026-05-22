@@ -10,6 +10,14 @@ spring:
     multipart:
       max-file-size: 100MB       # 배치 업로드 ZIP 수용. 일반 사용자 이미지 크기는 서비스 계층에서 별도 검증(app.file.max-size)
       max-request-size: 110MB    # 폼 필드 포함 전체 요청 크기
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    encoding: UTF-8
+    out-of-order: false
+    validate-on-migrate: true
 
 # 파일 업로드
 app:
