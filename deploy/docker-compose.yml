@@ -61,10 +61,7 @@ services:
       start_period: 60s
 
   postgres:
-    build:
-      context: ./postgres
-      dockerfile: Dockerfile
-    image: photo-postgres:latest
+    image: postgis/postgis:17-3.5
     container_name: photo-postgres
     restart: unless-stopped
     environment:
