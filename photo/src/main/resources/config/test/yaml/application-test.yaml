@@ -18,12 +18,16 @@ spring:
       connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+    defer-datasource-initialization: false
     show-sql: true
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  sql:
+    init:
+      mode: never
   docker:
     compose:
       enabled: false
