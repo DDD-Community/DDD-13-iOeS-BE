@@ -52,6 +52,7 @@ app:
   security:
     public-urls:
       - /actuator/health
+      - /actuator/prometheus
       - /v1/auth/kakao
       - /v1/auth/apple
       - /v1/auth/refresh
@@ -73,7 +74,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
   endpoint:
     health:
       show-details: never
