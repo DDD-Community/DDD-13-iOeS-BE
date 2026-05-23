@@ -277,11 +277,82 @@ curl https://pickflow-api.us/api/actuator/health
 
 ---
 
+## 모니터링 스택
+
+Prometheus + Grafana Loki + Grafana 기반 관측가능성 스택이 포함되어 있습니다.
+
+```
+[ 인터넷 ]
+    │
+    │ /grafana/
+    ▼
+┌────────────────────────────────────────────────────┐
+│  EC2 (Docker network: backend)                     │
+│                                                    │
+│  ┌─ nginx ─┐   ┌─ app ─┐ ←──── Prometheus         │
+│  │ :80/443 │──▶│ :8080 │        (15s 간격 스크레이프)│
+│  └────┬────┘   └───────┘                           │
+│       │ /grafana/    ↑                             │
+│       ▼         logs bind mount                    │
+│  ┌─ grafana ─┐  ┌─ promtail ─┐                    │
+│  │  :3000    │  │ ./logs 읽기 │──▶ loki:3100       │
+│  └───────────┘  └────────────┘                    │
+│  node-exporter (호스트 시스템 메트릭)                │
+└────────────────────────────────────────────────────┘
+```
+
+### 접근 방법
+
+- **Grafana**: `https://pickflow-api.us/grafana/` (Grafana 로그인 필요)
+  - `.env`의 `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` 로 초기 로그인
+- **Prometheus UI / Loki**: 외부 노출 없음. 필요 시 SSH 터널 사용
+  ```bash
+  ssh -L 9090:localhost:9090 <ec2-user>@<EIP>  # Prometheus
+  ssh -L 3100:localhost:3100 <ec2-user>@<EIP>  # Loki
+  ```
+
+### 로그 포맷
+
+앱 로그가 JSON 형식으로 출력되어 Loki에서 필드 검색이 가능합니다.
+
+```
+# Loki에서 특정 requestId로 요청 추적
+{job="photo-app"} | json | requestId="abc-123"
+
+# ERROR 레벨 로그만 조회
+{job="photo-app", level="ERROR"} | json
+
+# 특정 userId 요청 조회
+{job="photo-app"} | json | userId="42"
+```
+
+### 보안
+
+| 엔드포인트 | 외부 접근 | 비고 |
+|---|---|---|
+| `/api/actuator/prometheus` | ❌ 403 | nginx deny, Prometheus만 내부에서 접근 |
+| `/grafana/` | ✅ | Grafana 로그인 필요 |
+| Prometheus `:9090` | ❌ | 외부 포트 미노출 |
+| Loki `:3100` | ❌ | 외부 포트 미노출 |
+
+### 설정 파일 구조
+
+```
+deploy/monitoring/
+├── prometheus/prometheus.yml      # 스크레이프 설정
+├── loki/loki-config.yml           # Loki 스토리지/보존 설정
+├── promtail/promtail-config.yml   # 로그 수집 파이프라인
+└── grafana/provisioning/
+    └── datasources/datasources.yml # 데이터소스 자동 프로비저닝
+```
+
+---
+
 ## 다음 단계 (TODO)
 
-- [ ] 실서비스 오픈 전 **Flyway 도입** (현재 `ddl-auto: update`)
+- [x] 실서비스 오픈 전 **Flyway 도입** ✅ 완료
 - [ ] **이미지 업로드 S3 전환** (현재 로컬 볼륨)
 - [ ] **GitHub Actions + GHCR** 기반 CI/CD (현재 EC2 직접 빌드)
 - [ ] Postgres 자동 백업 (cron + S3)
 - [ ] TLS/도메인 적용
-- [ ] 모니터링 (Prometheus/Grafana or CloudWatch)
+- [x] 모니터링 (Prometheus/Grafana Loki) ✅ 완료
