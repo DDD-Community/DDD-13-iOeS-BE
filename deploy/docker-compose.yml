@@ -44,7 +44,7 @@ services:
     volumes:
       - app_uploads:/app/uploads
       # 로그는 호스트에서 직접 접근 가능하도록 bind mount
-      # (logrotate / scp 백업 / ELK forwarder 연계 용이)
+      # (logrotate / scp 백업 / Promtail 연계 용이)
       - ./logs:/app/logs
     depends_on:
       postgres:
@@ -104,6 +104,89 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─── 모니터링 스택 ────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: photo-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    mem_limit: 512m
+    networks:
+      - backend
+    depends_on:
+      app:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: photo-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SERVER_ROOT_URL: https://pickflow-api.us/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    mem_limit: 256m
+    networks:
+      - backend
+    depends_on:
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: photo-loki
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    mem_limit: 256m
+    networks:
+      - backend
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: photo-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - ./logs:/var/log/app:ro
+    command: -config.file=/etc/promtail/promtail-config.yml
+    mem_limit: 128m
+    networks:
+      - backend
+    depends_on:
+      - loki
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: photo-node-exporter
+    restart: unless-stopped
+    pid: "host"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    mem_limit: 64m
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
@@ -112,3 +195,6 @@ volumes:
   pgdata:
   redis_data:
   app_uploads:
+  prometheus_data:
+  grafana_data:
+  loki_data:
