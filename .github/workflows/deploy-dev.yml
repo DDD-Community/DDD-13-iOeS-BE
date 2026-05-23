@@ -64,12 +64,11 @@ jobs:
         env:
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
           APP_IMAGE_TAG: dev-${{ github.sha }}
-          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: GHCR_PAT,APP_IMAGE_TAG,GRAFANA_ADMIN_PASSWORD
+          envs: GHCR_PAT,APP_IMAGE_TAG
           script: |
             set -e
             cd ${{ secrets.EC2_DEPLOY_PATH }}/..
@@ -77,9 +76,6 @@ jobs:
             git checkout dev
             git reset --hard origin/dev
             cd ${{ secrets.EC2_DEPLOY_PATH }}
-
-            # Grafana 패스워드가 .env에 없으면 추가
-            grep -q "GRAFANA_ADMIN_PASSWORD" .env || echo "GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}" >> .env
 
             # 롤백 대비: 현재 떠있는 컨테이너의 이미지 태그 캡쳐
             PREV_TAG=""
