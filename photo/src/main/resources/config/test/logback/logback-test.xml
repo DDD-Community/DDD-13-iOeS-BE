@@ -9,8 +9,6 @@
 
     <property name="CONSOLE_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [rid:%X{requestId:-}] [uid:%X{userId:-}] [%X{method:-} %X{uri:-}] [ip:%X{clientIp:-}] [tx:%X{txId:-}] %logger{36} - %msg%n"/>
-    <property name="FILE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [rid:%X{requestId:-}] [uid:%X{userId:-}] [%X{method:-} %X{uri:-}] [ip:%X{clientIp:-}] [tx:%X{txId:-}] %logger{36} - %msg%n"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -19,7 +17,7 @@
         </encoder>
     </appender>
 
-    <!-- INFO 파일: INFO 레벨만 -->
+    <!-- INFO 파일: INFO 레벨만 (JSON) -->
     <appender name="FILE_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-info.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -33,13 +31,12 @@
             <maxHistory>${MAX_HISTORY}</maxHistory>
             <totalSizeCap>${TOTAL_SIZE}</totalSizeCap>
         </rollingPolicy>
-        <encoder>
-            <pattern>${FILE_PATTERN}</pattern>
-            <charset>UTF-8</charset>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}","env":"test"}</customFields>
         </encoder>
     </appender>
 
-    <!-- WARN 파일: WARN 레벨만 -->
+    <!-- WARN 파일: WARN 레벨만 (JSON) -->
     <appender name="FILE_WARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-warn.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -53,13 +50,12 @@
             <maxHistory>${MAX_HISTORY}</maxHistory>
             <totalSizeCap>${TOTAL_SIZE}</totalSizeCap>
         </rollingPolicy>
-        <encoder>
-            <pattern>${FILE_PATTERN}</pattern>
-            <charset>UTF-8</charset>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}","env":"test"}</customFields>
         </encoder>
     </appender>
 
-    <!-- ERROR 파일: ERROR 이상 -->
+    <!-- ERROR 파일: ERROR 이상 (JSON) -->
     <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-error.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -71,9 +67,8 @@
             <maxHistory>${MAX_HISTORY}</maxHistory>
             <totalSizeCap>${TOTAL_SIZE}</totalSizeCap>
         </rollingPolicy>
-        <encoder>
-            <pattern>${FILE_PATTERN}</pattern>
-            <charset>UTF-8</charset>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}","env":"test"}</customFields>
         </encoder>
     </appender>
 
