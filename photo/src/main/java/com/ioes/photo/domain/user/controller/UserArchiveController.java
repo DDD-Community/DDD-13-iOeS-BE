@@ -7,6 +7,9 @@ import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,12 +37,21 @@ public class UserArchiveController {
 
     private final UserArchiveService userArchiveService;
 
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(type = "object"),
+                    schemaProperties = {
+                            @SchemaProperty(name = "archiveImage",
+                                    schema = @Schema(type = "string", format = "binary"))
+                    })
+    )
     @Operation(summary = "보관함 이미지 등록/변경", description = "보관함 이미지를 업로드합니다. 기존 이미지가 있으면 교체됩니다.")
     @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping(value = "/me/archive", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ArchiveImageResponse> updateArchiveImage(
         @CurrentUserId Long userId,
-        @Parameter(description = "보관함 이미지 파일")
+        @Parameter(description = "보관함 이미지 파일", required = true,
+            schema = @Schema(type = "string", format = "binary"))
         @RequestPart("archiveImage") MultipartFile archiveImage
     ) {
         return ApiResponse.success(userArchiveService.updateArchiveImage(userId, archiveImage));

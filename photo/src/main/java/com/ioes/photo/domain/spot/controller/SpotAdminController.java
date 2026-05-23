@@ -10,6 +10,9 @@ import com.ioes.photo.domain.spot.service.SpotBatchUploadService;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -56,6 +59,16 @@ public class SpotAdminController {
         return ApiResponse.success(spotAdminService.createSpots(request));
     }
 
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object"),
+            schemaProperties = {
+                @SchemaProperty(name = "excel",
+                    schema = @Schema(type = "string", format = "binary", description = "스팟 정보 Excel 파일 (.xlsx)")),
+                @SchemaProperty(name = "images",
+                    schema = @Schema(type = "string", format = "binary", description = "스팟 이미지 ZIP 파일"))
+            })
+    )
     @Operation(
         summary = "스팟 배치 업로드",
         description = "Excel(스팟 정보)과 ZIP(이미지)을 함께 업로드하여 스팟과 대표 이미지를 일괄 등록합니다. " +
