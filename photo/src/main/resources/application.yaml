@@ -244,7 +244,7 @@ app:
 
   # Refresh Token
   token:
-    refresh-expiration-ms: 1209600000  # 14일
+    refresh-expiration-ms: 86400000  # 1일
     refresh-key-prefix: "refresh:"
     user-tokens-key-prefix: "userTokens:"
     provider-rt-key-prefix: "provider_rt:"
