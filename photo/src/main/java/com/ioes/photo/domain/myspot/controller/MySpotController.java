@@ -15,14 +15,16 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 나만의 스팟 컨트롤러.
@@ -57,16 +59,18 @@ public class MySpotController {
 
     @Operation(
         summary = "나만의 스팟 등록",
-        description = "사용자가 S3에 직접 업로드한 이미지 키와 메타데이터로 스팟을 등록합니다. "
+        description = "이미지 파일과 메타데이터(JSON)를 multipart로 전송해 스팟을 등록합니다. "
+            + "서버가 이미지를 S3에 업로드하고 썸네일을 생성하며, 위·경도로 주소를 역지오코딩합니다. "
             + "등록 직후 상태는 PENDING이며 운영자 검수 후 PUBLISHED/REJECTED로 전이됩니다."
     )
     @SecurityRequirement(name = "Bearer Authentication")
-    @PostMapping("/users/me/my-spots")
+    @PostMapping(value = "/users/me/my-spots", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CreateMySpotResponse> createMySpot(
         @CurrentUserId Long userId,
-        @RequestBody @Valid CreateMySpotRequest request
+        @RequestPart("request") @Valid CreateMySpotRequest request,
+        @RequestPart("image") MultipartFile image
     ) {
-        return ApiResponse.success(mySpotService.createMySpot(userId, request));
+        return ApiResponse.success(mySpotService.createMySpot(userId, request, image));
     }
 }

@@ -11,6 +11,5 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record CreateMySpotResponse(
     @Schema(description = "등록된 스팟 ID") Long spotId,
     @Schema(description = "스팟 상태 (등록 직후엔 항상 PENDING)") String status,
-    @Schema(description = "원본 이미지 URL") String imageUrl,
-    @Schema(description = "썸네일 이미지 URL") String thumbnailUrl
+    @Schema(description = "원본 이미지 URL") String imageUrl
 ) {}

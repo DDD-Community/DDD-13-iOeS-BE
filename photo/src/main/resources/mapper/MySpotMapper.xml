@@ -25,14 +25,11 @@
             </choose>
                 AS distance_km,
             s.created_at                AS created_at,
-            s.status                    AS status
+            s.status                    AS status,
+            s.bookmark_count            AS bookmark_count
         FROM spots s
         WHERE s.user_id    = #{userId}
           AND s.deleted_at IS NULL
-          AND s.status IN
-          <foreach collection="statusCodes" item="code" open="(" separator="," close=")">
-              #{code}
-          </foreach>
         ORDER BY s.created_at DESC, s.id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
@@ -42,10 +39,6 @@
         FROM spots s
         WHERE s.user_id    = #{userId}
           AND s.deleted_at IS NULL
-          AND s.status IN
-          <foreach collection="statusCodes" item="code" open="(" separator="," close=")">
-              #{code}
-          </foreach>
     </select>
 
 </mapper>

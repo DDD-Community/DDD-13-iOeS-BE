@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * {@link MySpotController} 단위 테스트.
@@ -89,33 +91,37 @@ class MySpotControllerTest {
                 127.0,
                 null,
                 null,
-                "prod/public/spots/temp/original/202605/photo.jpg",
-                "photo.jpg",
-                "image/jpeg",
-                null,
                 null
             );
         }
 
+        private MultipartFile image() {
+            return new MockMultipartFile(
+                "image", "photo.jpg", "image/jpeg", "binary".getBytes());
+        }
+
         @Test
-        @DisplayName("서비스에 userId와 요청을 그대로 전달한다")
+        @DisplayName("서비스에 userId, 요청, 이미지를 그대로 전달한다")
         void delegatesToService() {
             CreateMySpotRequest req = request();
-            given(mySpotService.createMySpot(USER_ID, req))
-                .willReturn(new CreateMySpotResponse(10L, SpotStatus.PENDING.name(), "img", "thumb"));
+            MultipartFile image = image();
+            given(mySpotService.createMySpot(USER_ID, req, image))
+                .willReturn(new CreateMySpotResponse(10L, SpotStatus.PENDING.name(), "img"));
 
-            mySpotController.createMySpot(USER_ID, req);
+            mySpotController.createMySpot(USER_ID, req, image);
 
-            then(mySpotService).should().createMySpot(USER_ID, req);
+            then(mySpotService).should().createMySpot(USER_ID, req, image);
         }
 
         @Test
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsResponseInApiResponse() {
-            given(mySpotService.createMySpot(eq(USER_ID), org.mockito.ArgumentMatchers.any()))
-                .willReturn(new CreateMySpotResponse(10L, SpotStatus.PENDING.name(), "img", "thumb"));
+            given(mySpotService.createMySpot(eq(USER_ID), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .willReturn(new CreateMySpotResponse(10L, SpotStatus.PENDING.name(), "img"));
 
-            ApiResponse<CreateMySpotResponse> response = mySpotController.createMySpot(USER_ID, request());
+            ApiResponse<CreateMySpotResponse> response =
+                mySpotController.createMySpot(USER_ID, request(), image());
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spotId()).isEqualTo(10L);

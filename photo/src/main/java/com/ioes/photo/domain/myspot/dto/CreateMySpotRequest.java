@@ -33,18 +33,6 @@ public record CreateMySpotRequest(
     @Schema(description = "한 줄 코멘트", nullable = true)
     String comment,
 
-    @Schema(description = "주소", nullable = true)
-    @Size(max = 255) String address,
-
-    @Schema(description = "사용자가 S3에 업로드한 원본 이미지 객체 키")
-    @NotBlank String imageKey,
-
-    @Schema(description = "원본 파일명", nullable = true)
-    String originalFilename,
-
-    @Schema(description = "이미지 Content-Type", nullable = true)
-    String contentType,
-
     @Schema(description = "촬영 일자 (yyyy-MM-dd)", nullable = true)
     @JsonFormat(pattern = "yyyy-MM-dd") LocalDate recordedDate,
 

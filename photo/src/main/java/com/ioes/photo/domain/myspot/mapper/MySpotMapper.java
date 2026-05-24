@@ -16,13 +16,11 @@ public interface MySpotMapper {
         @Param("userId") Long userId,
         @Param("lat") Double lat,
         @Param("lng") Double lng,
-        @Param("statusCodes") List<String> statusCodes,
         @Param("offset") int offset,
         @Param("size") int size
     );
 
     long countMySpots(
-        @Param("userId") Long userId,
-        @Param("statusCodes") List<String> statusCodes
+        @Param("userId") Long userId
     );
 }
