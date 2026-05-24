@@ -92,7 +92,9 @@
                 </otherwise>
             </choose>
                 AS distance_km,
-            s.address AS address_simple
+            s.address AS address_simple,
+            s.address_road,
+            s.address_jibun
         FROM spots s
         WHERE s.id = #{spotId}
             AND s.deleted_at IS NULL

@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "total_count": 1
+  },
+  "documents": [
+    {
+      "road_address": {
+        "address_name": "서울특별시 영등포구 여의공원로 68",
+        "region_1depth_name": "서울특별시",
+        "region_2depth_name": "영등포구",
+        "region_3depth_name": "여의도동",
+        "road_name": "여의공원로",
+        "underground_yn": "N",
+        "main_building_no": "68",
+        "sub_building_no": "",
+        "building_name": "한국방송공사",
+        "zone_no": "07235"
+      },
+      "address": {
+        "address_name": "서울특별시 영등포구 여의도동 18",
+        "region_1depth_name": "서울특별시",
+        "region_2depth_name": "영등포구",
+        "region_3depth_name": "여의도동",
+        "mountain_yn": "N",
+        "main_address_no": "18",
+        "sub_address_no": "",
+        "zip_code": ""
+      }
+    }
+  ]
+}

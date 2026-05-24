@@ -61,6 +61,7 @@ class SpotControllerTest {
             SpotDetailResponse detail = new SpotDetailResponse(
                 1L, "한강공원", "노을이 예쁜 곳", SpotTheme.SUNSET,
                 37.55, 127.05, "서울시 마포구",
+                "서울시 마포구 월드컵로 21", "서울시 마포구 망원동 1",
                 "https://cdn.example.com/original.jpg",
                 null, LocalTime.of(18, 30),
                 SkyStatus.CLEAR, PrecipitationType.NONE, 20,
@@ -83,6 +84,7 @@ class SpotControllerTest {
             given(spotQueryService.findSpotDetail(1L, 42L))
                 .willReturn(new SpotDetailResponse(
                     1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
+                    null, null,
                     null, null, null, null, null, null, null, null, null, null, null,
                     "정보 없음", 0L, true, true
                 ));
@@ -98,6 +100,7 @@ class SpotControllerTest {
             given(spotQueryService.findSpotDetail(1L, null))
                 .willReturn(new SpotDetailResponse(
                     1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
+                    null, null,
                     null, null, null, null, null, null, null, null, null, null, null,
                     "정보 없음", 0L, false, false
                 ));

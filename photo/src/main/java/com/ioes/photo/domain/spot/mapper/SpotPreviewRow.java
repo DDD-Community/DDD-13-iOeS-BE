@@ -12,5 +12,7 @@ public record SpotPreviewRow(
     Long userId,
     long bookmarkCount,
     Double distanceKm,
-    String addressSimple
+    String addressSimple,
+    String addressRoad,
+    String addressJibun
 ) {}

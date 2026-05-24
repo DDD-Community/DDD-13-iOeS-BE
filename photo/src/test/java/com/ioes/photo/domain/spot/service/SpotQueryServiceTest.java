@@ -193,7 +193,8 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("스팟이 존재하면 미리보기 응답을 반환한다")
         void returnsPreview_whenSpotExists() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, 1.2, "서울시 마포구");
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, 1.2,
+                "서울시 마포구", "서울시 마포구 월드컵로 21", "서울시 마포구 망원동 1");
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/thumbnail/key.jpg");
             given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
@@ -209,14 +210,14 @@ class SpotQueryServiceTest {
             assertThat(response.distanceKm()).isEqualTo(1.2);
             assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/thumbnail.jpg");
             assertThat(response.addressSimple()).isEqualTo("서울시 마포구");
-            assertThat(response.addressRoad()).isNull();
-            assertThat(response.addressJibun()).isNull();
+            assertThat(response.addressRoad()).isEqualTo("서울시 마포구 월드컵로 21");
+            assertThat(response.addressJibun()).isEqualTo("서울시 마포구 망원동 1");
         }
 
         @Test
         @DisplayName("이미지가 없는 스팟의 imageUrl은 null이다")
         void imageUrlNull_whenNoImage() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구");
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -239,7 +240,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("로그인 사용자가 스팟 등록자면 isMySpot이 true다")
         void isMySpotTrue_whenUserIsOwner() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, null, "서울시 마포구");
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -251,7 +252,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("다른 사용자면 isMySpot이 false다")
         void isMySpotFalse_whenDifferentUser() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, 5L, null, "서울시 마포구");
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, 5L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -263,7 +264,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 미제공 시 distanceKm는 null이다")
         void distanceKmNull_whenNoCoordinates() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구");
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -275,7 +276,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("userId가 null이면 isMySpot은 false다")
         void isMySpotFalse_whenUserIdNull() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, 1.2, "서울시 마포구");
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, 1.2, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 

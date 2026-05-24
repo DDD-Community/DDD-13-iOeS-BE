@@ -101,7 +101,8 @@ public class SpotQueryService {
             .orElse(null);
         return new SpotPreviewResponse(
             row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
-            row.bookmarkCount(), row.distanceKm(), imageUrl, row.addressSimple(), null, null
+            row.bookmarkCount(), row.distanceKm(), imageUrl,
+            row.addressSimple(), row.addressRoad(), row.addressJibun()
         );
     }
 

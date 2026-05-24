@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ioes.photo.domain.myspot.mapper.MySpotMapper">
+
+    <select id="findMySpots" resultType="MySpotRow">
+        SELECT
+            s.id                        AS spot_id,
+            s.name,
+            s.theme,
+            s.latitude,
+            s.longitude,
+            <choose>
+                <when test="lat != null and lng != null">
+                    ROUND(CAST(
+                        ST_Distance(
+                            s.location::geography,
+                            ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)::geography
+                        ) / 1000.0 AS numeric
+                    ), 2)
+                </when>
+                <otherwise>
+                    NULL::numeric
+                </otherwise>
+            </choose>
+                AS distance_km,
+            s.created_at                AS created_at,
+            s.status                    AS status,
+            s.bookmark_count            AS bookmark_count
+        FROM spots s
+        WHERE s.user_id    = #{userId}
+          AND s.deleted_at IS NULL
+        ORDER BY s.created_at DESC, s.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countMySpots" resultType="long">
+        SELECT COUNT(*)
+        FROM spots s
+        WHERE s.user_id    = #{userId}
+          AND s.deleted_at IS NULL
+    </select>
+
+</mapper>

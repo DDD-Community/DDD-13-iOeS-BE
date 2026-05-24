@@ -1,6 +1,10 @@
 package com.ioes.photo.domain.spot.enums;
 
 import com.ioes.photo.global.persistence.enumeration.CodedEnum;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -18,5 +22,16 @@ public enum SpotStatus implements CodedEnum {
     PUBLISHED("B"),
     REJECTED("R");
 
+    private static final Map<String, SpotStatus> CODE_INDEX =
+        Arrays.stream(values()).collect(Collectors.toUnmodifiableMap(SpotStatus::getCode, Function.identity()));
+
     private final String code;
+
+    public static SpotStatus fromCode(String code) {
+        SpotStatus status = CODE_INDEX.get(code);
+        if (status == null) {
+            throw new IllegalArgumentException("알 수 없는 SpotStatus code: " + code);
+        }
+        return status;
+    }
 }
