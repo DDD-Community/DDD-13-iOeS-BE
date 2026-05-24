@@ -46,17 +46,23 @@ dependencies {
 	implementation 'net.coobird:thumbnailator:0.4.20'
 	implementation 'org.aspectj:aspectjweaver'
 	implementation 'org.springframework.retry:spring-retry:2.0.11'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	// Excel 파싱 (배치 업로드)
+	implementation 'org.apache.poi:poi-ooxml:5.3.0'
 	// XML (JAXB + Jackson XML)
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 	implementation 'jakarta.xml.bind:jakarta.xml.bind-api'

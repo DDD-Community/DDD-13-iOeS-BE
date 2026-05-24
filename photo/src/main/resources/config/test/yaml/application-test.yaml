@@ -18,12 +18,16 @@ spring:
       connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+    defer-datasource-initialization: false
     show-sql: true
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  sql:
+    init:
+      mode: never
   docker:
     compose:
       enabled: false
@@ -60,6 +64,7 @@ app:
       - /v1/auth/oauth/apple/callback
       - /v1/auth/refresh
       - /v1/users/restore
+      - /v1/internal/**
 
 logging:
   config: classpath:config/test/logback/logback-test.xml
@@ -76,7 +81,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env
+        include: health,info,metrics,env,prometheus
   endpoint:
     health:
       show-details: always

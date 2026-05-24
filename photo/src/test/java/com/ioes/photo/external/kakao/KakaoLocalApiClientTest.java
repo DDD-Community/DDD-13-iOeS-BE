@@ -44,7 +44,7 @@ class KakaoLocalApiClientTest {
 
     private void givenRestApiKey() {
         given(oAuthProperties.kakao())
-            .willReturn(new OAuthProperties.Kakao("REST_API_KEY", null, null, null));
+            .willReturn(new OAuthProperties.Kakao("REST_API_KEY", null));
     }
 
     @Test

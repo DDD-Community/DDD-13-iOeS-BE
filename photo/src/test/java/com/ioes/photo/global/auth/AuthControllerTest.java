@@ -1,5 +1,7 @@
 package com.ioes.photo.global.auth;
 
+import com.ioes.photo.global.auth.dto.AppleLoginRequest;
+import com.ioes.photo.global.auth.dto.KakaoLoginRequest;
 import com.ioes.photo.global.auth.dto.LogoutRequest;
 import com.ioes.photo.global.auth.dto.RefreshRequest;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
@@ -7,8 +9,6 @@ import com.ioes.photo.global.auth.oauth.OAuthService;
 import com.ioes.photo.global.auth.token.TokenResponse;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.common.response.ApiResponse;
-import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.error.code.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,11 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -40,99 +36,56 @@ class AuthControllerTest {
 
     @InjectMocks AuthController authController;
 
-    private static final String KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize?...";
-    private static final String APPLE_AUTH_URL = "https://appleid.apple.com/auth/authorize?...";
-
-    // ── getAuthorizationUrl ───────────────────────────────────────────────
+    // ── kakaoLogin ────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("getAuthorizationUrl()")
-    class GetAuthorizationUrl {
+    @DisplayName("kakaoLogin()")
+    class KakaoLogin {
 
         @Test
-        @DisplayName("kakao 공급자이면 Kakao 인증 URL을 응답한다")
-        void shouldReturnKakaoUrl() {
-            given(oAuthService.resolveProvider("kakao")).willReturn(OAuthProvider.KAKAO);
-            given(oAuthService.getAuthorizationUrl(OAuthProvider.KAKAO)).willReturn(KAKAO_AUTH_URL);
+        @DisplayName("accessToken으로 서비스를 호출하고 TokenResponse를 반환한다")
+        void shouldReturnTokenResponse() {
+            given(oAuthService.loginWithKakao("kakao-access-token"))
+                .willReturn(buildTokenResponse(OAuthProvider.KAKAO));
 
-            ApiResponse<Map<String, String>> response = authController.getAuthorizationUrl("kakao");
-
-            assertThat(response.isSuccess()).isTrue();
-            assertThat(response.getData()).containsEntry("authorizationUrl", KAKAO_AUTH_URL);
-        }
-
-        @Test
-        @DisplayName("apple 공급자이면 Apple 인증 URL을 응답한다")
-        void shouldReturnAppleUrl() {
-            given(oAuthService.resolveProvider("apple")).willReturn(OAuthProvider.APPLE);
-            given(oAuthService.getAuthorizationUrl(OAuthProvider.APPLE)).willReturn(APPLE_AUTH_URL);
-
-            ApiResponse<Map<String, String>> response = authController.getAuthorizationUrl("apple");
-
-            assertThat(response.getData()).containsEntry("authorizationUrl", APPLE_AUTH_URL);
-        }
-
-        @Test
-        @DisplayName("지원하지 않는 공급자이면 예외가 전파된다")
-        void shouldPropagateException_whenInvalidProvider() {
-            given(oAuthService.resolveProvider("naver"))
-                .willThrow(new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 OAuth 공급자"));
-
-            assertThatThrownBy(() -> authController.getAuthorizationUrl("naver"))
-                .isInstanceOf(BusinessException.class);
-        }
-    }
-
-    // ── oauthCallback (GET) ───────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("oauthCallback() — GET 기반 공급자")
-    class OAuthCallback {
-
-        @Test
-        @DisplayName("Kakao 인증 코드로 토큰 응답을 반환한다")
-        void shouldReturnTokenResponse_forKakao() {
-            Map<String, String> params = Map.of("code", "kakao-code", "state", "test-state");
-            TokenResponse tokenResponse = buildTokenResponse(OAuthProvider.KAKAO);
-            given(oAuthService.resolveProvider("kakao")).willReturn(OAuthProvider.KAKAO);
-            given(oAuthService.handleCallback(OAuthProvider.KAKAO, params)).willReturn(tokenResponse);
-
-            ApiResponse<TokenResponse> response = authController.oauthCallback("kakao", params);
+            ApiResponse<TokenResponse> response = authController.kakaoLogin(
+                new KakaoLoginRequest("kakao-access-token")
+            );
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().accessToken()).isEqualTo("access-token");
-            assertThat(response.getData().refreshToken()).isEqualTo("refresh-token");
+            assertThat(response.getData().profile().provider()).isEqualTo(OAuthProvider.KAKAO);
         }
     }
 
-    // ── appleCallback (POST) ──────────────────────────────────────────────
+    // ── appleLogin ────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("appleCallback() — Apple form_post")
-    class AppleCallback {
+    @DisplayName("appleLogin()")
+    class AppleLogin {
 
         @Test
-        @DisplayName("Apple 인증 코드와 user 파라미터로 토큰 응답을 반환한다")
-        void shouldReturnTokenResponse_withUserParam() {
-            String userJson = "{\"name\":{\"firstName\":\"John\",\"lastName\":\"Doe\"}}";
-            Map<String, String> params = Map.of("code", "apple-code", "state", "s", "user", userJson);
-            TokenResponse tokenResponse = buildTokenResponse(OAuthProvider.APPLE);
-            given(oAuthService.handleCallback(eq(OAuthProvider.APPLE), eq(params))).willReturn(tokenResponse);
+        @DisplayName("identityToken과 user 정보로 서비스를 호출하고 TokenResponse를 반환한다")
+        void shouldReturnTokenResponse_withUserInfo() {
+            AppleLoginRequest.AppleName name = new AppleLoginRequest.AppleName("John", "Doe");
+            AppleLoginRequest.AppleUser user = new AppleLoginRequest.AppleUser(name, "john@icloud.com");
+            AppleLoginRequest request = new AppleLoginRequest("apple-identity-token", user);
+            given(oAuthService.loginWithApple(request)).willReturn(buildTokenResponse(OAuthProvider.APPLE));
 
-            ApiResponse<TokenResponse> response = authController.appleCallback(params);
+            ApiResponse<TokenResponse> response = authController.appleLogin(request);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().accessToken()).isEqualTo("access-token");
+            assertThat(response.getData().profile().provider()).isEqualTo(OAuthProvider.APPLE);
         }
 
         @Test
-        @DisplayName("user 파라미터 없이도 토큰 응답을 반환한다 (재로그인)")
-        void shouldReturnTokenResponse_withoutUserParam() {
-            Map<String, String> params = Map.of("code", "apple-code", "state", "s");
-            TokenResponse tokenResponse = buildTokenResponse(OAuthProvider.APPLE);
-            given(oAuthService.handleCallback(eq(OAuthProvider.APPLE), eq(params))).willReturn(tokenResponse);
+        @DisplayName("user 정보 없이 identityToken만으로도 서비스를 호출한다 (재로그인)")
+        void shouldReturnTokenResponse_withoutUserInfo() {
+            AppleLoginRequest request = new AppleLoginRequest("apple-identity-token", null);
+            given(oAuthService.loginWithApple(request)).willReturn(buildTokenResponse(OAuthProvider.APPLE));
 
-            ApiResponse<TokenResponse> response = authController.appleCallback(params);
+            ApiResponse<TokenResponse> response = authController.appleLogin(request);
 
             assertThat(response.isSuccess()).isTrue();
         }

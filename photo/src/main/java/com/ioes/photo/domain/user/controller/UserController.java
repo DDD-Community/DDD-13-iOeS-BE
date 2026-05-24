@@ -10,6 +10,9 @@ import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,6 +56,14 @@ public class UserController {
         return ApiResponse.success(userService.getMyPageHome(userId));
     }
 
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object"),
+            schemaProperties = {
+                @SchemaProperty(name = "profileImage",
+                    schema = @Schema(type = "string", format = "binary", description = "프로필 이미지 파일"))
+            })
+    )
     @Operation(summary = "프로필 수정", description = "닉네임·프로필 이미지를 선택적으로 수정합니다. null인 필드는 변경되지 않습니다.")
     @SecurityRequirement(name = "Bearer Authentication")
     @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -63,7 +74,6 @@ public class UserController {
         @Size(min = 2, max = 12, message = "닉네임은 12자 이하로 입력해주세요.")
         @Pattern(regexp = "^[가-힣a-zA-Z0-9]+$", message = "닉네임은 한글, 영문, 숫자만 사용 가능해요.")
         String nickname,
-        @Parameter(description = "프로필 이미지 파일")
         @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) {
         return ApiResponse.success(userService.updateProfile(userId, new UpdateProfileRequest(nickname), profileImage));

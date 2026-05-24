@@ -104,6 +104,10 @@ jobs:
             docker compose up -d app nginx
 
             if health_check; then
+              # nginx 재시작 (git reset으로 inode가 교체된 conf 파일 반영)
+              docker compose up -d --force-recreate nginx
+              # 앱 배포 성공 후 모니터링 스택 동기화 (설정 변경 시 재시작, 신규 시 기동)
+              docker compose up -d prometheus grafana loki promtail node-exporter
               docker image prune -f
               exit 0
             fi

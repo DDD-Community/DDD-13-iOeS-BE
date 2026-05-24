@@ -4,7 +4,9 @@ import com.ioes.photo.domain.user.entity.User;
 import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.service.NicknameProperties;
 import com.ioes.photo.domain.user.service.UserAccountService;
+import com.ioes.photo.global.auth.dto.AppleLoginRequest;
 import com.ioes.photo.global.auth.token.TokenResponse;
+import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.auth.token.TokenService;
 import com.ioes.photo.global.config.security.JwtProvider;
 import com.ioes.photo.global.error.code.CommonErrorCode;
@@ -15,22 +17,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
- * OAuth 로그인 통합 서비스.
+ * 네이티브 SDK OAuth 로그인 통합 서비스.
  *
- * {@link OAuthClientRegistry}를 통해 공급자별 {@link OAuthClient}에 처리를 위임합니다.
- * State(CSRF 방지)와 PKCE(code 가로채기 방지) 생성/검증을 담당합니다.
- * 새로운 OAuth 공급자를 추가할 때 이 클래스를 수정하지 않아도 됩니다.
+ * 앱(iOS/Android)이 각 OAuth SDK로 직접 발급받은 토큰을 검증하고 자체 JWT를 발급합니다.
+ * {@link OAuthClientRegistry}를 통해 공급자별 {@link OAuthClient}에 검증을 위임합니다.
  *
  * @author 황제연
  */
@@ -39,28 +34,38 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OAuthService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
     private final OAuthClientRegistry registry;
-    private final OAuthStateStore stateStore;
     private final UserAccountService userAccountService;
     private final TokenService tokenService;
     private final NicknameProperties nicknameProperties;
     private final JwtProvider jwtProvider;
 
-    public String getAuthorizationUrl(OAuthProvider provider) {
-        String state = generateState();
-        String codeVerifier = generateCodeVerifier();
-        String codeChallenge = generateCodeChallenge(codeVerifier);
-
-        stateStore.save(state, codeVerifier);
-
-        return registry.getClient(provider).buildAuthorizationUrl(state, codeChallenge);
+    /**
+     * Kakao SDK 액세스 토큰으로 로그인합니다.
+     *
+     * @param accessToken Kakao SDK가 발급한 액세스 토큰
+     */
+    public TokenResponse loginWithKakao(String accessToken) {
+        Map<String, String> params = Map.of("accessToken", accessToken);
+        OAuthUserInfo userInfo = registry.getClient(OAuthProvider.KAKAO).getUserInfo(params);
+        return processLogin(userInfo);
     }
 
-    public TokenResponse handleCallback(OAuthProvider provider, Map<String, String> params) {
-        Map<String, String> enrichedParams = validateStateAndEnrich(params);
-        OAuthUserInfo userInfo = registry.getClient(provider).getUserInfo(enrichedParams);
+    /**
+     * Apple SDK identity token으로 로그인합니다.
+     *
+     * @param request Apple 로그인 요청 (identityToken 필수, user 정보는 최초 로그인 시에만 전달됨)
+     */
+    public TokenResponse loginWithApple(AppleLoginRequest request) {
+        Map<String, String> params = new HashMap<>();
+        params.put("identityToken", request.identityToken());
+
+        String nickname = extractAppleNickname(request.user());
+        if (nickname != null) {
+            params.put("nickname", nickname);
+        }
+
+        OAuthUserInfo userInfo = registry.getClient(OAuthProvider.APPLE).getUserInfo(params);
         return processLogin(userInfo);
     }
 
@@ -80,21 +85,14 @@ public class OAuthService {
         }
     }
 
-    private Map<String, String> validateStateAndEnrich(Map<String, String> params) {
-        String state = params.get("state");
-        if (state == null || state.isBlank()) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "state 파라미터가 누락되었습니다.");
+    private String extractAppleNickname(AppleLoginRequest.AppleUser user) {
+        if (user == null || user.name() == null) {
+            return null;
         }
-
-        String codeVerifier = stateStore.getAndDelete(state);
-        if (codeVerifier == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED,
-                "유효하지 않거나 만료된 state입니다. 처음부터 다시 로그인해주세요.");
-        }
-
-        Map<String, String> enriched = new HashMap<>(params);
-        enriched.put("code_verifier", codeVerifier);
-        return enriched;
+        String firstName = NullUtils.orDefault(user.name().firstName(), "");
+        String lastName  = NullUtils.orDefault(user.name().lastName(), "");
+        String nickname  = (firstName + " " + lastName).trim();
+        return nickname.isEmpty() ? null : nickname;
     }
 
     private TokenResponse processLogin(OAuthUserInfo userInfo) {
@@ -139,24 +137,5 @@ public class OAuthService {
             }
         }
         throw new BusinessException(UserErrorCode.NICKNAME_GENERATION_FAILED);
-    }
-
-    private String generateState() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-    private String generateCodeVerifier() {
-        byte[] bytes = new byte[64];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String generateCodeChallenge(String codeVerifier) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.UTF_8));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
-        }
     }
 }

@@ -8,6 +8,7 @@ import com.ioes.photo.global.auth.oauth.OAuthUserInfo;
 import com.ioes.photo.global.config.oauth.properties.OAuthProperties;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,27 +20,25 @@ import org.springframework.web.client.RestClient;
 
 import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
 
 /**
- * Apple Sign In OAuth 클라이언트 - 전략패턴 구현체)
+ * Apple Sign In 네이티브 SDK 클라이언트 (전략 패턴 구현체).
  *
- * - Apple의 인증 흐름:
- * 1. 인증 URL 생성 -> 사용자를 Apple 로그인 페이지로 리다이렉트
- * 2. Apple이 response_mode=form_post로 code를 POST 전송
- * 3. code와 동적으로 생성한 client_secret(JWT)으로 Apple 토큰 엔드포인트 호출
- * 4. ID token(JWT)에서 사용자 정보 파싱
+ * 네이티브 SDK 플로우:
+ * 앱이 Apple SDK로 발급받은 identityToken(RS256 JWT)을 백엔드에 전달하면,
+ * 백엔드가 Apple JWKS를 이용해 서명을 검증하고 사용자 정보를 추출합니다.
  *
- *
- * 콜백 파라미터:
- * - code: Apple 인증 코드 (필수)
- * - user: 최초 로그인 시 Apple이 전달하는 사용자 정보 JSON (선택)
- *
+ * params 키:
+ * - identityToken: Apple SDK가 발급한 identity token JWT (필수)
+ * - nickname: 최초 로그인 시 앱이 전달한 사용자 이름 (선택)
  *
  * @see OAuthProperties.Apple
+ * @see ApplePublicKeyProvider
  * @author 황제연
  */
 @Slf4j
@@ -47,14 +46,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AppleOAuthClient implements OAuthClient {
 
-    private static final String APPLE_AUTH_URL = "https://appleid.apple.com/auth/authorize";
-    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
     private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
-    private static final String APPLE_AUDIENCE = "https://appleid.apple.com";
+    private static final String APPLE_ISSUER = "https://appleid.apple.com";
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final OAuthProperties oAuthProperties;
+    private final ApplePublicKeyProvider applePublicKeyProvider;
 
     @Override
     public OAuthProvider getProvider() {
@@ -62,35 +60,16 @@ public class AppleOAuthClient implements OAuthClient {
     }
 
     @Override
-    public String buildAuthorizationUrl(String state, String codeChallenge) {
-        OAuthProperties.Apple apple = oAuthProperties.apple();
-        return APPLE_AUTH_URL
-            + "?response_type=code"
-            + "&client_id=" + apple.clientId()
-            + "&redirect_uri=" + apple.redirectUri()
-            + "&scope=name%20email"
-            + "&response_mode=form_post"
-            + "&state=" + state
-            + "&code_challenge=" + codeChallenge
-            + "&code_challenge_method=S256";
-    }
-
-    @Override
     public OAuthUserInfo getUserInfo(Map<String, String> params) {
-        String code = params.get("code");
-        String codeVerifier = params.get("code_verifier");
-        String userJson = params.get("user");
+        String identityToken = params.get("identityToken");
+        String nickname = params.get("nickname");
 
-        AppleTokenResponse tokenResponse = exchangeCodeForToken(code, codeVerifier);
-        Map<String, Object> claims = parseIdTokenClaims(tokenResponse.idToken());
+        Claims claims = verifyIdentityToken(identityToken);
+        String providerId = claims.getSubject();
+        String email = claims.get("email", String.class);
 
-        String providerId = (String) claims.get("sub");
-        String email = (String) claims.get("email");
-        String nickname = extractNicknameFromUserJson(userJson);
-
-        log.debug("Apple 사용자 정보 조회 완료: providerId={}", providerId);
-        return new OAuthUserInfo(providerId, email, nickname, null, OAuthProvider.APPLE,
-            tokenResponse.refreshToken());
+        log.debug("Apple 사용자 인증 완료: providerId={}", providerId);
+        return new OAuthUserInfo(providerId, email, nickname, null, OAuthProvider.APPLE, null);
     }
 
     @Override
@@ -116,25 +95,48 @@ public class AppleOAuthClient implements OAuthClient {
         log.info("Apple 연동 해제 완료: providerUserId={}", providerUserId);
     }
 
-    private AppleTokenResponse exchangeCodeForToken(String code, String codeVerifier) {
-        OAuthProperties.Apple apple = oAuthProperties.apple();
+    private Claims verifyIdentityToken(String identityToken) {
+        String kid = extractKidFromHeader(identityToken);
+        PublicKey publicKey = applePublicKeyProvider.getPublicKey(kid);
 
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("client_id", apple.clientId());
-        form.add("client_secret", generateClientSecret());
-        form.add("code", code);
-        form.add("grant_type", "authorization_code");
-        form.add("redirect_uri", apple.redirectUri());
-        if (codeVerifier != null) {
-            form.add("code_verifier", codeVerifier);
+        try {
+            Claims claims = Jwts.parser()
+                .verifyWith(publicKey)
+                .requireIssuer(APPLE_ISSUER)
+                .build()
+                .parseSignedClaims(identityToken)
+                .getPayload();
+
+            if (!claims.getAudience().contains(oAuthProperties.apple().clientId())) {
+                throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "Apple 토큰 audience 불일치");
+            }
+            return claims;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Apple identity token 검증 실패", e);
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "Apple 인증 토큰 검증 실패");
         }
+    }
 
-        return restClient.post()
-            .uri(APPLE_TOKEN_URL)
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .body(form)
-            .retrieve()
-            .body(AppleTokenResponse.class);
+    private String extractKidFromHeader(String identityToken) {
+        try {
+            String[] parts = identityToken.split("\\.");
+            if (parts.length < 2) {
+                throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "유효하지 않은 JWT 형식");
+            }
+            String headerJson = new String(Base64.getUrlDecoder().decode(parts[0]));
+            Map<String, Object> header = objectMapper.readValue(headerJson, new TypeReference<>() {});
+            String kid = (String) header.get("kid");
+            if (kid == null) {
+                throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "Apple 토큰에 kid가 없습니다.");
+            }
+            return kid;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "Apple identity token 헤더 파싱 실패");
+        }
     }
 
     private String generateClientSecret() {
@@ -148,13 +150,12 @@ public class AppleOAuthClient implements OAuthClient {
                 .issuer(apple.teamId())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + apple.clientSecretTtlMs()))
-                .audience().add(APPLE_AUDIENCE).and()
+                .audience().add(APPLE_ISSUER).and()
                 .subject(apple.clientId())
                 .signWith(privateKey, Jwts.SIG.ES256)
                 .compact();
         } catch (Exception e) {
             log.error("Apple client_secret 생성 실패", e);
-            // 이후 별도 인증관련 예외처리 공통화 진행할 예정
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "Apple 인증 설정 오류");
         }
     }
@@ -167,38 +168,5 @@ public class AppleOAuthClient implements OAuthClient {
         byte[] keyBytes = Base64.getDecoder().decode(cleaned);
         return KeyFactory.getInstance("EC")
             .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
-    }
-
-    private Map<String, Object> parseIdTokenClaims(String idToken) {
-        try {
-            String[] parts = idToken.split("\\.");
-            if (parts.length < 2) {
-                throw new IllegalArgumentException("유효하지 않은 JWT 형식");
-            }
-            String claimsJson = new String(Base64.getUrlDecoder().decode(parts[1]));
-            return objectMapper.readValue(claimsJson, new TypeReference<>() {});
-        } catch (Exception e) {
-            log.error("Apple ID token 파싱 실패", e);
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "Apple 인증 토큰 파싱 실패");
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private String extractNicknameFromUserJson(String userJson) {
-        if (userJson == null || userJson.isBlank()) {
-            return null;
-        }
-        try {
-            Map<String, Object> userMap = objectMapper.readValue(userJson, new TypeReference<>() {});
-            Map<String, Object> name    = (Map<String, Object>) userMap.get("name");
-            if (name == null) return null;
-            String firstName = (String) name.get("firstName");
-            String lastName  = (String) name.get("lastName");
-            if (firstName == null && lastName == null) return null;
-            return ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-        } catch (Exception e) {
-            log.warn("Apple user JSON 파싱 실패: {}", userJson);
-            return null;
-        }
     }
 }

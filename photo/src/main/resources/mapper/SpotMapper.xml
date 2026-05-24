@@ -33,7 +33,7 @@
         </where>
         ORDER BY
         <choose>
-            <when test="sort != null and sort == 'D'">
+            <when test='sort != null and sort == "D"'>
                 ST_Distance(
                     s.location::geography,
                     ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)::geography
@@ -78,9 +78,6 @@
             s.theme,
             s.user_id,
             s.bookmark_count,
-            s.address AS address_simple,
-            s.address_road,
-            s.address_jibun,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
@@ -94,7 +91,10 @@
                     NULL::numeric
                 </otherwise>
             </choose>
-                AS distance_km
+                AS distance_km,
+            s.address AS address_simple,
+            s.address_road,
+            s.address_jibun
         FROM spots s
         WHERE s.id = #{spotId}
             AND s.deleted_at IS NULL
