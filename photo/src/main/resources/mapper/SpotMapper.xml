@@ -79,6 +79,8 @@
             s.user_id,
             s.bookmark_count,
             s.address AS address_simple,
+            s.address_road,
+            s.address_jibun,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(

@@ -64,6 +64,12 @@ public class Spot extends BaseEntity {
     @Column(length = 255)
     private String address;
 
+    @Column(name = "address_road", length = 255)
+    private String addressRoad;
+
+    @Column(name = "address_jibun", length = 255)
+    private String addressJibun;
+
     @Column(nullable = false, length = 4)
     private SpotStatus status;
 
@@ -87,8 +93,8 @@ public class Spot extends BaseEntity {
 
     @Builder
     private Spot(String name, String comment, SpotTheme theme, Double latitude, Double longitude,
-                 String address, SpotStatus status, Integer gridNx, Integer gridNy, String crowdAreaName,
-                 Long userId) {
+                 String address, String addressRoad, String addressJibun, SpotStatus status,
+                 Integer gridNx, Integer gridNy, String crowdAreaName, Long userId) {
         this.name = name;
         this.comment = comment;
         this.theme = theme;
@@ -96,6 +102,8 @@ public class Spot extends BaseEntity {
         this.longitude = longitude;
         this.location = GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
         this.address = address;
+        this.addressRoad = addressRoad;
+        this.addressJibun = addressJibun;
         this.status = status == null ? SpotStatus.PENDING : status;
         this.gridNx = gridNx;
         this.gridNy = gridNy;
