@@ -96,17 +96,19 @@ public class SpotQueryService {
         }
         Long resolvedUploaderId = resolveActiveUploaderId(row.userId());
         boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
+        boolean isBookmarked = userId != null
+            && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
         String imageUrl = spotImageRepository.findById(spotId)
             .map(spotThumbnailService::getThumbnailUrl)
             .orElse(null);
         return new SpotPreviewResponse(
             row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
             row.bookmarkCount(), row.distanceKm(), imageUrl,
-            row.addressSimple(), row.addressRoad(), row.addressJibun()
+            row.addressSimple(), row.addressRoad(), row.addressJibun(), isBookmarked
         );
     }
 
-    public SpotListResponse findSpots(int page, SpotTheme theme, Double latitude, Double longitude, SortType sort) {
+    public SpotListResponse findSpots(int page, SpotTheme theme, Double latitude, Double longitude, SortType sort, Long userId) {
         if ((latitude == null) != (longitude == null)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "위도와 경도는 함께 입력해야 합니다.");
         }
@@ -121,8 +123,11 @@ public class SpotQueryService {
         List<SpotRow> rows = spotMapper.findSpots(status, themeCode, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotRow::id).toList());
 
+        List<Long> spotIds = rows.stream().map(SpotRow::id).toList();
+        Set<Long> bookmarkedIds = resolveBookmarkedIds(userId, spotIds);
+
         List<SpotItem> items = rows.stream()
-            .map(row -> toSpotItem(row, imageMap))
+            .map(row -> toSpotItem(row, imageMap, bookmarkedIds.contains(row.id())))
             .toList();
 
         return new SpotListResponse(items, page, spotMapper.countSpots(status, themeCode) > (long) (page + 1) * LIST_PAGE_SIZE);
@@ -165,9 +170,16 @@ public class SpotQueryService {
         return userRepository.findActiveIdsByIdIn(nonNull);
     }
 
-    private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap) {
+    private Set<Long> resolveBookmarkedIds(Long userId, List<Long> spotIds) {
+        if (userId == null || spotIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return savedSpotArchiveRepository.findBookmarkedSpotIds(userId, spotIds);
+    }
+
+    private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap, boolean isBookmarked) {
         String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
-        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm());
+        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm(), isBookmarked);
     }
 
     private String thumbnailUrl(SpotImage spotImage) {

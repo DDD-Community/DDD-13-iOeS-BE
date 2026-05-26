@@ -71,7 +71,7 @@ public class SpotController {
 
     @Operation(
         summary = "스팟 리스트 조회",
-        description = "스팟 목록을 6개 단위로 페이징 조회합니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. sort=RECOMMENDED(기본값) 시 북마크 많은 순으로 정렬됩니다."
+        description = "스팟 목록을 6개 단위로 페이징 조회합니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. sort=RECOMMENDED(기본값) 시 북마크 많은 순으로 정렬됩니다. 비로그인 시 isBookmarked는 항상 false입니다."
     )
     @GetMapping
     public ApiResponse<SpotListResponse> getSpots(
@@ -79,9 +79,10 @@ public class SpotController {
         @RequestParam(required = false) SpotTheme theme,
         @RequestParam(required = false) @Latitude Double latitude,
         @RequestParam(required = false) @Longitude Double longitude,
-        @RequestParam(required = false, defaultValue = "RECOMMENDED") SortType sort
+        @RequestParam(required = false, defaultValue = "RECOMMENDED") SortType sort,
+        @CurrentUserId Long userId
     ) {
-        return ApiResponse.success(spotQueryService.findSpots(page, theme, latitude, longitude, sort));
+        return ApiResponse.success(spotQueryService.findSpots(page, theme, latitude, longitude, sort, userId));
     }
 
     @Operation(

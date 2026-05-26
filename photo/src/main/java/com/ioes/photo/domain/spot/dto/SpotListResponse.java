@@ -19,6 +19,7 @@ public record SpotListResponse(
         String name,
         String theme,
         String thumbnailUrl,
-        @TruncateDecimal Double distanceKm
+        @TruncateDecimal Double distanceKm,
+        boolean isBookmarked
     ) {}
 }

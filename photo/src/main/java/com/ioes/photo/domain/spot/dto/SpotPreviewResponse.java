@@ -20,5 +20,6 @@ public record SpotPreviewResponse(
     @Schema(description = "스팟 썸네일 이미지 URL, 이미지 없을 시 null") String imageUrl,
     @Schema(description = "간략 주소 (시·구 단위)") String addressSimple,
     @Schema(description = "도로명 주소, 주소 스키마 재구성 전까지 null") String addressRoad,
-    @Schema(description = "지번 주소, 주소 스키마 재구성 전까지 null") String addressJibun
+    @Schema(description = "지번 주소, 주소 스키마 재구성 전까지 null") String addressJibun,
+    @Schema(description = "북마크 여부, 비로그인 시 항상 false") boolean isBookmarked
 ) {}
