@@ -1,7 +1,9 @@
 package com.ioes.photo.domain.savedspot.repository;
 
 import com.ioes.photo.domain.savedspot.entity.SavedSpotArchive;
+import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +28,9 @@ public interface SavedSpotArchiveRepository extends JpaRepository<SavedSpotArchi
         @Param("userId") Long userId,
         @Param("spotId") Long spotId
     );
+
+    @Query("SELECT s.spotId FROM SavedSpotArchive s WHERE s.userId = :userId AND s.spotId IN :spotIds")
+    Set<Long> findBookmarkedSpotIds(@Param("userId") Long userId, @Param("spotIds") Collection<Long> spotIds);
 
     long countByUserId(Long userId);
 }

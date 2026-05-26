@@ -35,7 +35,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     void softDeleteById(@Param("id") Long id);
 
     @Modifying
-    @Query("UPDATE User u SET u.deletedAt = NULL WHERE u.id = :id")
+    @Query(value = "UPDATE users SET deleted_at = NULL WHERE id = :id", nativeQuery = true)
     void restoreById(@Param("id") Long id);
 
     @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)

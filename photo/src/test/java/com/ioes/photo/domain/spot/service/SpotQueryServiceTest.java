@@ -295,21 +295,21 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도만 전달하면 INVALID_INPUT_VALUE 예외를 던진다")
         void throwsWhenOnlyLatProvided() {
-            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, 37.5, null, SortType.RECOMMENDED))
+            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, 37.5, null, SortType.RECOMMENDED, null))
                 .isInstanceOf(BusinessException.class);
         }
 
         @Test
         @DisplayName("경도만 전달하면 INVALID_INPUT_VALUE 예외를 던진다")
         void throwsWhenOnlyLngProvided() {
-            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, 127.0, SortType.RECOMMENDED))
+            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, 127.0, SortType.RECOMMENDED, null))
                 .isInstanceOf(BusinessException.class);
         }
 
         @Test
         @DisplayName("DISTANCE 정렬에 위치 없으면 INVALID_INPUT_VALUE 예외를 던진다")
         void throwsWhenDistanceSortWithoutCoordinates() {
-            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, null, SortType.DISTANCE))
+            assertThatThrownBy(() -> spotQueryService.findSpots(0, null, null, null, SortType.DISTANCE, null))
                 .isInstanceOf(BusinessException.class);
         }
 
@@ -320,7 +320,7 @@ class SpotQueryServiceTest {
                 .willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response).isNotNull();
         }
@@ -332,7 +332,7 @@ class SpotQueryServiceTest {
                 .willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            spotQueryService.findSpots(0, null, 37.5, 127.0, SortType.DISTANCE);
+            spotQueryService.findSpots(0, null, 37.5, 127.0, SortType.DISTANCE, null);
 
             then(spotMapper).should().findSpots(PUBLISHED_CODE, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode());
         }
@@ -344,7 +344,7 @@ class SpotQueryServiceTest {
                 .willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode())).willReturn(0L);
 
-            spotQueryService.findSpots(0, SpotTheme.SUNSET, null, null, SortType.RECOMMENDED);
+            spotQueryService.findSpots(0, SpotTheme.SUNSET, null, null, SortType.RECOMMENDED, null);
 
             then(spotMapper).should().findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
@@ -364,7 +364,7 @@ class SpotQueryServiceTest {
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(7L);
             given(spotImageRepository.findAllBySpotIdIn(any())).willReturn(List.of());
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response.hasNext()).isTrue();
         }
@@ -375,7 +375,7 @@ class SpotQueryServiceTest {
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(6L);
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response.hasNext()).isFalse();
         }
@@ -386,7 +386,7 @@ class SpotQueryServiceTest {
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            spotQueryService.findSpots(1, null, null, null, SortType.RECOMMENDED);
+            spotQueryService.findSpots(1, null, null, null, SortType.RECOMMENDED, null);
 
             then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, 6, 6, SortType.RECOMMENDED.getCode());
         }
@@ -397,7 +397,7 @@ class SpotQueryServiceTest {
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 12, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            SpotListResponse response = spotQueryService.findSpots(2, null, null, null, SortType.RECOMMENDED);
+            SpotListResponse response = spotQueryService.findSpots(2, null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response.page()).isEqualTo(2);
         }
@@ -412,7 +412,7 @@ class SpotQueryServiceTest {
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L))).willReturn(List.of(image));
             given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumb.jpg");
 
-            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
+            SpotListResponse response = spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response.spots()).hasSize(1);
             SpotItem item = response.spots().get(0);
@@ -429,7 +429,7 @@ class SpotQueryServiceTest {
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
 
-            spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED);
+            spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null);
 
             then(spotImageRepository).should(never()).findAllBySpotIdIn(anyList());
         }
