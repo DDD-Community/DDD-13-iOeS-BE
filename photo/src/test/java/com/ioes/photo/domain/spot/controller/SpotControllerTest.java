@@ -189,7 +189,7 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             SpotPreviewResponse preview = new SpotPreviewResponse(
-                1L, "한강공원", false, SpotTheme.SUNSET, 5L, 1.2, null, "서울시 마포구", null, null
+                1L, "한강공원", false, SpotTheme.SUNSET, 5L, 1.2, null, "서울시 마포구", null, null, false
             );
             given(spotQueryService.findSpotPreview(1L, 37.5, 127.0, null)).willReturn(preview);
 
@@ -203,7 +203,7 @@ class SpotControllerTest {
         @DisplayName("spotId, 위치, userId를 서비스에 그대로 전달한다")
         void passesAllParamsToService() {
             given(spotQueryService.findSpotPreview(1L, null, null, 42L))
-                .willReturn(new SpotPreviewResponse(1L, "스팟", true, SpotTheme.SUNSET, 0L, null, null, null, null, null));
+                .willReturn(new SpotPreviewResponse(1L, "스팟", true, SpotTheme.SUNSET, 0L, null, null, null, null, null, false));
 
             spotController.getSpotPreview(1L, null, null, 42L);
 
@@ -221,12 +221,12 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             List<SpotItem> items = List.of(
-                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2)
+                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2, false)
             );
-            given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED))
+            given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null))
                 .willReturn(new SpotListResponse(items, 0, false));
 
-            ApiResponse<SpotListResponse> response = spotController.getSpots(0, null, null, null, SortType.RECOMMENDED);
+            ApiResponse<SpotListResponse> response = spotController.getSpots(0, null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spots().get(0).name()).isEqualTo("한강공원");
@@ -235,21 +235,21 @@ class SpotControllerTest {
         @Test
         @DisplayName("모든 파라미터를 서비스에 그대로 전달한다")
         void passesAllParamsToService() {
-            given(spotQueryService.findSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE))
+            given(spotQueryService.findSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE, null))
                 .willReturn(new SpotListResponse(List.of(), 2, false));
 
-            spotController.getSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE);
+            spotController.getSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE, null);
 
-            then(spotQueryService).should().findSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE);
+            then(spotQueryService).should().findSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE, null);
         }
 
         @Test
         @DisplayName("hasNext가 true이면 응답에도 true가 포함된다")
         void reflectsHasNextFromService() {
-            given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED))
+            given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null))
                 .willReturn(new SpotListResponse(List.of(), 0, true));
 
-            assertThat(spotController.getSpots(0, null, null, null, SortType.RECOMMENDED).getData().hasNext()).isTrue();
+            assertThat(spotController.getSpots(0, null, null, null, SortType.RECOMMENDED, null).getData().hasNext()).isTrue();
         }
     }
 }
