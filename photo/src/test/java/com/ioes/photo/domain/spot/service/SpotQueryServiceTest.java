@@ -353,12 +353,12 @@ class SpotQueryServiceTest {
         @DisplayName("전체 개수가 다음 페이지 기준을 초과하면 hasNext가 true다")
         void hasNextTrue_whenMorePagesExist() {
             List<SpotRow> rows = List.of(
-                new SpotRow(1L, "스팟A", "SS", null),
-                new SpotRow(2L, "스팟B", "SS", null),
-                new SpotRow(3L, "스팟C", "SS", null),
-                new SpotRow(4L, "스팟D", "SS", null),
-                new SpotRow(5L, "스팟E", "SS", null),
-                new SpotRow(6L, "스팟F", "SS", null)
+                new SpotRow(1L, "스팟A", "SS", 0L, null),
+                new SpotRow(2L, "스팟B", "SS", 0L, null),
+                new SpotRow(3L, "스팟C", "SS", 0L, null),
+                new SpotRow(4L, "스팟D", "SS", 0L, null),
+                new SpotRow(5L, "스팟E", "SS", 0L, null),
+                new SpotRow(6L, "스팟F", "SS", 0L, null)
             );
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(rows);
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(7L);
@@ -406,7 +406,7 @@ class SpotQueryServiceTest {
         @DisplayName("SpotRow의 모든 필드가 SpotItem에 올바르게 매핑된다")
         void mapsSpotRowToSpotItemCorrectly() {
             SpotImage image = SpotImage.create(1L, "key.jpg");
-            SpotRow row = new SpotRow(1L, "한강공원", "SS", 1.5);
+            SpotRow row = new SpotRow(1L, "한강공원", "SS", 12L, 1.5);
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of(row));
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L))).willReturn(List.of(image));
@@ -420,6 +420,7 @@ class SpotQueryServiceTest {
             assertThat(item.name()).isEqualTo("한강공원");
             assertThat(item.theme()).isEqualTo("SS");
             assertThat(item.thumbnailUrl()).isEqualTo("https://cdn.example.com/thumb.jpg");
+            assertThat(item.bookmarkCount()).isEqualTo(12L);
             assertThat(item.distanceKm()).isEqualTo(1.5);
         }
 
@@ -488,7 +489,7 @@ class SpotQueryServiceTest {
             assertThat(response.astronomyDate()).isEqualTo(java.time.LocalDate.of(2025, 5, 1));
             assertThat(response.weatherUpdatedAt()).isEqualTo(java.time.LocalDateTime.of(2025, 5, 1, 17, 0));
             assertThat(response.congestionUpdatedAt()).isEqualTo(java.time.LocalDateTime.of(2025, 5, 1, 17, 5));
-            assertThat(response.parkingInfo()).isEqualTo("정보 없음");
+            assertThat(response.parkingInfo()).isEqualTo("-");
             assertThat(response.bookmarkCount()).isEqualTo(5L);
             assertThat(response.isBookmarked()).isTrue();
             assertThat(response.isMySpot()).isTrue();

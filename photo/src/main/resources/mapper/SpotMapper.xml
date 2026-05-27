@@ -9,6 +9,7 @@
             s.id,
             s.name,
             s.theme,
+            COALESCE(s.bookmark_count, 0) AS bookmark_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
@@ -77,7 +78,7 @@
             s.name,
             s.theme,
             s.user_id,
-            s.bookmark_count,
+            COALESCE(s.bookmark_count, 0) AS bookmark_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(

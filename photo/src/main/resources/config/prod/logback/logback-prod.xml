@@ -7,13 +7,10 @@
     <property name="MAX_SIZE"    value="${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-100MB}"/>
     <property name="TOTAL_SIZE"  value="${LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP:-3GB}"/>
 
-    <property name="CONSOLE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [rid:%X{requestId:-}] [uid:%X{userId:-}] [%X{method:-} %X{uri:-}] [ip:%X{clientIp:-}] [tx:%X{txId:-}] %logger{36} - %msg%n"/>
-
+    <!-- Docker 환경에서 Promtail이 stdout을 JSON으로 파싱하므로 LogstashEncoder 사용 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>${CONSOLE_PATTERN}</pattern>
-            <charset>UTF-8</charset>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}","env":"prod"}</customFields>
         </encoder>
     </appender>
 
