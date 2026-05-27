@@ -7,6 +7,8 @@ import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.external.weather.util.LccGridConverter;
+import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import com.ioes.photo.global.config.image.ImageProperties;
 import com.ioes.photo.global.config.image.ImageProperties.ThumbnailProperties;
 import com.ioes.photo.global.config.s3.properties.StorageProperties;
@@ -239,6 +241,63 @@ class SpotBatchUploadServiceTest {
         }
     }
 
+    // ── 외부 API 연동 필드 ───────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("외부 API 연동 필드")
+    class ExternalApiFields {
+
+        @Test
+        @DisplayName("위경도로부터 기상청 격자(grid_nx/ny)를 계산해 저장한다")
+        void shouldComputeWeatherGrid() throws IOException {
+            MultipartFile excelFile = buildExcel(List.of(
+                new SpotRow("spot_001", "서울시청", "노을", null, null, 37.5665, 126.9780, null)
+            ));
+            MultipartFile zipFile = buildZip(List.of("001_서울시청.jpg"));
+            given(spotRepository.save(any())).willReturn(savedSpot(1L, "서울시청", SpotTheme.SUNSET));
+
+            service.batchUpload(excelFile, zipFile);
+
+            ArgumentCaptor<Spot> captor = ArgumentCaptor.forClass(Spot.class);
+            then(spotRepository).should().save(captor.capture());
+            GridPoint expected = LccGridConverter.toGrid(37.5665, 126.9780);
+            assertThat(captor.getValue().getGridNx()).isEqualTo(expected.nx());
+            assertThat(captor.getValue().getGridNy()).isEqualTo(expected.ny());
+        }
+
+        @Test
+        @DisplayName("혼잡도 지역명(9번째 컬럼)을 읽어 저장한다")
+        void shouldSaveCrowdAreaName() throws IOException {
+            MultipartFile excelFile = buildExcelWithCrowdArea(
+                new SpotRow("spot_001", "여의도한강공원", "노을", null, null, 37.528, 126.933, null),
+                "여의도");
+            MultipartFile zipFile = buildZip(List.of("001_여의도한강공원.jpg"));
+            given(spotRepository.save(any())).willReturn(savedSpot(1L, "여의도한강공원", SpotTheme.SUNSET));
+
+            service.batchUpload(excelFile, zipFile);
+
+            ArgumentCaptor<Spot> captor = ArgumentCaptor.forClass(Spot.class);
+            then(spotRepository).should().save(captor.capture());
+            assertThat(captor.getValue().getCrowdAreaName()).isEqualTo("여의도");
+        }
+
+        @Test
+        @DisplayName("혼잡도 지역명 컬럼이 없으면 crowdAreaName은 null이다")
+        void shouldLeaveCrowdAreaNameNullWhenAbsent() throws IOException {
+            MultipartFile excelFile = buildExcel(List.of(
+                new SpotRow("spot_001", "한강", "노을", null, null, 37.5, 126.9, null)
+            ));
+            MultipartFile zipFile = buildZip(List.of("001_한강.jpg"));
+            given(spotRepository.save(any())).willReturn(savedSpot(1L, "한강", SpotTheme.SUNSET));
+
+            service.batchUpload(excelFile, zipFile);
+
+            ArgumentCaptor<Spot> captor = ArgumentCaptor.forClass(Spot.class);
+            then(spotRepository).should().save(captor.capture());
+            assertThat(captor.getValue().getCrowdAreaName()).isNull();
+        }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private record SpotRow(
@@ -278,6 +337,28 @@ class SpotBatchUploadServiceTest {
                     dateCell.setCellValue(row.recordedDate());
                 }
             }
+
+            wb.write(out);
+            return new MockMultipartFile("excel", "spots.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", out.toByteArray());
+        }
+    }
+
+    private MultipartFile buildExcelWithCrowdArea(SpotRow row, String crowdAreaName) throws IOException {
+        try (XSSFWorkbook wb = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            XSSFSheet sheet = wb.createSheet("Sheet1");
+            sheet.createRow(0); // header
+
+            var excelRow = sheet.createRow(1);
+            excelRow.createCell(0).setCellValue(row.id());
+            excelRow.createCell(1).setCellValue(row.name());
+            excelRow.createCell(2).setCellValue(row.theme());
+            if (row.comment() != null) excelRow.createCell(3).setCellValue(row.comment());
+            if (row.address() != null) excelRow.createCell(4).setCellValue(row.address());
+            excelRow.createCell(5).setCellValue(row.lat());
+            excelRow.createCell(6).setCellValue(row.lng());
+            if (crowdAreaName != null) excelRow.createCell(8).setCellValue(crowdAreaName);
 
             wb.write(out);
             return new MockMultipartFile("excel", "spots.xlsx",
