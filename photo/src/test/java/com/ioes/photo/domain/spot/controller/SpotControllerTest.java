@@ -221,7 +221,7 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             List<SpotItem> items = List.of(
-                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2, false)
+                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2, 7L, false)
             );
             given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null))
                 .willReturn(new SpotListResponse(items, 0, false));

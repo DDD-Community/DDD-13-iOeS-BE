@@ -9,6 +9,7 @@
             s.id,
             s.name,
             s.theme,
+            s.bookmark_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(

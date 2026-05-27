@@ -179,7 +179,7 @@ public class SpotQueryService {
 
     private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap, boolean isBookmarked) {
         String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
-        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm(), isBookmarked);
+        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm(), row.bookmarkCount(), isBookmarked);
     }
 
     private String thumbnailUrl(SpotImage spotImage) {

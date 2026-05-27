@@ -66,6 +66,7 @@ class UserProfileServiceRestoreTest {
             assertThat(response.savedSpotCount()).isEqualTo(5L);
             assertThat(response.recordedSpotCount()).isEqualTo(3L);
             assertThat(response.nickname()).isEqualTo(user.getDisplayName());
+            assertThat(response.provider()).isEqualTo(OAuthProvider.KAKAO);
         }
 
         @Test

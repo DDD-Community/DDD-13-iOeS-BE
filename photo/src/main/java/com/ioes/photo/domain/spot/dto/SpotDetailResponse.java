@@ -47,7 +47,7 @@ public record SpotDetailResponse(
     @Schema(description = "내 스팟 여부 (비로그인 시 false)") boolean isMySpot
 ) {
 
-    private static final String PARKING_INFO_DEFAULT = "정보 없음";
+    private static final String PARKING_INFO_DEFAULT = "-";
 
     public static SpotDetailResponse of(Spot spot, SpotImage spotImage, SpotInfo spotInfo,
                                         String imageUrl, boolean isBookmarked, boolean isMySpot) {
