@@ -18,6 +18,8 @@ import com.ioes.photo.global.storage.ImageResizer;
 import com.ioes.photo.global.storage.S3StorageService;
 import com.ioes.photo.global.storage.StoragePathUtils;
 import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
+import com.ioes.photo.external.weather.util.LccGridConverter;
+import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -80,6 +82,7 @@ public class SpotBatchUploadService {
     }
 
     private SpotBatchUploadResponse.SpotResult processSpot(SpotExcelRow row, Map<String, ImageEntry> imageMap) {
+        GridPoint grid = LccGridConverter.toGrid(row.latitude(), row.longitude());
         Spot spot = spotRepository.save(Spot.builder()
             .name(row.name())
             .comment(row.comment())
@@ -88,6 +91,9 @@ public class SpotBatchUploadService {
             .longitude(row.longitude())
             .address(row.address())
             .status(SpotStatus.PUBLISHED)
+            .gridNx(grid.nx())
+            .gridNy(grid.ny())
+            .crowdAreaName(row.crowdAreaName())
             .build());
 
         ImageEntry entry = imageMap.get(row.idPrefix());
@@ -153,7 +159,8 @@ public class SpotBatchUploadService {
                     getStringValue(row.getCell(4)),
                     row.getCell(5).getNumericCellValue(),
                     row.getCell(6).getNumericCellValue(),
-                    getDateValue(row.getCell(7))
+                    getDateValue(row.getCell(7)),
+                    getStringValue(row.getCell(8))
                 ));
             }
             return rows;
@@ -239,7 +246,8 @@ public class SpotBatchUploadService {
         String address,
         double latitude,
         double longitude,
-        LocalDate recordedDate
+        LocalDate recordedDate,
+        String crowdAreaName
     ) {}
 
     private record ImageEntry(
