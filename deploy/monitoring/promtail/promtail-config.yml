@@ -19,17 +19,10 @@ scrape_configs:
           __path__: /var/log/app/*.log
 
     pipeline_stages:
-      # LogstashEncoder JSON 필드 파싱
+      # LogstashEncoder JSON 필드에서 저카디널리티 레이블만 추출
+      # requestId/userId는 레이블이 아닌 JSON 필드로 쿼리 (| json | requestId="...")
       - json:
           expressions:
             level: level
-            requestId: requestId
-            userId: userId
-      # 레이블 지정
-      # requestId/userId는 카디널리티가 높으나 요청 추적 용도로 유지
       - labels:
           level:
-          requestId:
-          userId:
-      # output 미설정 → JSON 원본 전체를 Loki 로그 라인으로 저장
-      # 이렇게 해야 stack_trace 등 모든 필드를 쿼리 시 | json 파이프로 파싱 가능

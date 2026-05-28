@@ -347,6 +347,6 @@ class SavedSpotServiceTest {
     }
 
     private SavedSpotRow buildRow(Long spotId, boolean deleted) {
-        return new SavedSpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, LocalDateTime.now(), deleted);
+        return new SavedSpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, 0L, LocalDateTime.now(), deleted);
     }
 }

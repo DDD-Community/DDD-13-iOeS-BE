@@ -14,6 +14,7 @@ public record SavedSpotRow(
     Double latitude,
     Double longitude,
     Double distanceKm,
+    long bookmarkCount,
     LocalDateTime savedAt,
     boolean deleted
 ) {}
