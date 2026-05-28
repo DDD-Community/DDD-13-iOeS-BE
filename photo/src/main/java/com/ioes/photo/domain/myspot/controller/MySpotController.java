@@ -9,6 +9,10 @@ import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.common.validation.Latitude;
 import com.ioes.photo.global.common.validation.Longitude;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -57,6 +61,19 @@ public class MySpotController {
         return ApiResponse.success(mySpotService.findMySpots(userId, page, latitude, longitude));
     }
 
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        content = @Content(
+            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object"),
+            schemaProperties = {
+                @SchemaProperty(name = "request",
+                    schema = @Schema(implementation = CreateMySpotRequest.class)),
+                @SchemaProperty(name = "image",
+                    schema = @Schema(type = "string", format = "binary", description = "스팟 이미지 파일"))
+            },
+            encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)
+        )
+    )
     @Operation(
         summary = "나만의 스팟 등록",
         description = "이미지 파일과 메타데이터(JSON)를 multipart로 전송해 스팟을 등록합니다. "
