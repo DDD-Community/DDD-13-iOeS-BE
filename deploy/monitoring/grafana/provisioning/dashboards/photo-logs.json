@@ -118,7 +118,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"photo-app\", requestId=\"$requestId\"} | json | line_format \"[{{.level}}] {{.logger_name}}\\n  msg: {{.message}}{{if .stack_trace}}\\n  stack: {{.stack_trace}}{{end}}\"",
+          "expr": "{job=\"photo-app\"} | json | requestId=`$requestId` | line_format \"[{{.level}}] {{.logger_name}}\\n  msg: {{.message}}{{if .stack_trace}}\\n  stack: {{.stack_trace}}{{end}}\"",
           "legendFormat": ""
         }
       ],
@@ -143,7 +143,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"photo-app\", level=~\"$level\", userId=\"$userId\"} | json | line_format \"[{{.level}}] [rid:{{.requestId}}] {{.logger_name}} - {{.message}}{{if .stack_trace}}\\n  {{.stack_trace}}{{end}}\"",
+          "expr": "{job=\"photo-app\", level=~\"$level\"} | json | userId=`$userId` | line_format \"[{{.level}}] [rid:{{.requestId}}] {{.logger_name}} - {{.message}}{{if .stack_trace}}\\n  {{.stack_trace}}{{end}}\"",
           "legendFormat": ""
         }
       ],
