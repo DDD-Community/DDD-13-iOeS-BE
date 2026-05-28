@@ -95,6 +95,7 @@ app:
       - /v1/spots/**
       - /v1/bbs/posts
       - /v1/bbs/posts/**
+      - /v1/address/**
 
   #  Swagger / OpenAPI
   swagger:

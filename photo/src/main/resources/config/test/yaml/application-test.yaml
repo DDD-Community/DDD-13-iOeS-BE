@@ -66,6 +66,7 @@ app:
       - /v1/spots/**
       - /v1/bbs/posts
       - /v1/bbs/posts/**
+      - /v1/address/**
 
 logging:
   config: classpath:config/test/logback/logback-test.xml

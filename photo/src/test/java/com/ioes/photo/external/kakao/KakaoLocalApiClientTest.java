@@ -13,10 +13,13 @@ import com.ioes.photo.external.kakao.dto.Coord2AddressResponse.Address;
 import com.ioes.photo.external.kakao.dto.Coord2AddressResponse.Document;
 import com.ioes.photo.external.kakao.dto.Coord2AddressResponse.RoadAddress;
 import com.ioes.photo.external.kakao.dto.KakaoAddress;
+import com.ioes.photo.external.kakao.dto.KakaoAddressSearch;
+import com.ioes.photo.external.kakao.dto.SearchAddressResponse;
 import com.ioes.photo.global.common.util.HttpClientUtils;
 import com.ioes.photo.global.config.oauth.properties.OAuthProperties;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -104,5 +107,76 @@ class KakaoLocalApiClientTest {
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(CommonErrorCode.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("주소 검색 성공이면 후보 목록과 위·경도를 반환한다")
+    void returnsAddresses_whenSearchSuccess() {
+        givenRestApiKey();
+        SearchAddressResponse response = new SearchAddressResponse(
+            new SearchAddressResponse.Meta(1, true),
+            List.of(new SearchAddressResponse.Document(
+                "서울 강남구 테헤란로 152",
+                "127.036",
+                "37.500",
+                new SearchAddressResponse.RoadAddress("서울 강남구 테헤란로 152"),
+                new SearchAddressResponse.Address("서울 강남구 역삼동 737")
+            ))
+        );
+        given(httpClientUtils.get(any(URI.class), any(Consumer.class), eq(SearchAddressResponse.class)))
+            .willReturn(response);
+
+        KakaoAddressSearch result = kakaoLocalApiClient.searchAddress("강남", 1, 10);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).addressName()).isEqualTo("서울 강남구 테헤란로 152");
+        assertThat(result.items().get(0).roadAddress()).isEqualTo("서울 강남구 테헤란로 152");
+        assertThat(result.items().get(0).jibunAddress()).isEqualTo("서울 강남구 역삼동 737");
+        assertThat(result.items().get(0).latitude()).isEqualTo(37.500);
+        assertThat(result.items().get(0).longitude()).isEqualTo(127.036);
+        assertThat(result.totalCount()).isEqualTo(1);
+        assertThat(result.isEnd()).isTrue();
+    }
+
+    @Test
+    @DisplayName("검색 결과가 없으면 빈 목록을 반환한다")
+    void returnsEmpty_whenNoSearchResult() {
+        givenRestApiKey();
+        SearchAddressResponse response = new SearchAddressResponse(
+            new SearchAddressResponse.Meta(0, true), List.of());
+        given(httpClientUtils.get(any(URI.class), any(Consumer.class), eq(SearchAddressResponse.class)))
+            .willReturn(response);
+
+        KakaoAddressSearch result = kakaoLocalApiClient.searchAddress("없는주소", 1, 10);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.totalCount()).isZero();
+        assertThat(result.isEnd()).isTrue();
+    }
+
+    @Test
+    @DisplayName("검색 타임아웃이면 API_TIMEOUT 예외로 변환한다")
+    void throwsApiTimeout_whenSearchResourceAccessException() {
+        givenRestApiKey();
+        given(httpClientUtils.get(any(URI.class), any(Consumer.class), eq(SearchAddressResponse.class)))
+            .willThrow(new ResourceAccessException("timeout"));
+
+        assertThatThrownBy(() -> kakaoLocalApiClient.searchAddress("강남", 1, 10))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ExternalApiErrorCode.API_TIMEOUT);
+    }
+
+    @Test
+    @DisplayName("검색 중 기타 예외면 API_CALL_FAILED로 변환한다")
+    void throwsApiCallFailed_whenSearchUnexpectedException() {
+        givenRestApiKey();
+        given(httpClientUtils.get(any(URI.class), any(Consumer.class), eq(SearchAddressResponse.class)))
+            .willThrow(new RuntimeException("boom"));
+
+        assertThatThrownBy(() -> kakaoLocalApiClient.searchAddress("강남", 1, 10))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ExternalApiErrorCode.API_CALL_FAILED);
     }
 }
