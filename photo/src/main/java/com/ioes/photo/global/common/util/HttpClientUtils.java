@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -47,6 +48,14 @@ public class HttpClientUtils {
     public <T> T get(String url, Consumer<HttpHeaders> headersConsumer, ParameterizedTypeReference<T> responseType) {
         return restClient.get()
             .uri(url)
+            .headers(headersConsumer)
+            .retrieve()
+            .body(responseType);
+    }
+
+    public <T> T get(URI uri, Consumer<HttpHeaders> headersConsumer, Class<T> responseType) {
+        return restClient.get()
+            .uri(uri)
             .headers(headersConsumer)
             .retrieve()
             .body(responseType);
