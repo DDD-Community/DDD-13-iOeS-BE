@@ -130,7 +130,7 @@ public class SavedSpotService {
         String imageUrl = resolveImageUrl(imageMap.get(row.spotId()));
         return new SavedSpotItem(
             row.spotId(), row.name(), row.theme(), imageUrl,
-            row.latitude(), row.longitude(), row.distanceKm(), row.savedAt(), row.deleted()
+            row.latitude(), row.longitude(), row.distanceKm(), row.bookmarkCount(), row.savedAt(), row.deleted()
         );
     }
 
