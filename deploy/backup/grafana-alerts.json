@@ -76,7 +76,7 @@
     {
       "name": "backup-missing-alerts",
       "folder": "Backup",
-      "interval": "24h",
+      "interval": "1h",
       "rules": [
         {
           "uid": "backup-db-missing",
@@ -87,12 +87,12 @@
               "refId": "A",
               "queryType": "range",
               "relativeTimeRange": {
-                "from": 604800,
+                "from": 612000,
                 "to": 0
               },
               "datasourceUid": "loki",
               "model": {
-                "expr": "absent_over_time({job=\"backup\", type=\"db\"}[168h])",
+                "expr": "absent_over_time({job=\"backup\", type=\"db\"}[170h])",
                 "queryType": "range",
                 "refId": "A"
               }
@@ -120,12 +120,12 @@
               "refId": "A",
               "queryType": "range",
               "relativeTimeRange": {
-                "from": 2592000,
+                "from": 2599200,
                 "to": 0
               },
               "datasourceUid": "loki",
               "model": {
-                "expr": "absent_over_time({job=\"backup\", type=\"applog\"}[720h])",
+                "expr": "absent_over_time({job=\"backup\", type=\"applog\"}[722h])",
                 "queryType": "range",
                 "refId": "A"
               }

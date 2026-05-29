@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Usage: bash /home/ec2-user/backup/scripts/setup-cron.sh
+# Usage: bash /path/to/deploy/backup/scripts/setup-cron.sh
 # 기존 Cron을 보존하면서 백업 Cron만 추가 (덮어쓰기 금지)
 
 set -euo pipefail
 
-BACKUP_DIR="/home/ubuntu/DDD-13-iOeS-BE/deploy/backup"
+BACKUP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DB_CRON="0 2 * * 0 ${BACKUP_DIR}/scripts/backup-db.sh >> ${BACKUP_DIR}/logs/backup-db.log 2>&1"
 LOGS_CRON="0 3 1 * * ${BACKUP_DIR}/scripts/backup-logs.sh >> ${BACKUP_DIR}/logs/backup-logs.log 2>&1"
 
