@@ -26,3 +26,21 @@ scrape_configs:
             level: level
       - labels:
           level:
+
+  - job_name: backup
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: backup
+          __path__: /var/log/backup/*.log
+
+    pipeline_stages:
+      # level(INFO/ERROR), type(db/applog) 을 저카디널리티 레이블로 추출
+      - json:
+          expressions:
+            level: level
+            type: type
+      - labels:
+          level:
+          type:
