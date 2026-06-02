@@ -33,11 +33,9 @@ import org.springframework.web.multipart.MultipartFile;
  * 스팟 어드민 컨트롤러.
  *
  * <p>MVP 단계 운영 목적의 내부 전용 API를 제공한다.
- * 외부 클라이언트에 노출하지 않으며, 서버 내부 또는 운영자 도구에서만 직접 호출해야 한다.
- * Swagger UI에서도 숨김 처리되어 있으며, 추후 전용 어드민 서버로 분리될 예정이다.
  *
  * @author 황제연
- * @deprecated 외부 공개 API가 아닌 내부 운영 전용 엔드포인트입니다. 외부에서 직접 호출하지 마십시오.
+ * @deprecated 외부 공개 API가 아닌 QA편의성 API입니다. 추후, ROLE권한 도입 시 복구될 수도 있습니다
  */
 @Deprecated
 @Hidden
