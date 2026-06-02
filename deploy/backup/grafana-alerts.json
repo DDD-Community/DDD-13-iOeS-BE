@@ -3,10 +3,9 @@
     {
       "name": "backup-failure-alerts",
       "folder": "Backup",
-      "interval": "5m",
+      "interval": 300,
       "rules": [
         {
-          "uid": "backup-db-failure",
           "title": "DB 백업 실패",
           "condition": "A",
           "data": [
@@ -30,7 +29,7 @@
           "for": "0s",
           "annotations": {
             "summary": "DB 백업 스크립트에서 ERROR 로그가 감지되었습니다.",
-            "description": "백업 로그에서 level=ERROR, type=db 항목이 발생했습니다. /home/ec2-user/backup/logs/backup-db.log 를 확인하세요."
+            "description": "백업 로그에서 level=ERROR, type=db 항목이 발생했습니다. /home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs/backup-db.log 를 확인하세요."
           },
           "labels": {
             "severity": "critical",
@@ -39,7 +38,6 @@
           "isPaused": false
         },
         {
-          "uid": "backup-applog-failure",
           "title": "로그 백업 실패",
           "condition": "A",
           "data": [
@@ -63,7 +61,7 @@
           "for": "0s",
           "annotations": {
             "summary": "로그 백업 스크립트에서 ERROR 로그가 감지되었습니다.",
-            "description": "백업 로그에서 level=ERROR, type=applog 항목이 발생했습니다. /home/ec2-user/backup/logs/backup-logs.log 를 확인하세요."
+            "description": "백업 로그에서 level=ERROR, type=applog 항목이 발생했습니다. /home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs/backup-logs.log 를 확인하세요."
           },
           "labels": {
             "severity": "critical",
@@ -76,10 +74,9 @@
     {
       "name": "backup-missing-alerts",
       "folder": "Backup",
-      "interval": "1h",
+      "interval": 3600,
       "rules": [
         {
-          "uid": "backup-db-missing",
           "title": "DB 백업 미실행 (7일)",
           "condition": "A",
           "data": [
@@ -112,7 +109,6 @@
           "isPaused": false
         },
         {
-          "uid": "backup-applog-missing",
           "title": "로그 백업 미실행 (30일)",
           "condition": "A",
           "data": [
