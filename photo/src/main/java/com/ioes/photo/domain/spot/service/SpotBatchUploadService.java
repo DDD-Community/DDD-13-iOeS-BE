@@ -5,9 +5,11 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.global.common.util.FileUtils;
+import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.config.image.ImageProperties;
 import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.code.CommonErrorCode;
@@ -67,6 +69,7 @@ public class SpotBatchUploadService {
     private final ImageProperties imageProperties;
     private final StorageProperties storageProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final CrowdAreaMapper crowdAreaMapper;
 
     @Transactional
     public SpotBatchUploadResponse batchUpload(MultipartFile excelFile, MultipartFile imagesFile) {
@@ -81,6 +84,13 @@ public class SpotBatchUploadService {
         return SpotBatchUploadResponse.of(results);
     }
 
+    private String resolveCrowdAreaName(SpotExcelRow row) {
+        if (NullUtils.isNotBlank(row.crowdAreaName())) {
+            return row.crowdAreaName();
+        }
+        return crowdAreaMapper.findNearestAreaName(row.latitude(), row.longitude()).orElse(null);
+    }
+
     private SpotBatchUploadResponse.SpotResult processSpot(SpotExcelRow row, Map<String, ImageEntry> imageMap) {
         GridPoint grid = LccGridConverter.toGrid(row.latitude(), row.longitude());
         Spot spot = spotRepository.save(Spot.builder()
@@ -93,7 +103,7 @@ public class SpotBatchUploadService {
             .status(SpotStatus.PUBLISHED)
             .gridNx(grid.nx())
             .gridNy(grid.ny())
-            .crowdAreaName(row.crowdAreaName())
+            .crowdAreaName(resolveCrowdAreaName(row))
             .build());
 
         ImageEntry entry = imageMap.get(row.idPrefix());

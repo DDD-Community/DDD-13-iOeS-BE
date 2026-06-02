@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.service;
 
+import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest.Item;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
@@ -7,6 +8,7 @@ import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse.SpotResult;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.global.common.util.NullUtils;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SpotAdminService {
 
     private final SpotRepository spotRepository;
+    private final CrowdAreaMapper crowdAreaMapper;
 
     @Transactional
     public SpotAdminCreateResponse createSpots(SpotAdminCreateRequest request) {
@@ -52,7 +55,14 @@ public class SpotAdminService {
             .status(SpotStatus.PUBLISHED)
             .gridNx(item.gridNx())
             .gridNy(item.gridNy())
-            .crowdAreaName(item.crowdAreaName())
+            .crowdAreaName(resolveCrowdAreaName(item))
             .build();
+    }
+
+    private String resolveCrowdAreaName(Item item) {
+        if (NullUtils.isNotBlank(item.crowdAreaName())) {
+            return item.crowdAreaName();
+        }
+        return crowdAreaMapper.findNearestAreaName(item.latitude(), item.longitude()).orElse(null);
     }
 }

@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.service;
 
+import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest.Item;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
@@ -7,6 +8,7 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -35,6 +38,7 @@ import static org.mockito.BDDMockito.then;
 class SpotAdminServiceTest {
 
     @Mock SpotRepository spotRepository;
+    @Mock CrowdAreaMapper crowdAreaMapper;
 
     @InjectMocks SpotAdminService spotAdminService;
 
@@ -147,6 +151,37 @@ class SpotAdminServiceTest {
             assertThat(spot.getGridNx()).isEqualTo(60);
             assertThat(spot.getGridNy()).isEqualTo(126);
             assertThat(spot.getCrowdAreaName()).isEqualTo("한강공원");
+        }
+
+        @Test
+        @DisplayName("crowdAreaName 미입력 시 좌표로 최근접 장소가 자동 매핑된다")
+        void shouldAutoMapCrowdAreaNameWhenBlank() {
+            Item item = buildItem("광화문 스팟", SpotTheme.SUNSET, 37.5709, 126.9772);
+            SpotAdminCreateRequest request = new SpotAdminCreateRequest(List.of(item));
+            given(spotRepository.saveAll(anyList())).willReturn(List.of(buildSavedSpot(1L, "광화문 스팟")));
+            given(crowdAreaMapper.findNearestAreaName(anyDouble(), anyDouble()))
+                .willReturn(Optional.of("광화문·덕수궁"));
+
+            spotAdminService.createSpots(request);
+
+            ArgumentCaptor<List<Spot>> captor = ArgumentCaptor.forClass(List.class);
+            then(spotRepository).should().saveAll(captor.capture());
+            assertThat(captor.getValue().get(0).getCrowdAreaName()).isEqualTo("광화문·덕수궁");
+        }
+
+        @Test
+        @DisplayName("crowdAreaName 직접 입력 시 자동 매핑하지 않고 입력값을 유지한다")
+        void shouldRespectProvidedCrowdAreaName() {
+            Item item = new Item("스팟", null, SpotTheme.SUNSET, 37.5, 127.0, null, null, null, "직접지정");
+            SpotAdminCreateRequest request = new SpotAdminCreateRequest(List.of(item));
+            given(spotRepository.saveAll(anyList())).willReturn(List.of(buildSavedSpot(1L, "스팟")));
+
+            spotAdminService.createSpots(request);
+
+            ArgumentCaptor<List<Spot>> captor = ArgumentCaptor.forClass(List.class);
+            then(spotRepository).should().saveAll(captor.capture());
+            assertThat(captor.getValue().get(0).getCrowdAreaName()).isEqualTo("직접지정");
+            then(crowdAreaMapper).shouldHaveNoInteractions();
         }
     }
 
