@@ -9,6 +9,7 @@ import com.ioes.photo.domain.spot.service.SpotAdminService;
 import com.ioes.photo.domain.spot.service.SpotBatchUploadService;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.global.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,14 +32,18 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 스팟 어드민 컨트롤러.
  *
- * MVP 단계 운영 목적의 내부 전용 API를 제공한다.
- * JWT 인증이 필요하며 외부에 노출하지 않는다.
+ * <p>MVP 단계 운영 목적의 내부 전용 API를 제공한다.
+ * 외부 클라이언트에 노출하지 않으며, 서버 내부 또는 운영자 도구에서만 직접 호출해야 한다.
+ * Swagger UI에서도 숨김 처리되어 있으며, 추후 전용 어드민 서버로 분리될 예정이다.
  *
  * @author 황제연
+ * @deprecated 외부 공개 API가 아닌 내부 운영 전용 엔드포인트입니다. 외부에서 직접 호출하지 마십시오.
  */
+@Deprecated
+@Hidden
 @Tag(name = "스팟 어드민", description = "스팟 내부 운영 API")
-@RestController
-@RequestMapping("/v1/internal/spots")
+// @RestController  외부 접근 차단 - 내부 운영 전용 (직접 서비스 메소드 호출 또는 별도 어드민 서버로 이관 예정)
+// @RequestMapping("/v1/internal/spots")
 @RequiredArgsConstructor
 public class SpotAdminController {
 
