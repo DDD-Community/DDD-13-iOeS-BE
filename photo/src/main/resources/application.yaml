@@ -71,6 +71,12 @@ app:
     # 발표 시각으로부터 조회 가능해지기까지 지연(분). 운영 중 실측에 따라 조정 가능.
     availability-delay-minutes: 10
 
+  # 스팟 → 혼잡도 장소 자동 매핑
+  crowd:
+    mapping:
+      # 최근접 장소까지 이 거리(m)를 초과하면 매핑하지 않음. PM 협의로 조정 가능.
+      max-distance-meters: 3000
+
   # 비동기 스레드 풀
   async:
     core-pool-size: 4

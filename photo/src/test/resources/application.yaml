@@ -48,6 +48,10 @@ app:
     connect-timeout: 5000
     read-timeout: 30000
 
+  crowd:
+    mapping:
+      max-distance-meters: 3000
+
   async:
     core-pool-size: 2
     max-pool-size: 4
