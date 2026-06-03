@@ -2,7 +2,6 @@
 -- V8: 서울시 실시간 도시데이터 주요 121장소 시드
 -- 출처: 서울 열린데이터광장 OA-21285 '서울시 주요 121장소 영역'(SHP, WGS84)
 -- latitude/longitude 는 각 장소 경계 폴리곤의 면적가중 중심점(centroid)
--- 재실행 안전: area_code 충돌 시 좌표/이름을 최신값으로 갱신
 -- ============================================================
 
 INSERT INTO crowd_areas (area_code, area_name, category, latitude, longitude)
@@ -127,9 +126,4 @@ VALUES
     ('POI128', '홍제폭포', '공원', 37.580779, 126.936953),
     ('POI129', '송현녹지광장', '공원', 37.577857, 126.983711),
     ('POI130', '시의회 앞', '인구밀집지역', 37.567068, 126.976938),
-    ('POI131', '숭례문', '인구밀집지역', 37.560486, 126.97573)
-ON CONFLICT (area_code) DO UPDATE SET
-    area_name = EXCLUDED.area_name,
-    category  = EXCLUDED.category,
-    latitude  = EXCLUDED.latitude,
-    longitude = EXCLUDED.longitude;
+    ('POI131', '숭례문', '인구밀집지역', 37.560486, 126.97573);
