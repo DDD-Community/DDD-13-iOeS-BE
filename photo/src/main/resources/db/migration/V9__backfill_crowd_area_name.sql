@@ -7,17 +7,23 @@
 -- 임계값은 런타임 자동 매핑(app.crowd.mapping.max-distance-meters)의 작성 시점 기본값(3km)으로 고정한다.
 -- ============================================================
 
-UPDATE spots s
+WITH nearest AS (
+    SELECT s.id AS spot_id, n.area_name
+    FROM spots s
+    CROSS JOIN LATERAL (
+        SELECT ca.area_name,
+               ST_DistanceSphere(s.location,
+                   ST_SetSRID(ST_MakePoint(ca.longitude, ca.latitude), 4326)) AS distance_meters
+        FROM crowd_areas ca
+        ORDER BY distance_meters
+        LIMIT 1
+    ) n
+    WHERE s.status = 'B'
+      AND s.crowd_area_name IS NULL
+      AND s.location IS NOT NULL
+      AND n.distance_meters <= 3000
+)
+UPDATE spots
 SET crowd_area_name = nearest.area_name
-FROM LATERAL (
-    SELECT ca.area_name,
-           ST_DistanceSphere(s.location,
-               ST_SetSRID(ST_MakePoint(ca.longitude, ca.latitude), 4326)) AS distance_meters
-    FROM crowd_areas ca
-    ORDER BY distance_meters
-    LIMIT 1
-) nearest
-WHERE s.status = 'B'
-  AND s.crowd_area_name IS NULL
-  AND s.location IS NOT NULL
-  AND nearest.distance_meters <= 3000;
+FROM nearest
+WHERE spots.id = nearest.spot_id;
