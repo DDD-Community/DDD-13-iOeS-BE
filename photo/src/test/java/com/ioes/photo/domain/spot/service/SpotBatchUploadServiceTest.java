@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.service;
 
+import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.dto.SpotBatchUploadResponse;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
@@ -70,6 +71,7 @@ class SpotBatchUploadServiceTest {
     @Mock ImageProperties imageProperties;
     @Mock StorageProperties storageProperties;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock CrowdAreaMapper crowdAreaMapper;
 
     @InjectMocks SpotBatchUploadService service;
 
