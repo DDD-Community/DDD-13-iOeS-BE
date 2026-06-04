@@ -17,20 +17,40 @@ groups:
             datasourceUid: loki
             model:
               refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
               queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
               expr: 'sum(count_over_time({job="photo-app", level="ERROR"} | json | logger_name="com.ioes.photo.global.error.handler.GlobalExceptionHandler" [5m]))'
           - refId: B
             datasourceUid: __expr__
             model:
               refId: B
               type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
               expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
               conditions:
-                - evaluator:
+                - type: query
+                  evaluator:
                     type: gt
                     params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
         noDataState: OK
-        execErrState: Error
+        execErrState: KeepLast
         for: 0s
         annotations:
           summary: 미처리 예외(500)가 발생했습니다.
@@ -50,30 +70,50 @@ groups:
             datasourceUid: loki
             model:
               refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
               queryType: instant
-              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "Apple JWKS 조회 실패|Apple identity token 검증 실패|Apple client_secret 생성 실패|닉네임/해시태그 충돌" [5m]))'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "Apple JWKS 조회 실패|Apple RSA 공개키 변환 실패|Apple identity token 검증 실패|Apple client_secret 생성 실패|닉네임/해시태그 충돌" [5m]))'
           - refId: B
             datasourceUid: __expr__
             model:
               refId: B
               type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
               expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
               conditions:
-                - evaluator:
+                - type: query
+                  evaluator:
                     type: gt
                     params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
         noDataState: OK
-        execErrState: Error
+        execErrState: KeepLast
         for: 0s
         annotations:
           summary: 인증 인프라 오류가 발생했습니다.
-          description: Apple JWKS 조회/토큰 검증/OAuth 사용자 생성 실패가 감지되었습니다. 로그인 장애로 이어질 수 있습니다.
+          description: Apple JWKS 조회/공개키 변환/토큰 검증/OAuth 사용자 생성 실패가 감지되었습니다. 로그인 장애로 이어질 수 있습니다.
         labels:
           severity: critical
         isPaused: false
 
       - uid: app-scheduler-failure
-        title: 스케줄러 연속 실패
+        title: 수집 스케줄러 반복 실패
         condition: B
         data:
           - refId: A
@@ -83,24 +123,44 @@ groups:
             datasourceUid: loki
             model:
               refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
               queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
               expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |= "unexpected failure" [30m]))'
           - refId: B
             datasourceUid: __expr__
             model:
               refId: B
               type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
               expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
               conditions:
-                - evaluator:
+                - type: query
+                  evaluator:
                     type: gt
                     params: [1]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
         noDataState: OK
-        execErrState: Error
+        execErrState: KeepLast
         for: 0s
         annotations:
-          summary: 수집 스케줄러가 연속 실패하고 있습니다.
-          description: 혼잡도/날씨/천문 수집 스케줄러가 30분 내 2회 이상 실패했습니다. 데이터 수집이 중단되었을 수 있습니다.
+          summary: 수집 스케줄러 실패가 반복되고 있습니다.
+          description: 혼잡도/날씨/천문 수집 스케줄러 실패가 30분 내 2건 이상 발생했습니다. 데이터 수집이 중단되었을 수 있습니다.
         labels:
           severity: warning
         isPaused: false
@@ -116,20 +176,40 @@ groups:
             datasourceUid: loki
             model:
               refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
               queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
               expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "API 타임아웃|API 호출 실패|외부 API 5xx" [10m]))'
           - refId: B
             datasourceUid: __expr__
             model:
               refId: B
               type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
               expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
               conditions:
-                - evaluator:
+                - type: query
+                  evaluator:
                     type: gt
                     params: [10]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
         noDataState: OK
-        execErrState: Error
+        execErrState: KeepLast
         for: 0s
         annotations:
           summary: 외부 API 에러가 임계치를 초과했습니다.

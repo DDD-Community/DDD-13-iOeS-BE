@@ -1,5 +1,7 @@
 apiVersion: 1
 
+# 루트 notification policy를 프로비저닝하므로 UI에서 수정한 라우팅은 재시작 시 덮어써짐.
+# 라우팅 변경은 반드시 이 파일에서 관리할 것.
 policies:
   - orgId: 1
     receiver: discord-alerts
