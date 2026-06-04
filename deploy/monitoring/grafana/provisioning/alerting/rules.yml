@@ -1,0 +1,139 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: app-error-alerts
+    folder: Application
+    interval: 1m
+    rules:
+      - uid: app-unhandled-500
+        title: 미처리 500 에러
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} | json | logger_name="com.ioes.photo.global.error.handler.GlobalExceptionHandler" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 미처리 예외(500)가 발생했습니다.
+          description: GlobalExceptionHandler에서 Unexpected error가 감지되었습니다. Grafana Explore에서 {job="photo-app", level="ERROR"} 로그를 확인하세요.
+        labels:
+          severity: critical
+        isPaused: false
+
+      - uid: app-auth-infra-failure
+        title: 인증 인프라 장애
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "Apple JWKS 조회 실패|Apple identity token 검증 실패|Apple client_secret 생성 실패|닉네임/해시태그 충돌" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 인증 인프라 오류가 발생했습니다.
+          description: Apple JWKS 조회/토큰 검증/OAuth 사용자 생성 실패가 감지되었습니다. 로그인 장애로 이어질 수 있습니다.
+        labels:
+          severity: critical
+        isPaused: false
+
+      - uid: app-scheduler-failure
+        title: 스케줄러 연속 실패
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |= "unexpected failure" [30m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [1]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 수집 스케줄러가 연속 실패하고 있습니다.
+          description: 혼잡도/날씨/천문 수집 스케줄러가 30분 내 2회 이상 실패했습니다. 데이터 수집이 중단되었을 수 있습니다.
+        labels:
+          severity: warning
+        isPaused: false
+
+      - uid: app-external-api-errors
+        title: 외부 API 실패율 임계 초과
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "API 타임아웃|API 호출 실패|외부 API 5xx" [10m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [10]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 외부 API 에러가 임계치를 초과했습니다.
+          description: 외부 API(카카오/기상청/서울시/천문) 호출 실패가 10분 내 10건을 초과했습니다. 외부 서비스 장애 또는 키 만료 여부를 확인하세요.
+        labels:
+          severity: warning
+        isPaused: false
