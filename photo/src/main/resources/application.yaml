@@ -77,6 +77,14 @@ app:
       # 최근접 장소까지 이 거리(m)를 초과하면 매핑하지 않음. PM 협의로 조정 가능.
       max-distance-meters: 3000
 
+  # 앱 버전 설정 — 버전 정책 변경 시 이 값을 수정 후 배포
+  app-config:
+    ios:
+      minimum-version: "1.0.0"   # 이 버전 미만이면 앱 사용 불가
+      latest-version: "1.0.0"    # 앱스토어 기준 최신 버전
+      force-update: false        # 강제 업데이트 기능 on/off 스위치
+      store-url: "https://apps.apple.com/app/id0000000000"  # TODO(#84): 앱스토어 출시 후 실제 앱 ID로 교체
+
   # 비동기 스레드 풀
   async:
     core-pool-size: 4
@@ -102,6 +110,7 @@ app:
       - /v1/bbs/posts
       - /v1/bbs/posts/**
       - /v1/address/**
+      - /v1/app/config/**
 
   #  Swagger / OpenAPI
   swagger:
