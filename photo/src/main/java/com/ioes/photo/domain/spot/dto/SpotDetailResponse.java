@@ -8,6 +8,7 @@ import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.external.crowd.enums.CongestionLevel;
 import com.ioes.photo.external.weather.enums.PrecipitationType;
 import com.ioes.photo.external.weather.enums.SkyStatus;
+import com.ioes.photo.global.common.util.NullUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -72,7 +73,7 @@ public record SpotDetailResponse(
             Optional.ofNullable(spotInfo).map(SpotInfo::getAstronomyDate).orElse(null),
             Optional.ofNullable(spotInfo).map(SpotInfo::getWeatherUpdatedAt).orElse(null),
             Optional.ofNullable(spotInfo).map(SpotInfo::getCongestionUpdatedAt).orElse(null),
-            PARKING_INFO_DEFAULT,
+            NullUtils.orDefault(spot.getParkingInfo(), PARKING_INFO_DEFAULT),
             spot.getBookmarkCount(),
             isBookmarked,
             isMySpot
