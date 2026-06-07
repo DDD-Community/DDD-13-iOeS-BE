@@ -195,10 +195,10 @@ class SpotQueryServiceTest {
         void returnsPreview_whenSpotExists() {
             SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, 1.2,
                 "서울시 마포구", "서울시 마포구 월드컵로 21", "서울시 마포구 망원동 1");
-            SpotImage image = SpotImage.create(1L, "prod/public/spots/1/thumbnail/key.jpg");
+            SpotImage image = SpotImage.create(1L, "prod/public/spots/1/original/key.jpg");
             given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
-            given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumbnail.jpg");
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, 37.5, 127.0, null);
 
@@ -208,7 +208,7 @@ class SpotQueryServiceTest {
             assertThat(response.theme()).isEqualTo(SpotTheme.SUNSET);
             assertThat(response.bookmarkCount()).isEqualTo(5L);
             assertThat(response.distanceKm()).isEqualTo(1.2);
-            assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/thumbnail.jpg");
+            assertThat(response.imageUrl()).isEqualTo("https://cdn.example.com/original.jpg");
             assertThat(response.addressSimple()).isEqualTo("서울시 마포구");
             assertThat(response.addressRoad()).isEqualTo("서울시 마포구 월드컵로 21");
             assertThat(response.addressJibun()).isEqualTo("서울시 마포구 망원동 1");
