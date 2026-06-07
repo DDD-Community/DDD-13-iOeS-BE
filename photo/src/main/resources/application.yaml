@@ -84,6 +84,17 @@ app:
       latest-version: "1.0.0"    # 앱스토어 기준 최신 버전
       force-update: false        # 강제 업데이트 기능 on/off 스위치
       store-url: "https://apps.apple.com/app/id0000000000"  # TODO(#84): 앱스토어 출시 후 실제 앱 ID로 교체
+      support-email: "pickflow.help@gmail.com"
+      terms-policies:
+        - type: TERMS_OF_SERVICE
+          title: "서비스 이용약관"
+          url: "https://cubic-print-1cb.notion.site/abe90976df958360b53001e6ee774eb3?pvs=143"
+        - type: LOCATION_TERMS
+          title: "위치정보 서비스 이용약관"
+          url: "https://cubic-print-1cb.notion.site/36390976df9580289cc9ebcba9ed7ffd?pvs=143"
+        - type: PRIVACY_POLICY
+          title: "개인정보처리방침"
+          url: "https://cubic-print-1cb.notion.site/07a90976df958319b6d1013e089c5ee6?pvs=143"
 
   # 비동기 스레드 풀
   async:
