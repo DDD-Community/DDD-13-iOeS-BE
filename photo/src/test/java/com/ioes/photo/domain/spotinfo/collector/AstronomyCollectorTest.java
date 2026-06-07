@@ -77,6 +77,44 @@ class AstronomyCollectorTest {
             .upsertAstronomy(any(), any(), any(), any());
     }
 
+    @Test
+    @DisplayName("collectForSpot은 해당 스팟에 출몰시각을 즉시 적재한다")
+    void collectForSpotUpsertsSingleSpot() {
+        given(astronomyApiClient.getRiseSetInfo(anyString(), eq("서울")))
+            .willReturn(riseSetResponse("0545", "1850"));
+
+        astronomyCollector.collectForSpot(7L);
+
+        verify(spotInfoUpdateService).upsertAstronomy(
+            eq(7L), any(), eq(LocalTime.of(5, 45)), eq(LocalTime.of(18, 50)));
+    }
+
+    @Test
+    @DisplayName("같은 날짜의 출몰시각은 캐시되어 API를 1회만 호출한다")
+    void cachesRiseSetPerDay() {
+        given(astronomyApiClient.getRiseSetInfo(anyString(), eq("서울")))
+            .willReturn(riseSetResponse("0545", "1850"));
+
+        astronomyCollector.collectForSpot(7L);
+        astronomyCollector.collectForSpot(8L);
+
+        verify(astronomyApiClient, times(1)).getRiseSetInfo(anyString(), eq("서울"));
+        verify(spotInfoUpdateService).upsertAstronomy(
+            eq(8L), any(), eq(LocalTime.of(5, 45)), eq(LocalTime.of(18, 50)));
+    }
+
+    @Test
+    @DisplayName("collectForSpot은 API 실패 시 적재하지 않는다")
+    void collectForSpotSkipsOnApiFailure() {
+        given(astronomyApiClient.getRiseSetInfo(anyString(), eq("서울")))
+            .willThrow(new RuntimeException("api down"));
+
+        astronomyCollector.collectForSpot(7L);
+
+        verify(spotInfoUpdateService, never())
+            .upsertAstronomy(any(), any(), any(), any());
+    }
+
     private Spot mockSpot(long id) {
         Spot spot = mock(Spot.class);
         given(spot.getId()).willReturn(id);

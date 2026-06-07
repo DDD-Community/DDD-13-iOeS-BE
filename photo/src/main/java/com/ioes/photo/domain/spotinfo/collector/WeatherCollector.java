@@ -77,6 +77,17 @@ public class WeatherCollector {
         return new CollectResult(success, fail);
     }
 
+    public void collectForSpot(Spot spot) {
+        if (spot.getGridNx() == null || spot.getGridNy() == null) {
+            return;
+        }
+        BaseInfo base = WeatherBaseTime.resolve(
+            LocalDateTime.now(),
+            weatherProperties.availabilityDelayMinutes()
+        );
+        applyGrid(new GridKey(spot.getGridNx(), spot.getGridNy()), List.of(spot), base);
+    }
+
     private void applyGrid(GridKey grid, List<Spot> spots, BaseInfo base) {
         ShortTermForecastResponse response = weatherApiClient
             .getShortTermForecast(base.baseDate(), base.baseTime(), grid.nx(), grid.ny());
