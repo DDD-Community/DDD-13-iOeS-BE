@@ -26,7 +26,7 @@ services:
       retries: 3
 
   app:
-    image: ghcr.io/ddd-community/ddd-13-ioes-be:${APP_IMAGE_TAG:-dev-latest}
+    image: ghcr.io/ddd-community/ddd-13-ioes-be:${APP_IMAGE_TAG:-prod-latest}
     container_name: photo-app
     restart: unless-stopped
     env_file:
