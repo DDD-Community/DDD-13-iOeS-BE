@@ -15,6 +15,8 @@ import org.springframework.util.Assert;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
+
 /**
  * 한국천문연구원 출몰시각 API 클라이언트.
  *
@@ -57,8 +59,8 @@ public class AstronomyApiClient {
         log.debug("출몰시각 API 호출: locdate={}, location={}", locdate, location);
 
         try {
-            String url = buildRiseSetUrl(locdate, location);
-            SunMoonRiseSetResponse response = httpClientUtils.get(url, SunMoonRiseSetResponse.class);
+            URI uri = buildRiseSetUri(locdate, location);
+            SunMoonRiseSetResponse response = httpClientUtils.get(uri, SunMoonRiseSetResponse.class);
             validateResponse(response);
             return response;
         } catch (ResourceAccessException e) {
@@ -72,7 +74,7 @@ public class AstronomyApiClient {
         }
     }
 
-    private String buildRiseSetUrl(String locdate, String location) {
+    private URI buildRiseSetUri(String locdate, String location) {
         return UriComponentsBuilder
             .fromUriString(properties.dataGoKr().baseUrl() + RISE_SET_PATH)
             .queryParam("serviceKey", properties.dataGoKr().serviceKey())
@@ -80,7 +82,7 @@ public class AstronomyApiClient {
             .queryParam("location", location)
             .build(false)
             .encode()
-            .toUriString();
+            .toUri();
     }
 
     private void validateResponse(SunMoonRiseSetResponse response) {

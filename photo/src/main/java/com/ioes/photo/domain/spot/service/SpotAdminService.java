@@ -7,10 +7,14 @@ import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse.SpotResult;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
+import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.external.weather.util.LccGridConverter;
+import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import com.ioes.photo.global.common.util.NullUtils;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,7 @@ public class SpotAdminService {
 
     private final SpotRepository spotRepository;
     private final CrowdAreaMapper crowdAreaMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SpotAdminCreateResponse createSpots(SpotAdminCreateRequest request) {
@@ -36,6 +41,7 @@ public class SpotAdminService {
             .toList();
 
         List<Spot> saved = spotRepository.saveAll(spots);
+        saved.forEach(spot -> eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId())));
 
         List<SpotResult> results = saved.stream()
             .map(spot -> new SpotResult(spot.getId(), spot.getName()))
@@ -45,6 +51,7 @@ public class SpotAdminService {
     }
 
     private Spot toSpot(Item item) {
+        GridPoint grid = resolveGrid(item);
         return Spot.builder()
             .name(item.name())
             .comment(item.comment())
@@ -53,10 +60,17 @@ public class SpotAdminService {
             .longitude(item.longitude())
             .address(item.address())
             .status(SpotStatus.PUBLISHED)
-            .gridNx(item.gridNx())
-            .gridNy(item.gridNy())
+            .gridNx(grid.nx())
+            .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(item))
             .build();
+    }
+
+    private GridPoint resolveGrid(Item item) {
+        if (item.gridNx() != null && item.gridNy() != null) {
+            return new GridPoint(item.gridNx(), item.gridNy());
+        }
+        return LccGridConverter.toGrid(item.latitude(), item.longitude());
     }
 
     private String resolveCrowdAreaName(Item item) {

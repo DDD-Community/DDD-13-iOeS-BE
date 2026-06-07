@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -119,6 +120,36 @@ class WeatherCollectorTest {
 
         assertThat(result.fail()).isEqualTo(2);
         assertThat(result.success()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("collectForSpot은 해당 스팟의 격자로 즉시 수집한다")
+    void collectForSpotUpsertsSingleSpot() {
+        Spot a = mockSpot(1L, 60, 127);
+        given(weatherApiClient.getShortTermForecast(anyString(), anyString(), eq(60), eq(127)))
+            .willReturn(forecastResponse());
+
+        weatherCollector.collectForSpot(a);
+
+        verify(spotInfoUpdateService).upsertWeather(
+            eq(1L),
+            eq(SkyStatus.CLEAR),
+            eq(PrecipitationType.NONE),
+            eq(20),
+            eq(23.0),
+            any());
+    }
+
+    @Test
+    @DisplayName("collectForSpot은 격자 좌표가 없으면 수집하지 않는다")
+    void collectForSpotSkipsWhenGridMissing() {
+        Spot spot = mock(Spot.class);
+        when(spot.getGridNx()).thenReturn(null);
+
+        weatherCollector.collectForSpot(spot);
+
+        verify(weatherApiClient, never())
+            .getShortTermForecast(anyString(), anyString(), anyInt(), anyInt());
     }
 
     private Spot mockSpot(long id, int nx, int ny) {

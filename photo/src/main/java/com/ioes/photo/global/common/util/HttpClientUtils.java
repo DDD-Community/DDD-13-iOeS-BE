@@ -30,6 +30,18 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
+    /**
+     * 이미 인코딩된 URI로 GET 요청을 수행합니다.
+     * 문자열 URL은 RestClient가 URI 템플릿으로 간주해 재인코딩하므로,
+     * 한글 등 인코딩이 필요한 파라미터를 포함한 요청은 이 메서드를 사용해야 합니다.
+     */
+    public <T> T get(URI uri, Class<T> responseType) {
+        return restClient.get()
+            .uri(uri)
+            .retrieve()
+            .body(responseType);
+    }
+
     public <T> T get(String url, ParameterizedTypeReference<T> responseType) {
         return restClient.get()
             .uri(url)

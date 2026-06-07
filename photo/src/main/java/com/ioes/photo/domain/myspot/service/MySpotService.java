@@ -7,15 +7,19 @@ import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse.MySpotItem;
 import com.ioes.photo.domain.myspot.mapper.MySpotMapper;
 import com.ioes.photo.domain.myspot.mapper.MySpotRow;
+import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
+import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.external.kakao.KakaoLocalApiClient;
 import com.ioes.photo.external.kakao.dto.KakaoAddress;
+import com.ioes.photo.external.weather.util.LccGridConverter;
+import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.code.CommonErrorCode;
@@ -64,6 +68,7 @@ public class MySpotService {
     private final KakaoLocalApiClient kakaoLocalApiClient;
     private final SpotAlarmService spotAlarmService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CrowdAreaMapper crowdAreaMapper;
 
     public MySpotListResponse findMySpots(Long userId, int page, Double latitude, Double longitude) {
         if ((latitude == null) != (longitude == null)) {
@@ -88,6 +93,7 @@ public class MySpotService {
     @Transactional
     public CreateMySpotResponse createMySpot(Long userId, CreateMySpotRequest request, MultipartFile image) {
         KakaoAddress address = resolveAddress(request.latitude(), request.longitude());
+        GridPoint grid = LccGridConverter.toGrid(request.latitude(), request.longitude());
 
         Spot spot = spotRepository.save(Spot.builder()
             .name(request.name())
@@ -99,8 +105,13 @@ public class MySpotService {
             .addressRoad(address == null ? null : address.roadAddress())
             .addressJibun(address == null ? null : address.jibunAddress())
             .status(SpotStatus.PENDING)
+            .gridNx(grid.nx())
+            .gridNy(grid.ny())
+            .crowdAreaName(crowdAreaMapper.findNearestAreaName(
+                request.latitude(), request.longitude()).orElse(null))
             .userId(userId)
             .build());
+        eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
 
         String imageKey = StoragePathUtils.generate(
             storageProperties.env(), AccessType.PUBLIC, IMAGE_ENTITY, spot.getId(),

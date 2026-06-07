@@ -39,25 +39,11 @@ public class AstronomyCollector {
     private final SpotInfoUpdateService spotInfoUpdateService;
     private final AstronomyApiClient astronomyApiClient;
 
-    public CollectResult collect() {
-        LocalDate today = LocalDate.now();
-        SunMoonRiseSetResponse response;
-        try {
-            response = astronomyApiClient.getRiseSetInfo(today.format(LOCDATE_FORMAT), DEFAULT_LOCATION);
-        } catch (Exception e) {
-            log.error("[AstronomyCollector] API 호출 실패 location={} reason={}",
-                DEFAULT_LOCATION, e.getMessage());
-            return new CollectResult(0, 0);
-        }
+    private volatile RiseSet cachedRiseSet;
 
-        LocalTime sunrise;
-        LocalTime sunset;
-        try {
-            Item item = extractItem(response);
-            sunrise = parseTime(item.trimmedSunrise());
-            sunset = parseTime(item.trimmedSunset());
-        } catch (Exception e) {
-            log.error("[AstronomyCollector] 응답 파싱 실패 reason={}", e.getMessage());
+    public CollectResult collect() {
+        RiseSet riseSet = fetchTodayRiseSet();
+        if (riseSet == null) {
             return new CollectResult(0, 0);
         }
 
@@ -66,7 +52,8 @@ public class AstronomyCollector {
         int fail = 0;
         for (Spot spot : targets) {
             try {
-                spotInfoUpdateService.upsertAstronomy(spot.getId(), today, sunrise, sunset);
+                spotInfoUpdateService.upsertAstronomy(
+                    spot.getId(), riseSet.date(), riseSet.sunrise(), riseSet.sunset());
                 success++;
             } catch (Exception e) {
                 log.warn("[AstronomyCollector] upsert 실패 spotId={} reason={}",
@@ -75,6 +62,40 @@ public class AstronomyCollector {
             }
         }
         return new CollectResult(success, fail);
+    }
+
+    public void collectForSpot(Long spotId) {
+        RiseSet riseSet = fetchTodayRiseSet();
+        if (riseSet == null) {
+            return;
+        }
+        spotInfoUpdateService.upsertAstronomy(spotId, riseSet.date(), riseSet.sunrise(), riseSet.sunset());
+    }
+
+    private RiseSet fetchTodayRiseSet() {
+        LocalDate today = LocalDate.now();
+        RiseSet cached = cachedRiseSet;
+        if (cached != null && cached.date().equals(today)) {
+            return cached;
+        }
+        SunMoonRiseSetResponse response;
+        try {
+            response = astronomyApiClient.getRiseSetInfo(today.format(LOCDATE_FORMAT), DEFAULT_LOCATION);
+        } catch (Exception e) {
+            log.error("[AstronomyCollector] API 호출 실패 location={} reason={}",
+                DEFAULT_LOCATION, e.getMessage());
+            return null;
+        }
+
+        try {
+            Item item = extractItem(response);
+            RiseSet riseSet = new RiseSet(today, parseTime(item.trimmedSunrise()), parseTime(item.trimmedSunset()));
+            cachedRiseSet = riseSet;
+            return riseSet;
+        } catch (Exception e) {
+            log.error("[AstronomyCollector] 응답 파싱 실패 reason={}", e.getMessage());
+            return null;
+        }
     }
 
     private Item extractItem(SunMoonRiseSetResponse response) {
@@ -93,4 +114,6 @@ public class AstronomyCollector {
         }
         return LocalTime.parse(hhmm, TIME_FORMAT);
     }
+
+    private record RiseSet(LocalDate date, LocalTime sunrise, LocalTime sunset) {}
 }
