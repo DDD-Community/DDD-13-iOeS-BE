@@ -1,0 +1,46 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: photo-app-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: photo-app
+          service_name: photo-app
+          __path__: /var/log/app/*.log
+
+    pipeline_stages:
+      # LogstashEncoder JSON 필드에서 저카디널리티 레이블만 추출
+      # requestId/userId는 레이블이 아닌 JSON 필드로 쿼리 (| json | requestId="...")
+      - json:
+          expressions:
+            level: level
+      - labels:
+          level:
+
+  - job_name: backup
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: backup
+          __path__: /var/log/backup/*.log
+
+    pipeline_stages:
+      # level(INFO/ERROR), type(db/applog) 을 저카디널리티 레이블로 추출
+      - json:
+          expressions:
+            level: level
+            type: type
+      - labels:
+          level:
+          type:

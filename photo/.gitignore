@@ -36,16 +36,11 @@ out/
 ### VS Code ###
 .vscode/
 
-### Spring - profile configs (test/prod 환경 정보 포함) ###
-src/main/resources/config/test/yaml/application-test.yaml
-src/main/resources/config/prod/yaml/application-prod.yaml
-
-### Logback - test/prod (환경별 경로 정보 포함) ###
-src/main/resources/config/test/logback/logback-test.xml
-src/main/resources/config/prod/logback/logback-prod.xml
-
 ### 로컬 로그 파일 ###
 logs/
+
+### Environment variables ###
+.env
 
 ### Claude Code local settings ###
 .claude/

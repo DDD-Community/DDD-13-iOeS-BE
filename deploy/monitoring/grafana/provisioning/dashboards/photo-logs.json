@@ -1,0 +1,243 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 0 },
+      "id": 10,
+      "options": {
+        "content": "## 로그 모니터링\n**ERROR 스트림** · **requestId 추적** · **ERROR 빈도** — 상단 변수(requestId/userId)로 필터링",
+        "mode": "markdown"
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 2 },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "text": {},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({job=\"photo-app\", level=\"ERROR\"}[$__range]))",
+          "legendFormat": "ERROR 건수",
+          "instant": true
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({job=\"photo-app\", level=\"WARN\"}[$__range]))",
+          "legendFormat": "WARN 건수",
+          "instant": true
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({job=\"photo-app\", level=\"INFO\"}[$__range]))",
+          "legendFormat": "INFO 건수",
+          "instant": true
+        }
+      ],
+      "title": "레벨별 로그 건수 (조회 범위 기준)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 1 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "ERROR" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "WARN" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 5 },
+      "id": 1,
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (level) (count_over_time({job=\"photo-app\"}[5m]))",
+          "legendFormat": "{{level}}"
+        }
+      ],
+      "title": "ERROR/WARN 발생 빈도 (5분 윈도우)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 12 },
+      "id": 2,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"photo-app\", level=\"ERROR\"} | json | line_format \"[{{.requestId}}] [uid:{{.userId}}] {{.logger_name}}\\n  msg: {{.message}}\\n  stack: {{.stack_trace}}\"",
+          "legendFormat": ""
+        }
+      ],
+      "title": "ERROR 로그 스트림 (stack_trace 포함)",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"photo-app\"} | json | requestId=`$requestId` | line_format \"[{{.level}}] {{.logger_name}}\\n  msg: {{.message}}{{if .stack_trace}}\\n  stack: {{.stack_trace}}{{end}}\"",
+          "legendFormat": ""
+        }
+      ],
+      "title": "requestId 기반 전체 요청 트레이스",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 34 },
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"photo-app\", level=~\"$level\"} | json | userId=`$userId` | line_format \"[{{.level}}] [rid:{{.requestId}}] {{.logger_name}} - {{.message}}{{if .stack_trace}}\\n  {{.stack_trace}}{{end}}\"",
+          "legendFormat": ""
+        }
+      ],
+      "title": "userId 기반 로그 조회",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 44 },
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"photo-app\", level=~\"$level\"} | json | uri=~\"$uri\" | line_format \"[{{.level}}] [rid:{{.requestId}}] [uid:{{.userId}}] {{.method}} {{.uri}} - {{.message}}{{if .stack_trace}}\\n  {{.stack_trace}}{{end}}\"",
+          "legendFormat": ""
+        }
+      ],
+      "title": "URI 패턴 로그 조회",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["photo", "logs", "loki"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "label": "requestId",
+        "name": "requestId",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "description": "요청 추적 UUID를 입력하세요"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "label": "userId",
+        "name": "userId",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "description": "사용자 ID를 입력하세요"
+      },
+      {
+        "current": { "selected": true, "text": ["ERROR", "WARN"], "value": ["ERROR", "WARN"] },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Level",
+        "multi": true,
+        "name": "level",
+        "options": [
+          { "selected": false, "text": "All", "value": "$__all" },
+          { "selected": true, "text": "ERROR", "value": "ERROR" },
+          { "selected": true, "text": "WARN", "value": "WARN" },
+          { "selected": false, "text": "INFO", "value": "INFO" },
+          { "selected": false, "text": "DEBUG", "value": "DEBUG" }
+        ],
+        "query": "ERROR,WARN,INFO,DEBUG",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "label": "URI 패턴",
+        "name": "uri",
+        "options": [],
+        "query": ".*",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "description": "URI 정규식 패턴 (기본: .* 전체)"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Photo App - Log Monitor",
+  "uid": "photo-logs",
+  "version": 1
+}

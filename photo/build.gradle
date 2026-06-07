@@ -39,16 +39,30 @@ dependencyManagement {
 }
 
 dependencies {
+	implementation platform('software.amazon.awssdk:bom:2.41.30')
+	implementation 'software.amazon.awssdk:s3'
+	implementation 'software.amazon.awssdk:cloudfront'
+	// 이미지 썸네일 생성
+	implementation 'net.coobird:thumbnailator:0.4.20'
 	implementation 'org.aspectj:aspectjweaver'
+	implementation 'org.springframework.retry:spring-retry:2.0.11'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	// Excel 파싱 (배치 업로드)
+	implementation 'org.apache.poi:poi-ooxml:5.3.0'
 	// XML (JAXB + Jackson XML)
 	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 	implementation 'jakarta.xml.bind:jakarta.xml.bind-api'
@@ -56,6 +70,8 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 //	developmentOnly 'org.springframework.boot:spring-boot-docker-compose' 잠시 주석처리, 이후 다시 복구예정
 	runtimeOnly 'org.postgresql:postgresql'
+	implementation 'org.hibernate.orm:hibernate-spatial'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 	annotationProcessor 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

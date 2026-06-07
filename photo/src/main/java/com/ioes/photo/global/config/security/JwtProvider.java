@@ -1,6 +1,7 @@
 package com.ioes.photo.global.config.security;
 
 import com.ioes.photo.global.config.security.properties.JwtProperties;
+import com.ioes.photo.global.config.security.properties.TokenProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -15,7 +16,6 @@ import java.util.Date;
 
 /**
  * JWT 토큰 생성·검증·파싱 유틸리티.
- *
  * HMAC-SHA256 알고리즘으로 서명합니다
  * 비밀 키는 Base64 디코딩하여 사용합니다.
  *
@@ -28,12 +28,17 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtProvider {
 
+    public static final String TOKEN_TYPE_CLAIM = "type";
+    public static final String TOKEN_TYPE_ACCESS = "ACCESS";
+    public static final String TOKEN_TYPE_RESTORE = "RESTORE";
+
     private final JwtProperties jwtProperties;
+    private final TokenProperties tokenProperties;
     private SecretKey cachedSecretKey;
 
     @PostConstruct
     void init() {
-        this.cachedSecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
+        this.cachedSecretKey = Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(jwtProperties.secret()));
     }
 
     /**
@@ -46,10 +51,36 @@ public class JwtProvider {
         Date now = new Date();
         return Jwts.builder()
             .subject(subject)
+            .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS)
             .issuedAt(now)
             .expiration(new Date(now.getTime() + jwtProperties.expirationMs()))
             .signWith(secretKey())
             .compact();
+    }
+
+    public String generateRestoreToken(String subject) {
+        Date now = new Date();
+        return Jwts.builder()
+            .subject(subject)
+            .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_RESTORE)
+            .issuedAt(now)
+            .expiration(new Date(now.getTime() + tokenProperties.restoreTokenExpirationMs()))
+            .signWith(secretKey())
+            .compact();
+    }
+
+    public String extractTokenType(String token) {
+        return (String) parseClaims(token).get(TOKEN_TYPE_CLAIM);
+    }
+
+    public long getRemainingValidityMs(String token) {
+        try {
+            Date expiration = parseClaims(token).getExpiration();
+            long remaining = expiration.getTime() - System.currentTimeMillis();
+            return Math.max(remaining, 0);
+        } catch (JwtException | IllegalArgumentException e) {
+            return 0;
+        }
     }
 
     /**

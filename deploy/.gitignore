@@ -1,0 +1,12 @@
+# 실제 환경변수 파일은 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# TLS 인증서
+nginx/certs/
+nginx/ssl/
+
+# 컨테이너에서 bind mount 로 쌓이는 로그 파일 (디렉토리 자체는 .gitkeep 으로 추적)
+logs/*
+!logs/.gitkeep

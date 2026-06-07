@@ -1,0 +1,88 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+  datasource:
+    url: ${PROD_DB_URL:jdbc:postgresql://postgres:5432/photo}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    defer-datasource-initialization: false
+    show-sql: false
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+  flyway:
+    clean-disabled: true
+  docker:
+    compose:
+      enabled: false
+
+app:
+  storage:
+    env: prod
+
+  jwt:
+    secret: ${JWT_SECRET}
+
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      admin-key: ${KAKAO_ADMIN_KEY:}
+    apple:
+      client-id: ${APPLE_CLIENT_ID}
+      team-id: ${APPLE_TEAM_ID}
+      key-id: ${APPLE_KEY_ID}
+      private-key: ${APPLE_PRIVATE_KEY}
+      client-secret-ttl-ms: 600000
+
+  security:
+    public-urls:
+      - /actuator/health
+      - /actuator/prometheus
+      - /v1/auth/kakao
+      - /v1/auth/apple
+      - /v1/auth/refresh
+      - /v1/users/restore
+      - /v1/internal/**
+
+logging:
+  config: classpath:config/prod/logback/logback-prod.xml
+  file:
+    path: /app/logs
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  forward-headers-strategy: native
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false

@@ -1,0 +1,102 @@
+package com.ioes.photo.domain.spot.controller;
+
+import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
+import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
+import com.ioes.photo.domain.spot.dto.SpotBatchUploadResponse;
+import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
+import com.ioes.photo.domain.spot.dto.SpotImageSyncResponse;
+import com.ioes.photo.domain.spot.service.SpotAdminService;
+import com.ioes.photo.domain.spot.service.SpotBatchUploadService;
+import com.ioes.photo.domain.spot.service.SpotImageAdminService;
+import com.ioes.photo.global.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Hidden;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+/**
+ * 스팟 어드민 컨트롤러.
+ *
+ * <p>MVP 단계 운영 목적의 내부 전용 API를 제공한다.
+ *
+ * @author 황제연
+ * @deprecated 외부 공개 API가 아닌 QA편의성 API입니다. 추후, ROLE권한 도입 시 복구될 수도 있습니다
+ */
+@Deprecated
+@Hidden
+@Tag(name = "스팟 어드민", description = "스팟 내부 운영 API")
+// @RestController  외부 접근 차단 - 내부 운영 전용 (직접 서비스 메소드 호출 또는 별도 어드민 서버로 이관 예정)
+// @RequestMapping("/v1/internal/spots")
+@RequiredArgsConstructor
+public class SpotAdminController {
+
+    private final SpotAdminService spotAdminService;
+    private final SpotImageAdminService spotImageAdminService;
+    private final SpotBatchUploadService spotBatchUploadService;
+
+    @Operation(
+        summary = "스팟 배치 등록",
+        description = "스팟 정보를 직접 입력하여 즉시 PUBLISHED 상태로 등록합니다. location(PostGIS geometry)은 위도/경도로 자동 생성됩니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<SpotAdminCreateResponse> createSpots(
+        @RequestBody @Valid SpotAdminCreateRequest request
+    ) {
+        return ApiResponse.success(spotAdminService.createSpots(request));
+    }
+
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object"),
+            schemaProperties = {
+                @SchemaProperty(name = "excel",
+                    schema = @Schema(type = "string", format = "binary", description = "스팟 정보 Excel 파일 (.xlsx)")),
+                @SchemaProperty(name = "images",
+                    schema = @Schema(type = "string", format = "binary", description = "스팟 이미지 ZIP 파일"))
+            })
+    )
+    @Operation(
+        summary = "스팟 배치 업로드",
+        description = "Excel(스팟 정보)과 ZIP(이미지)을 함께 업로드하여 스팟과 대표 이미지를 일괄 등록합니다. " +
+            "ZIP 파일명 규칙: {3자리숫자}_{스팟명}.{확장자} — 숫자가 Excel id(spot_001)와 매핑됩니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping(value = "/batch-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<SpotBatchUploadResponse> batchUpload(
+        @RequestPart("excel") MultipartFile excel,
+        @RequestPart("images") MultipartFile images
+    ) {
+        return ApiResponse.success(spotBatchUploadService.batchUpload(excel, images));
+    }
+
+    @Operation(
+        summary = "스팟 이미지 동기화",
+        description = "S3에 직접 업로드된 이미지를 DB에 등록하고 썸네일을 생성합니다. 이미 등록된 경우 덮어씁니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping("/{spotId}/image-sync")
+    public ApiResponse<SpotImageSyncResponse> syncImage(
+        @PathVariable Long spotId,
+        @RequestBody @Valid SpotImageSyncRequest request
+    ) {
+        return ApiResponse.success(spotImageAdminService.syncImage(spotId, request));
+    }
+}

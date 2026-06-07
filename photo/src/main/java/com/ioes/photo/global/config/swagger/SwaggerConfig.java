@@ -1,12 +1,16 @@
 package com.ioes.photo.global.config.swagger;
 
+import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.config.swagger.properties.SwaggerProperties;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import java.util.Arrays;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,11 +26,21 @@ public class SwaggerConfig {
 
     private final SwaggerProperties swaggerProperties;
 
-    /**
-     * JWT Bearer 인증 보안 스키마가 포함된 빈을 생성합니다
-     *
-     * @return 설정된 OpenAPI 인스턴스
-     */
+    @Bean
+    public OperationCustomizer hideCurrentUserIdParameter() {
+        return (operation, handlerMethod) -> {
+            Arrays.stream(handlerMethod.getMethodParameters())
+                .filter(p -> p.hasParameterAnnotation(CurrentUserId.class))
+                .map(p -> Objects.requireNonNullElse(p.getParameterName(), "userId"))
+                .forEach(name -> {
+                    if (operation.getParameters() != null) {
+                        operation.getParameters().removeIf(p -> name.equals(p.getName()));
+                    }
+                });
+            return operation;
+        };
+    }
+
     @Bean
     public OpenAPI openAPI() {
         String schemeName = swaggerProperties.securitySchemeName();

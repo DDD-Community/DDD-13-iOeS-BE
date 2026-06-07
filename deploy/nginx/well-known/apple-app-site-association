@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["4DUZKVXU2R.com.pickflow"],
+        "components": [
+          {
+            "/": "/*",
+            "comment": "encoded token - type+id (e.g. spot: k-3mHv)"
+          }
+        ]
+      }
+    ]
+  }
+}

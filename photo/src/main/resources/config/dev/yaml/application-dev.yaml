@@ -2,6 +2,11 @@ spring:
   config:
     activate:
       on-profile: dev
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   datasource:
     url: ${DEV_DB_URL:jdbc:postgresql://localhost:5432/photo_dev}
     username: ${DEV_DB_USERNAME:photo}
@@ -13,26 +18,61 @@ spring:
       connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+    defer-datasource-initialization: false
     show-sql: true
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  sql:
+    init:
+      mode: never
   docker:
     compose:
       enabled: true
 
 # dev 전용 오버라이드
 app:
+  jwt:
+    # 개발용 기본 키 — 환경변수 JWT_SECRET 미설정 시 자동 사용.
+    # 절대 운영(prod) 환경에서 사용 금지. prod는 반드시 환경변수로 주입할 것.
+    # 키 생성: openssl rand -base64 64
+    secret: ${JWT_SECRET}
+
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      admin-key: ${KAKAO_ADMIN_KEY:}
+    apple:
+      client-id: ${APPLE_CLIENT_ID}
+      team-id: ${APPLE_TEAM_ID}
+      key-id: ${APPLE_KEY_ID}
+      private-key: ${APPLE_PRIVATE_KEY}
+      client-secret-ttl-ms: 600000   # 10분
+
+  # S3 / MinIO 설정
+  # 기동: docker compose -f docker/minio/docker-compose.yml up -d
+  # Web Console: http://localhost:9001 (ID: minioadmin / PW: minioadmin)
+  storage:
+    type: s3
+    env: dev
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ROOT_USER:minioadmin}
+    secret-key: ${MINIO_ROOT_PASSWORD:minioadmin}
+
   security:
     public-urls:
       - /swagger-ui/**
       - /api-docs/**
       - /swagger-ui.html
-      - /actuator/health
       - /actuator/**
-      - /auth/**
+      - /v1/auth/kakao
+      - /v1/auth/apple
+      - /v1/auth/refresh
+      - /v1/users/restore
+      - /v1/internal/**
 
 logging:
   config: classpath:config/dev/logback/logback-dev.xml

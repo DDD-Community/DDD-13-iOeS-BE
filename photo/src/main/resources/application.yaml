@@ -6,18 +6,95 @@ spring:
       - "classpath:config/dev/yaml/application-dev.yaml"
       - "optional:classpath:config/test/yaml/application-test.yaml"
       - "optional:classpath:config/prod/yaml/application-prod.yaml"
+  servlet:
+    multipart:
+      max-file-size: 100MB       # 배치 업로드 ZIP 수용. 일반 사용자 이미지 크기는 서비스 계층에서 별도 검증(app.file.max-size)
+      max-request-size: 110MB    # 폼 필드 포함 전체 요청 크기
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    encoding: UTF-8
+    out-of-order: false
+    validate-on-migrate: true
 
 # 파일 업로드
 app:
+  # 저장소 타입: s3 (MinIO 또는 AWS S3)
+  storage:
+    type: s3
+    env: dev   # 각 프로필 yaml에서 반드시 override (dev/test/prod)
+
+  # AWS S3 / MinIO 설정 (app.storage.type=s3 일 때 사용)
+  s3:
+    bucket: ${S3_BUCKET:photo-images}
+    region: ${S3_REGION:ap-northeast-2}
+    endpoint: ${S3_ENDPOINT:}          # MinIO: http://localhost:9000 / 실제 AWS: 빈 값
+    access-key: ${S3_ACCESS_KEY:}        # MinIO: MINIO_ROOT_USER  / AWS: IAM Access Key
+    secret-key: ${S3_SECRET_KEY:}        # MinIO: MINIO_ROOT_PASSWORD / AWS: IAM Secret Key
+    # CloudFront 배포 도메인 (예: d1234567890.cloudfront.net)
+    # 설정 시 public 콘텐츠는 만료 없는 CloudFront URL로 제공됩니다.
+    # 미설정 시 모든 콘텐츠는 Presigned URL로 제공됩니다.
+    cloud-front-domain: ${CLOUDFRONT_DOMAIN:}
+    # CloudFront 배포 ID — 캐시 무효화(이미지 교체/삭제 시)에 사용.
+    # 설정 시 CloudFrontClient 빈이 생성되어 무효화가 활성화됩니다.
+    distribution-id: ${CLOUDFRONT_DISTRIBUTION_ID:}
+
+  # 이미지 처리 설정
+  image:
+    thumbnail:
+      width: 300      # 썸네일 최대 가로 픽셀 (비율 유지) - 아이폰 @3x 마커 기준
+      height: 300     # 썸네일 최대 세로 픽셀 (비율 유지)
+    presigned-url-expiry-minutes: 60   # Presigned URL 유효 시간(분)
+
   file:
-    upload-dir: uploads
-    max-size: 10485760          # 10MB (bytes)
-    image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif,exif
+    max-size: 104857600         # 100MB (bytes)
+    image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif
+
+  # 외부 API
+  external-api:
+    data-go-kr:
+      base-url: https://apis.data.go.kr
+      service-key: ${DATA_GO_KR_SERVICE_KEY:}
+    seoul:
+      base-url: http://openapi.seoul.go.kr:8088
+      service-key: ${SEOUL_API_KEY:}
 
   # HTTP 클라이언트
   http-client:
     connect-timeout: 5000       # ms
     read-timeout: 30000         # ms
+
+  # 기상청 단기예보 수집
+  weather:
+    # 발표 시각으로부터 조회 가능해지기까지 지연(분). 운영 중 실측에 따라 조정 가능.
+    availability-delay-minutes: 10
+
+  # 스팟 → 혼잡도 장소 자동 매핑
+  crowd:
+    mapping:
+      # 최근접 장소까지 이 거리(m)를 초과하면 매핑하지 않음. PM 협의로 조정 가능.
+      max-distance-meters: 3000
+
+  # 앱 버전 설정 — 버전 정책 변경 시 이 값을 수정 후 배포
+  app-config:
+    ios:
+      minimum-version: "1.0.0"   # 이 버전 미만이면 앱 사용 불가
+      latest-version: "1.0.0"    # 앱스토어 기준 최신 버전
+      force-update: false        # 강제 업데이트 기능 on/off 스위치
+      store-url: "https://apps.apple.com/app/id0000000000"  # TODO(#84): 앱스토어 출시 후 실제 앱 ID로 교체
+      support-email: "pickflow.help@gmail.com"
+      terms-policies:
+        - type: TERMS_OF_SERVICE
+          title: "서비스 이용약관"
+          url: "https://cubic-print-1cb.notion.site/abe90976df958360b53001e6ee774eb3?pvs=143"
+        - type: LOCATION_TERMS
+          title: "위치정보 서비스 이용약관"
+          url: "https://cubic-print-1cb.notion.site/36390976df9580289cc9ebcba9ed7ffd?pvs=143"
+        - type: PRIVACY_POLICY
+          title: "개인정보처리방침"
+          url: "https://cubic-print-1cb.notion.site/07a90976df958319b6d1013e089c5ee6?pvs=143"
 
   # 비동기 스레드 풀
   async:
@@ -33,7 +110,18 @@ app:
       - /api-docs/**
       - /swagger-ui.html
       - /actuator/health
-      - /auth/**
+      - /v1/auth/kakao
+      - /v1/auth/apple
+      - /v1/auth/refresh
+      - /v1/users/restore
+    # GET 요청에 한해 비로그인 허용 — 같은 경로의 비-GET(예: POST 신고)은 인증 유지
+    public-get-urls:
+      - /v1/spots
+      - /v1/spots/**
+      - /v1/bbs/posts
+      - /v1/bbs/posts/**
+      - /v1/address/**
+      - /v1/app/config/**
 
   #  Swagger / OpenAPI
   swagger:
@@ -42,11 +130,154 @@ app:
     description: "Photo 서비스 API 명세서"
     security-scheme-name: "Bearer Authentication"
 
+  # 닉네임 자동 생성
+  nickname:
+    adjectives:
+      - "몽환한"
+      - "포근한"
+      - "아늑한"
+      - "잔잔한"
+      - "고요한"
+      - "나른한"
+      - "설레는"
+      - "그리운"
+      - "애틋한"
+      - "황홀한"
+      - "물든"
+      - "용감한"
+      - "정많은"
+      - "강인한"
+      - "멋진"
+      - "빛나는"
+      - "반짝인"
+      - "투명한"
+      - "흐릿한"
+      - "선명한"
+      - "새벽빛"
+      - "노을빛"
+      - "달빛의"
+      - "햇살의"
+      - "안개낀"
+      - "푸르른"
+      - "붉은"
+      - "금빛의"
+      - "은빛의"
+      - "짙은"
+      - "이슬찬"
+      - "서늘한"
+      - "따스한"
+      - "바람찬"
+      - "눈부신"
+      - "새벽찬"
+      - "가을빛"
+      - "봄같은"
+      - "여름의"
+      - "겨울의"
+      - "촉촉한"
+      - "선선한"
+      - "싸늘한"
+      - "향긋한"
+      - "무더운"
+      - "고운"
+      - "여린"
+      - "낯선"
+      - "다정한"
+      - "익숙한"
+      - "순수한"
+      - "담담한"
+      - "깊은"
+      - "맑은"
+      - "고즈넉"
+    nouns:
+      - "독수리"
+      - "부엉이"
+      - "올빼미"
+      - "제비"
+      - "참새"
+      - "까마귀"
+      - "왜가리"
+      - "황새"
+      - "두루미"
+      - "홍학"
+      - "앵무새"
+      - "공작새"
+      - "딱따구리"
+      - "솔개"
+      - "갈매기"
+      - "물총새"
+      - "펭귄"
+      - "타조"
+      - "뻐꾸기"
+      - "박새"
+      - "고양이"
+      - "여우"
+      - "토끼"
+      - "다람쥐"
+      - "햄스터"
+      - "늑대"
+      - "사슴"
+      - "판다"
+      - "너구리"
+      - "고슴도치"
+      - "수달"
+      - "담비"
+      - "족제비"
+      - "스라소니"
+      - "치타"
+      - "표범"
+      - "재규어"
+      - "기린"
+      - "얼룩말"
+      - "당나귀"
+      - "돌고래"
+      - "고래"
+      - "해달"
+      - "물개"
+      - "바다표범"
+      - "가오리"
+      - "해파리"
+      - "문어"
+      - "코끼리"
+      - "코알라"
+      - "강아지"
+      - "유니콘"
+      - "카피바라"
+      - "사냥꾼"
+      - "범고래"
+      - "캥거루"
+      - "드래곤"
+      - "노루"
+      - "거북이"
+      - "코뿔소"
+      - "흰고래"
+      - "흰사슴"
+      - "흑곰"
+      - "백조"
+      - "불사조"
+      - "흰여우"
+      - "설표"
+      - "눈표범"
+      - "흰늑대"
+      - "산양"
+    hashtag:
+      min: 1
+      max: 99999
+      max-attempts: 5
+
   # JWT
   jwt:
     # 운영 환경에서는 반드시 환경 변수 JWT_SECRET 으로 주입 (256 bit 이상 Base64 인코딩)
     secret: ${JWT_SECRET}
     expiration-ms: 86400000     # 24h
+
+  # Refresh Token
+  token:
+    refresh-expiration-ms: 86400000  # 1일
+    refresh-key-prefix: "refresh:"
+    user-tokens-key-prefix: "userTokens:"
+    provider-rt-key-prefix: "provider_rt:"
+    blacklist-key-prefix: "blacklist:"
+    restore-token-expiration-ms: 300000  # 5분
 
   # MDC 키 이름 (logback 패턴의 %X{키이름}과 반드시 일치)
   mdc:
@@ -57,6 +288,13 @@ app:
       request-uri: uri
       method: method
       client-ip: clientIp
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
 
 # 로깅 공통
 logging:

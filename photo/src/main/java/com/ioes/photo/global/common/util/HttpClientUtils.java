@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -25,6 +26,18 @@ public class HttpClientUtils {
     public <T> T get(String url, Class<T> responseType) {
         return restClient.get()
             .uri(url)
+            .retrieve()
+            .body(responseType);
+    }
+
+    /**
+     * 이미 인코딩된 URI로 GET 요청을 수행합니다.
+     * 문자열 URL은 RestClient가 URI 템플릿으로 간주해 재인코딩하므로,
+     * 한글 등 인코딩이 필요한 파라미터를 포함한 요청은 이 메서드를 사용해야 합니다.
+     */
+    public <T> T get(URI uri, Class<T> responseType) {
+        return restClient.get()
+            .uri(uri)
             .retrieve()
             .body(responseType);
     }
@@ -52,14 +65,14 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 쿼리 파라미터 포함 GET
-     * @param urlTemplate
-     * @param uriVariables
-     * @param responseType
-     * @return
-     * @param <T>
-     */
+    public <T> T get(URI uri, Consumer<HttpHeaders> headersConsumer, Class<T> responseType) {
+        return restClient.get()
+            .uri(uri)
+            .headers(headersConsumer)
+            .retrieve()
+            .body(responseType);
+    }
+
     public <T> T get(String urlTemplate, Map<String, ?> uriVariables, Class<T> responseType) {
         return restClient.get()
             .uri(urlTemplate, uriVariables)
@@ -96,11 +109,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 POST (201 Created 등)
-     * @param url
-     * @param body
-     */
     public void post(String url, Object body) {
         restClient.post()
             .uri(url)
@@ -129,11 +137,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 PUT (204 No Content 등)
-     * @param url
-     * @param body
-     */
     public void put(String url, Object body) {
         restClient.put()
             .uri(url)
@@ -152,11 +155,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 PATCH
-     * @param url
-     * @param body
-     */
     public void patch(String url, Object body) {
         restClient.patch()
             .uri(url)
@@ -173,10 +171,6 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
-    /**
-     * 응답 바디 없는 DELETE (204 No Content 등)
-     * @param url
-     */
     public void delete(String url) {
         restClient.delete()
             .uri(url)
@@ -192,11 +186,6 @@ public class HttpClientUtils {
             .toBodilessEntity();
     }
 
-    /**
-     * Authorization: Bearer {token} 헤더 Consumer 생성
-     * @param token
-     * @return
-     */
     public static Consumer<HttpHeaders> bearer(String token) {
         return headers -> headers.setBearerAuth(token);
     }

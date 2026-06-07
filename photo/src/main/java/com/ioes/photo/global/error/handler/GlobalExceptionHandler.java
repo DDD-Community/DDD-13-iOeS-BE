@@ -1,13 +1,16 @@
 package com.ioes.photo.global.error.handler;
 
+import com.ioes.photo.domain.user.dto.AccountDeletedResponse;
 import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.error.code.CommonErrorCode;
+import com.ioes.photo.global.error.exception.AccountDeletedException;
 import com.ioes.photo.global.error.exception.BusinessException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -23,6 +26,14 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AccountDeletedException.class)
+    public ResponseEntity<ApiResponse<AccountDeletedResponse>> handleAccountDeletedException(AccountDeletedException e) {
+        log.warn("AccountDeletedException: {}", e.getMessage());
+        return ResponseEntity
+            .status(e.getErrorCode().getStatus())
+            .body(ApiResponse.error(e.getErrorCode(), e.getMessage(), new AccountDeletedResponse(e.getRestoreToken())));
+    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
@@ -73,6 +84,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(CommonErrorCode.METHOD_NOT_ALLOWED.getStatus())
             .body(ApiResponse.error(CommonErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException e) {
+        log.warn("AuthenticationException: {}", e.getMessage());
+        return ResponseEntity
+            .status(CommonErrorCode.UNAUTHORIZED.getStatus())
+            .body(ApiResponse.error(CommonErrorCode.UNAUTHORIZED, e.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
