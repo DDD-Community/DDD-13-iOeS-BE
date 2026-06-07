@@ -496,6 +496,35 @@ class SpotQueryServiceTest {
         }
 
         @Test
+        @DisplayName("주차 정보가 있으면 해당 값을 그대로 응답에 노출한다")
+        void returnsParkingInfoWhenPresent() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            ReflectionTestUtils.setField(spot, "parkingInfo", "공영주차장 도보 5분");
+
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.parkingInfo()).isEqualTo("공영주차장 도보 5분");
+        }
+
+        @Test
+        @DisplayName("주차 정보가 없으면 기본값 \"-\"을 응답에 노출한다")
+        void returnsParkingInfoDefaultWhenAbsent() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.parkingInfo()).isEqualTo("-");
+        }
+
+        @Test
         @DisplayName("Spot이 존재하지 않으면 SPOT_NOT_FOUND BusinessException을 던진다")
         void throwsSpotNotFound_whenSpotMissing() {
             given(spotRepository.findById(99L)).willReturn(Optional.empty());
