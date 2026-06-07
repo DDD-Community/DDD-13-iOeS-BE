@@ -5,6 +5,7 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
@@ -105,6 +106,7 @@ public class SpotBatchUploadService {
             .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(row))
             .build());
+        eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
 
         ImageEntry entry = imageMap.get(row.idPrefix());
         if (entry == null) {

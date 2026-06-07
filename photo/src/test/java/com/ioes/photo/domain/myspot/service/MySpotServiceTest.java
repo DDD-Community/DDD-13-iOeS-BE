@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.ioes.photo.domain.alarm.service.SpotAlarmService;
+import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
@@ -19,12 +20,15 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.service.SpotImageAdminService;
 import com.ioes.photo.external.error.ExternalApiErrorCode;
 import com.ioes.photo.external.kakao.KakaoLocalApiClient;
 import com.ioes.photo.external.kakao.dto.KakaoAddress;
+import com.ioes.photo.external.weather.util.LccGridConverter;
+import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import com.ioes.photo.global.config.s3.properties.StorageProperties;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
@@ -65,6 +69,7 @@ class MySpotServiceTest {
     @Mock KakaoLocalApiClient kakaoLocalApiClient;
     @Mock SpotAlarmService spotAlarmService;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock CrowdAreaMapper crowdAreaMapper;
 
     @InjectMocks MySpotService mySpotService;
 
@@ -318,10 +323,26 @@ class MySpotServiceTest {
 
             mySpotService.createMySpot(USER_ID, request(), image());
 
-            ArgumentCaptor<StorageUploadRollbackEvent> evCaptor =
-                ArgumentCaptor.forClass(StorageUploadRollbackEvent.class);
-            then(eventPublisher).should().publishEvent(evCaptor.capture());
-            assertThat(evCaptor.getValue().key()).isEqualTo(UPLOADED_KEY);
+            then(eventPublisher).should().publishEvent(new StorageUploadRollbackEvent(UPLOADED_KEY));
+        }
+
+        @Test
+        @DisplayName("격자 좌표/혼잡도 지역을 자동 매핑하고 SpotCreatedEvent를 발행한다")
+        void assignsCollectTargetsAndPublishesSpotCreatedEvent() {
+            givenImageUploaded();
+            given(spotRepository.save(any(Spot.class))).willReturn(savedSpot(SPOT_ID));
+            given(crowdAreaMapper.findNearestAreaName(37.5326, 126.9905))
+                .willReturn(Optional.of("여의도한강공원"));
+
+            mySpotService.createMySpot(USER_ID, request(), image());
+
+            ArgumentCaptor<Spot> captor = ArgumentCaptor.forClass(Spot.class);
+            then(spotRepository).should().save(captor.capture());
+            GridPoint expected = LccGridConverter.toGrid(37.5326, 126.9905);
+            assertThat(captor.getValue().getGridNx()).isEqualTo(expected.nx());
+            assertThat(captor.getValue().getGridNy()).isEqualTo(expected.ny());
+            assertThat(captor.getValue().getCrowdAreaName()).isEqualTo("여의도한강공원");
+            then(eventPublisher).should().publishEvent(new SpotCreatedEvent(SPOT_ID));
         }
 
         @Test

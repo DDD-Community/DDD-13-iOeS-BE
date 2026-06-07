@@ -110,4 +110,13 @@ public class Spot extends BaseEntity {
         this.crowdAreaName = crowdAreaName;
         this.userId = userId;
     }
+
+    public void assignGrid(Integer gridNx, Integer gridNy) {
+        this.gridNx = gridNx;
+        this.gridNy = gridNy;
+    }
+
+    public void assignCrowdAreaName(String crowdAreaName) {
+        this.crowdAreaName = crowdAreaName;
+    }
 }

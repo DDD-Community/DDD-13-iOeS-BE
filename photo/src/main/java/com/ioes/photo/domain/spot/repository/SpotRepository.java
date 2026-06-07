@@ -25,6 +25,8 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
 
     List<Spot> findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus status);
 
+    List<Spot> findAllByGridNxIsNullOrGridNyIsNull();
+
     @Modifying
     @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount + 1 WHERE s.id = :spotId")
     void incrementBookmarkCount(@Param("spotId") Long spotId);

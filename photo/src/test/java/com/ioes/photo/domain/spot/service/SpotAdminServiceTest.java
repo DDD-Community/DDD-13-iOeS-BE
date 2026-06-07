@@ -7,8 +7,12 @@ import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
+import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.external.weather.util.LccGridConverter;
+import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import java.util.Optional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,10 +26,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.times;
 
 /**
  * {@link SpotAdminService} 단위 테스트.
@@ -39,6 +45,7 @@ class SpotAdminServiceTest {
 
     @Mock SpotRepository spotRepository;
     @Mock CrowdAreaMapper crowdAreaMapper;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks SpotAdminService spotAdminService;
 
@@ -118,8 +125,8 @@ class SpotAdminServiceTest {
         }
 
         @Test
-        @DisplayName("선택 필드(gridNx, gridNy, crowdAreaName)는 null이어도 저장된다")
-        void shouldSaveWithNullOptionalFields() {
+        @DisplayName("gridNx/gridNy 미입력 시 위경도로 자동 계산된다")
+        void shouldAutoComputeGridWhenMissing() {
             Item item = new Item("스팟", null, SpotTheme.SUNSET, 37.5, 127.0, null, null, null, null);
             SpotAdminCreateRequest request = new SpotAdminCreateRequest(List.of(item));
             given(spotRepository.saveAll(anyList())).willReturn(List.of(buildSavedSpot(1L, "스팟")));
@@ -129,9 +136,26 @@ class SpotAdminServiceTest {
             ArgumentCaptor<List<Spot>> captor = ArgumentCaptor.forClass(List.class);
             then(spotRepository).should().saveAll(captor.capture());
             Spot spot = captor.getValue().get(0);
-            assertThat(spot.getGridNx()).isNull();
-            assertThat(spot.getGridNy()).isNull();
+            GridPoint expected = LccGridConverter.toGrid(37.5, 127.0);
+            assertThat(spot.getGridNx()).isEqualTo(expected.nx());
+            assertThat(spot.getGridNy()).isEqualTo(expected.ny());
             assertThat(spot.getCrowdAreaName()).isNull();
+        }
+
+        @Test
+        @DisplayName("생성된 스팟마다 SpotCreatedEvent를 발행한다")
+        void shouldPublishSpotCreatedEventPerSpot() {
+            List<Item> items = List.of(
+                buildItem("스팟A", SpotTheme.SUNSET, 37.55, 126.99),
+                buildItem("스팟B", SpotTheme.YUNSEUL, 37.56, 127.00)
+            );
+            SpotAdminCreateRequest request = new SpotAdminCreateRequest(items);
+            given(spotRepository.saveAll(anyList()))
+                .willReturn(List.of(buildSavedSpot(1L, "스팟A"), buildSavedSpot(2L, "스팟B")));
+
+            spotAdminService.createSpots(request);
+
+            then(eventPublisher).should(times(2)).publishEvent(any(SpotCreatedEvent.class));
         }
 
         @Test

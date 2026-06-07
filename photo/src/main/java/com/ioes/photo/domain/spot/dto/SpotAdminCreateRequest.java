@@ -42,10 +42,10 @@ public record SpotAdminCreateRequest(
         @Schema(description = "주소")
         @Size(max = 255) String address,
 
-        @Schema(description = "기상청 격자 X (날씨 연동용, 선택)")
+        @Schema(description = "기상청 격자 X (날씨 연동용, 선택 — 미입력 시 위경도로 자동 계산)")
         Integer gridNx,
 
-        @Schema(description = "기상청 격자 Y (날씨 연동용, 선택)")
+        @Schema(description = "기상청 격자 Y (날씨 연동용, 선택 — 미입력 시 위경도로 자동 계산)")
         Integer gridNy,
 
         @Schema(description = "혼잡도 지역명 (혼잡도 연동용, 선택)")
