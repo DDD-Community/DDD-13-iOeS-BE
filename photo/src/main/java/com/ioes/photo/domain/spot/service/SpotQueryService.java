@@ -99,7 +99,7 @@ public class SpotQueryService {
         boolean isBookmarked = userId != null
             && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
         String imageUrl = spotImageRepository.findById(spotId)
-            .map(spotThumbnailService::getThumbnailUrl)
+            .map(spotThumbnailService::getImageUrl)
             .orElse(null);
         return new SpotPreviewResponse(
             row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
