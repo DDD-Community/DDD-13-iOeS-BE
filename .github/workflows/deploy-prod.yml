@@ -73,8 +73,8 @@ jobs:
             set -e
             cd ${{ secrets.EC2_DEPLOY_PATH }}/..
             git fetch origin main
-            git checkout main
-            git reset --hard origin/main
+            git checkout -B main FETCH_HEAD
+            git reset --hard FETCH_HEAD
             cd ${{ secrets.EC2_DEPLOY_PATH }}
 
             # 롤백 대비: 현재 떠있는 컨테이너의 이미지 태그 캡쳐
