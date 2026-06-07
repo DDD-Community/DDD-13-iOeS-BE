@@ -1,12 +1,12 @@
-name: Deploy (dev)
+name: Deploy (prod)
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: deploy-dev
+  group: deploy-prod
   cancel-in-progress: false
 
 env:
@@ -40,8 +40,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=dev-latest
-            type=sha,prefix=dev-,format=long
+            type=raw,value=prod-latest
+            type=sha,prefix=prod-,format=long
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -63,7 +63,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
-          APP_IMAGE_TAG: dev-${{ github.sha }}
+          APP_IMAGE_TAG: prod-${{ github.sha }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
@@ -72,9 +72,9 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.EC2_DEPLOY_PATH }}/..
-            git fetch origin dev
-            git checkout dev
-            git reset --hard origin/dev
+            git fetch origin main
+            git checkout -B main FETCH_HEAD
+            git reset --hard FETCH_HEAD
             cd ${{ secrets.EC2_DEPLOY_PATH }}
 
             # 롤백 대비: 현재 떠있는 컨테이너의 이미지 태그 캡쳐
