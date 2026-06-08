@@ -59,6 +59,7 @@ class BulletinBoardServiceTest {
 
             assertThat(response.items()).hasSize(2);
             assertThat(response.items().get(0).postId()).isEqualTo(1L);
+            assertThat(response.items().get(0).content()).isEqualTo("내용");
             assertThat(response.items().get(0).pinned()).isTrue();
             assertThat(response.page()).isEqualTo(0);
             assertThat(response.hasNext()).isFalse();
