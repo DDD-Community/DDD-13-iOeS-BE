@@ -23,6 +23,7 @@ public record BbsPostListResponse(
     public record BbsPostItem(
         @Schema(description = "게시글 번호") Long postId,
         @Schema(description = "게시글 제목") String title,
+        @Schema(description = "게시글 내용") String content,
         @Schema(description = "작성일") @JsonFormat(pattern = "yyyy-MM-dd") LocalDate createdAt,
         @Schema(description = "상단 고정 여부") boolean pinned
     ) {
@@ -30,6 +31,7 @@ public record BbsPostListResponse(
             return new BbsPostItem(
                 post.getId(),
                 post.getTitle(),
+                post.getContent(),
                 post.getCreatedAt().toLocalDate(),
                 post.isPinned()
             );
