@@ -13,6 +13,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/well-known:/etc/nginx/well-known:ro
+      - ./nginx/html:/etc/nginx/html:ro
       - app_uploads:/var/www/uploads:ro
     depends_on:
       app:

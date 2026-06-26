@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pickflow</title>
+  <style>
+    body { margin: 0; height: 100vh; display: flex; flex-direction: column;
+           align-items: center; justify-content: center; gap: 16px;
+           font-family: -apple-system, system-ui, sans-serif; color: #333; }
+    a { color: #0a84ff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <p>Pickflow 앱으로 이동 중...</p>
+  <p><a href="https://apps.apple.com/app/id6761319884">앱이 열리지 않으면 여기를 눌러 설치하세요</a></p>
+  <script>
+    (function () {
+      var STORE_URL = "https://apps.apple.com/app/id6761319884";
+      var ua = navigator.userAgent || "";
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var isKakao = /KAKAOTALK/i.test(ua);
+
+      if (isIOS && isKakao) {
+        // 카카오톡 인앱 브라우저는 유니버설 링크가 발동하지 않으므로
+        // 외부 Safari 로 강제 전환해 기존 유니버설 링크가 앱을 열도록 한다.
+        location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href);
+        return;
+      }
+
+      // 앱 미설치 Safari · 데스크톱 · 그 외 환경은 App Store 로 유도한다.
+      location.replace(STORE_URL);
+    })();
+  </script>
+</body>
+</html>
