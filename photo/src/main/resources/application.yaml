@@ -83,7 +83,7 @@ app:
       minimum-version: "1.0.0"   # 이 버전 미만이면 앱 사용 불가
       latest-version: "1.0.0"    # 앱스토어 기준 최신 버전
       force-update: false        # 강제 업데이트 기능 on/off 스위치
-      store-url: "https://apps.apple.com/app/id0000000000"  # TODO(#84): 앱스토어 출시 후 실제 앱 ID로 교체
+      store-url: "https://apps.apple.com/app/id6761319884"
       support-email: "pickflow.help@gmail.com"
       terms-policies:
         - type: TERMS_OF_SERVICE
