@@ -6,7 +6,9 @@ set -euo pipefail
 
 BACKUP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DB_CRON="0 2 * * 0 ${BACKUP_DIR}/scripts/backup-db.sh >> ${BACKUP_DIR}/logs/backup-db.log 2>&1"
-LOGS_CRON="0 3 1 * * ${BACKUP_DIR}/scripts/backup-logs.sh >> ${BACKUP_DIR}/logs/backup-logs.log 2>&1"
+# 로그는 월간 full-tar(backup-logs.sh) 대신 매일 증분 sync(sync-logs.sh)로 백업한다.
+# 롤링 아카이브(.gz)는 불변이라 sync 가 파일당 1회만 업로드 → maxHistory/totalSizeCap 삭제 전 이관, 재업로드 중복 없음.
+LOGS_SYNC_CRON="30 3 * * * ${BACKUP_DIR}/scripts/sync-logs.sh >> ${BACKUP_DIR}/logs/sync-logs.log 2>&1"
 
 add_cron_if_absent() {
   local entry="$1"
@@ -23,11 +25,11 @@ add_cron_if_absent() {
 # 로그 디렉토리 생성 및 스크립트 실행 권한 부여
 mkdir -p "${BACKUP_DIR}/logs"
 chmod +x "${BACKUP_DIR}/scripts/backup-db.sh"
-chmod +x "${BACKUP_DIR}/scripts/backup-logs.sh"
+chmod +x "${BACKUP_DIR}/scripts/sync-logs.sh"
 
 echo "=== 백업 Cron 등록 시작 ==="
 add_cron_if_absent "$DB_CRON"
-add_cron_if_absent "$LOGS_CRON"
+add_cron_if_absent "$LOGS_SYNC_CRON"
 
 echo ""
 echo "=== 현재 Cron 목록 ==="
