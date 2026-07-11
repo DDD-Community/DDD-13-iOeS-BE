@@ -5,8 +5,9 @@
 set -euo pipefail
 
 BACKUP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-DB_CRON="0 2 * * 0 ${BACKUP_DIR}/scripts/backup-db.sh >> ${BACKUP_DIR}/logs/backup-db.log 2>&1"
-LOGS_CRON="0 3 1 * * ${BACKUP_DIR}/scripts/backup-logs.sh >> ${BACKUP_DIR}/logs/backup-logs.log 2>&1"
+# bash 로 호출: git reset --hard 배포(core.fileMode=false)로 실행 비트가 벗겨져도 동작 보장
+DB_CRON="0 2 * * 0 bash ${BACKUP_DIR}/scripts/backup-db.sh >> ${BACKUP_DIR}/logs/backup-db.log 2>&1"
+LOGS_CRON="0 3 1 * * bash ${BACKUP_DIR}/scripts/backup-logs.sh >> ${BACKUP_DIR}/logs/backup-logs.log 2>&1"
 
 add_cron_if_absent() {
   local entry="$1"
