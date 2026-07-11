@@ -44,3 +44,21 @@ scrape_configs:
       - labels:
           level:
           type:
+
+  - job_name: maintenance
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: maintenance
+          __path__: /var/log/maintenance/*.log
+
+    pipeline_stages:
+      # level(INFO/WARN/ERROR), type(maintenance) 을 저카디널리티 레이블로 추출
+      - json:
+          expressions:
+            level: level
+            type: type
+      - labels:
+          level:
+          type:
