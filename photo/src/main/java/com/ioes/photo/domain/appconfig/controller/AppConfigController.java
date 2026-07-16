@@ -1,9 +1,7 @@
 package com.ioes.photo.domain.appconfig.controller;
 
-import com.ioes.photo.domain.appconfig.config.AndroidAppConfigProperties;
-import com.ioes.photo.domain.appconfig.config.IosAppConfigProperties;
-import com.ioes.photo.domain.appconfig.dto.AndroidAppConfigResponse;
-import com.ioes.photo.domain.appconfig.dto.IosAppConfigResponse;
+import com.ioes.photo.domain.appconfig.config.AppConfigProperties;
+import com.ioes.photo.domain.appconfig.dto.AppConfigResponse;
 import com.ioes.photo.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -24,8 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AppConfigController {
 
-    private final IosAppConfigProperties iosAppConfigProperties;
-    private final AndroidAppConfigProperties androidAppConfigProperties;
+    private final AppConfigProperties appConfigProperties;
 
     @Operation(
         summary = "iOS 앱 버전 설정 조회",
@@ -33,8 +30,8 @@ public class AppConfigController {
     )
     @SecurityRequirements
     @GetMapping("/ios")
-    public ApiResponse<IosAppConfigResponse> getIosAppConfig() {
-        return ApiResponse.success(IosAppConfigResponse.from(iosAppConfigProperties));
+    public ApiResponse<AppConfigResponse> getIosAppConfig() {
+        return ApiResponse.success(AppConfigResponse.from(appConfigProperties.ios()));
     }
 
     @Operation(
@@ -43,7 +40,7 @@ public class AppConfigController {
     )
     @SecurityRequirements
     @GetMapping("/android")
-    public ApiResponse<AndroidAppConfigResponse> getAndroidAppConfig() {
-        return ApiResponse.success(AndroidAppConfigResponse.from(androidAppConfigProperties));
+    public ApiResponse<AppConfigResponse> getAndroidAppConfig() {
+        return ApiResponse.success(AppConfigResponse.from(appConfigProperties.android()));
     }
 }
