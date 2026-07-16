@@ -130,6 +130,44 @@
       ],
       "title": "ERROR 로그",
       "type": "logs"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "max": 100, "min": 0, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 85 }, { "color": "red", "value": 92 }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 7,
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\", fstype!~\"tmpfs|overlay\"}))",
+          "legendFormat": "루트(/) 디스크 사용률"
+        }
+      ],
+      "title": "디스크 사용률",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 8,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=~\"backup|maintenance\"} | json"
+        }
+      ],
+      "title": "백업 / 디스크정리 로그",
+      "type": "logs"
     }
   ],
   "refresh": "30s",
@@ -141,5 +179,5 @@
   "timezone": "Asia/Seoul",
   "title": "Photo App - Overview",
   "uid": "photo-overview",
-  "version": 1
+  "version": 2
 }

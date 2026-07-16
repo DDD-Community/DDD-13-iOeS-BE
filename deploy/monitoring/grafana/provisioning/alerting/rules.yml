@@ -217,3 +217,112 @@ groups:
         labels:
           severity: warning
         isPaused: false
+
+  - orgId: 1
+    name: infra-disk-alerts
+    folder: Infra
+    interval: 1m
+    rules:
+      - uid: infra-disk-usage-warning
+        title: 디스크 사용률 경고 (85%)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: '100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [85]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: NoData
+        execErrState: KeepLast
+        for: 5m
+        annotations:
+          summary: 루트 디스크 사용률이 85%를 초과했습니다.
+          description: EC2 루트(/) 디스크 사용률이 85%를 넘었습니다. cleanup-disk.sh 정리 로그({job="maintenance"})와 docker 이미지 누적 여부를 확인하세요.
+        labels:
+          severity: warning
+        isPaused: false
+
+      - uid: infra-disk-usage-critical
+        title: 디스크 사용률 위험 (92%)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: '100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [92]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: NoData
+        execErrState: KeepLast
+        for: 1m
+        annotations:
+          summary: 루트 디스크 사용률이 92%를 초과했습니다. 즉시 조치가 필요합니다.
+          description: EC2 루트(/) 디스크 사용률이 92%를 넘었습니다. 서비스 중단 위험이 있으니 즉시 cleanup-disk.sh 를 수동 실행하거나 디스크를 확보하세요.
+        labels:
+          severity: critical
+        isPaused: false

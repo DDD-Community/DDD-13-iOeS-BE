@@ -1,0 +1,232 @@
+apiVersion: 1
+
+# 백업 스크립트(job=backup) 알림.
+# 기존 deploy/backup/grafana-alerts.json 은 provisioning 경로 밖이라 Grafana 가 로드하지 않았음.
+# 동일 규칙을 provisioning 규격으로 이관하여 자동 로드되도록 함.
+
+groups:
+  - orgId: 1
+    name: backup-failure-alerts
+    folder: Backup
+    interval: 5m
+    rules:
+      - uid: backup-db-failure
+        title: DB 백업 실패
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(count_over_time({job="backup", level="ERROR", type="db"}[5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: KeepLast
+        for: 0s
+        annotations:
+          summary: DB 백업 스크립트에서 ERROR 로그가 감지되었습니다.
+          description: 백업 로그에서 level=ERROR, type=db 항목이 발생했습니다. deploy/backup/logs/backup-db.log 를 확인하세요.
+        labels:
+          severity: critical
+          type: db
+        isPaused: false
+
+      - uid: backup-applog-failure
+        title: 로그 백업 실패
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(count_over_time({job="backup", level="ERROR", type="applog"}[5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: KeepLast
+        for: 0s
+        annotations:
+          summary: 로그 백업 스크립트에서 ERROR 로그가 감지되었습니다.
+          description: 백업 로그에서 level=ERROR, type=applog 항목이 발생했습니다. deploy/backup/logs/backup-logs.log 를 확인하세요.
+        labels:
+          severity: critical
+          type: applog
+        isPaused: false
+
+  - orgId: 1
+    name: backup-missing-alerts
+    folder: Backup
+    interval: 1h
+    rules:
+      - uid: backup-db-missing
+        title: DB 백업 미실행 (7일)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 612000
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(absent_over_time({job="backup", type="db"}[170h]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: KeepLast
+        for: 0s
+        annotations:
+          summary: 7일간 DB 백업 로그가 없습니다. Cron 등록 여부를 확인하세요.
+          description: 지난 7일간 {job="backup", type="db"} 로그가 수집되지 않았습니다. Cron 또는 Promtail 상태를 점검하세요.
+        labels:
+          severity: warning
+          type: db
+        isPaused: false
+
+      - uid: backup-applog-missing
+        title: 로그 백업 미실행 (30일)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 2599200
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(absent_over_time({job="backup", type="applog"}[722h]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: KeepLast
+        for: 0s
+        annotations:
+          summary: 30일간 로그 백업 로그가 없습니다. Cron 등록 여부를 확인하세요.
+          description: 지난 30일간 {job="backup", type="applog"} 로그가 수집되지 않았습니다. Cron 또는 Promtail 상태를 점검하세요.
+        labels:
+          severity: warning
+          type: applog
+        isPaused: false
