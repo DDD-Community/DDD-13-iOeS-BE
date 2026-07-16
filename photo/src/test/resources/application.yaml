@@ -138,6 +138,8 @@ app:
 
   mdc:
     forwarded-ip-header: X-Forwarded-For
+    request-log-excluded-paths:
+      - /api/actuator
     keys:
       request-id: requestId
       user-id: userId

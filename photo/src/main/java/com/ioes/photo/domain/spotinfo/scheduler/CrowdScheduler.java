@@ -25,7 +25,7 @@ public class CrowdScheduler {
     @Scheduled(fixedDelay = TEN_MINUTES_MS, initialDelay = ONE_MINUTE_MS)
     public void run() {
         long start = System.currentTimeMillis();
-        log.info("[CrowdScheduler] start");
+        log.debug("[CrowdScheduler] start");
         try {
             CollectResult result = crowdCollector.collect();
             log.info("[CrowdScheduler] done success={} fail={} total={} duration={}ms",

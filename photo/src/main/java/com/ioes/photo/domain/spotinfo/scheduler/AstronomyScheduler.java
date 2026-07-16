@@ -22,7 +22,7 @@ public class AstronomyScheduler {
     @Scheduled(cron = "0 10 0 * * *")
     public void run() {
         long start = System.currentTimeMillis();
-        log.info("[AstronomyScheduler] start");
+        log.debug("[AstronomyScheduler] start");
         try {
             CollectResult result = astronomyCollector.collect();
             log.info("[AstronomyScheduler] done success={} fail={} total={} duration={}ms",
