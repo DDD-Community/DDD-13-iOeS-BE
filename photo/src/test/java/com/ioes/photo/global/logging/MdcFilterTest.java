@@ -1,11 +1,16 @@
 package com.ioes.photo.global.logging;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.ioes.photo.global.config.mdc.properties.MdcProperties;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -27,16 +32,24 @@ class MdcFilterTest {
 
     private MdcFilter mdcFilter;
     private MdcProperties.Keys keys;
+    private ListAppender<ILoggingEvent> logAppender;
+    private Logger filterLogger;
 
     @BeforeEach
     void setUp() {
         keys = new MdcProperties.Keys("requestId", "userId", "uri", "method", "clientIp");
-        MdcProperties props = new MdcProperties("X-Forwarded-For", keys);
+        MdcProperties props = new MdcProperties("X-Forwarded-For", List.of("/api/actuator"), keys);
         mdcFilter = new MdcFilter(props);
+
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        filterLogger = (Logger) LoggerFactory.getLogger(MdcFilter.class);
+        filterLogger.addAppender(logAppender);
     }
 
     @AfterEach
     void tearDown() {
+        filterLogger.detachAppender(logAppender);
         MDC.clear();
         SecurityContextHolder.clearContext();
     }
@@ -128,5 +141,30 @@ class MdcFilterTest {
         mdcFilter.doFilter(request, response, chain);
 
         assertThat(capturedUserId[0]).isNull();
+    }
+
+    @Test
+    @DisplayName("일반 요청은 요청 완료 로그를 남긴다")
+    void writesRequestLog_forNormalPath() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/spots");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        mdcFilter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(logAppender.list)
+            .anyMatch(e -> e.getLevel() == Level.INFO
+                && e.getFormattedMessage().contains("/api/v1/spots"));
+    }
+
+    @Test
+    @DisplayName("제외 경로(actuator) 요청은 요청 완료 로그를 남기지 않는다")
+    void skipsRequestLog_forExcludedPath() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/actuator/health");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        mdcFilter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(logAppender.list)
+            .noneMatch(e -> e.getFormattedMessage().contains("/api/actuator/health"));
     }
 }

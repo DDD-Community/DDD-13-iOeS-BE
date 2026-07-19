@@ -127,7 +127,7 @@ public class SpotBatchUploadService {
         spotImage.updateRecordedDate(row.recordedDate());
         spotImageRepository.save(spotImage);
 
-        log.info("스팟 등록 완료: id={}, name={}", spot.getId(), row.name());
+        log.debug("스팟 등록 완료: id={}, name={}", spot.getId(), row.name());
         return SpotBatchUploadResponse.SpotResult.of(
             spot.getId(), row.name(),
             s3StorageService.getUrl(imageKey),

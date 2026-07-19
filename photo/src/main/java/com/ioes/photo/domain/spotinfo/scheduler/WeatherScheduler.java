@@ -24,7 +24,7 @@ public class WeatherScheduler {
     @Scheduled(cron = "0 10 2,5,8,11,14,17,20,23 * * *")
     public void run() {
         long start = System.currentTimeMillis();
-        log.info("[WeatherScheduler] start");
+        log.debug("[WeatherScheduler] start");
         try {
             CollectResult result = weatherCollector.collect();
             log.info("[WeatherScheduler] done success={} fail={} total={} duration={}ms",

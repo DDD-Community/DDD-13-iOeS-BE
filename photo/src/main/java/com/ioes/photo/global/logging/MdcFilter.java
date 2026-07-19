@@ -56,8 +56,10 @@ public class MdcFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             long duration = System.currentTimeMillis() - start;
 
-            log.info("{} {} {} {}ms",
-                request.getMethod(), request.getRequestURI(), response.getStatus(), duration);
+            if (!mdcProperties.isRequestLogExcluded(request.getRequestURI())) {
+                log.info("{} {} {} {}ms",
+                    request.getMethod(), request.getRequestURI(), response.getStatus(), duration);
+            }
         } finally {
             MDC.clear();
         }
