@@ -80,6 +80,9 @@ app:
     mapping:
       max-distance-meters: 3000
 
+  share:
+    base-url: https://pickflow-api.us
+
   async:
     core-pool-size: 2
     max-pool-size: 4

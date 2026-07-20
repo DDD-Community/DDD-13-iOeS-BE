@@ -113,6 +113,10 @@ app:
           title: "개인정보처리방침"
           url: "https://cubic-print-1cb.notion.site/07a90976df958319b6d1013e089c5ee6?pvs=143"
 
+  # 공유 링크
+  share:
+    base-url: ${SHARE_BASE_URL:https://pickflow-api.us}   # og:url 생성용 외부 도메인
+
   # 비동기 스레드 풀
   async:
     core-pool-size: 4
@@ -139,6 +143,7 @@ app:
       - /v1/bbs/posts/**
       - /v1/address/**
       - /v1/app/config/**
+      - /v1/share/**
 
   #  Swagger / OpenAPI
   swagger:
