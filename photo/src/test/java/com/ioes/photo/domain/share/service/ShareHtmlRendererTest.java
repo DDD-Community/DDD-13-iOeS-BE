@@ -14,15 +14,20 @@ import org.junit.jupiter.api.Test;
 class ShareHtmlRendererTest {
 
     private static final String STORE_URL = "https://apps.apple.com/app/id6761319884";
+    private static final String ANDROID_STORE_URL = "https://play.google.com/store/apps/details?id=com.ioes.pickflow";
     private static final String BASE_URL = "https://pickflow-api.us";
 
-    private final ShareHtmlRenderer renderer = new ShareHtmlRenderer(
-        new AppConfigProperties(
-            new PlatformConfig("1.0.0", "1.0.0", false, STORE_URL, "help@pickflow", List.of()),
-            null
-        ),
-        new ShareProperties(BASE_URL)
-    );
+    private final ShareHtmlRenderer renderer = renderer(BASE_URL);
+
+    private static ShareHtmlRenderer renderer(String baseUrl) {
+        return new ShareHtmlRenderer(
+            new AppConfigProperties(
+                new PlatformConfig("1.0.0", "1.0.0", false, STORE_URL, "help@pickflow", List.of()),
+                new PlatformConfig("1.0.0", "1.0.0", false, ANDROID_STORE_URL, "help@pickflow", List.of())
+            ),
+            new ShareProperties(baseUrl)
+        );
+    }
 
     @Test
     @DisplayName("스팟 정보를 OG 메타태그로 렌더링한다")
@@ -61,6 +66,25 @@ class ShareHtmlRendererTest {
             .contains("<meta property=\"og:description\" content=\"Pickflow에서 이 스팟을 확인해보세요\">")
             .doesNotContain("og:image")
             .contains(STORE_URL);
+    }
+
+    @Test
+    @DisplayName("플랫폼별 스토어 URL을 모두 스크립트에 포함한다")
+    void includesBothStoreUrls() {
+        String html = renderer.render("k-k", null);
+
+        assertThat(html)
+            .contains("var IOS_STORE_URL = \"" + STORE_URL + "\";")
+            .contains("var ANDROID_STORE_URL = \"" + ANDROID_STORE_URL + "\";")
+            .contains("var isAndroid = /Android/i.test(ua);");
+    }
+
+    @Test
+    @DisplayName("baseUrl 후행 슬래시가 있어도 og:url에 중복 슬래시가 생기지 않는다")
+    void normalizesTrailingSlashInBaseUrl() {
+        String html = renderer(BASE_URL + "/").render("k-k", null);
+
+        assertThat(html).contains("<meta property=\"og:url\" content=\"https://pickflow-api.us/k-k\">");
     }
 
     @Test

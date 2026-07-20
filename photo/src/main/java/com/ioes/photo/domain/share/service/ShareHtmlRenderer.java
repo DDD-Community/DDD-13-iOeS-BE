@@ -3,6 +3,7 @@ package com.ioes.photo.domain.share.service;
 import com.ioes.photo.domain.appconfig.config.AppConfigProperties;
 import com.ioes.photo.domain.share.config.ShareProperties;
 import com.ioes.photo.domain.share.dto.ShareView;
+import com.ioes.photo.global.common.util.NullUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -25,22 +26,20 @@ public class ShareHtmlRenderer {
     private final ShareProperties shareProperties;
 
     public String render(String token, ShareView view) {
-        String title = view != null ? view.name() : DEFAULT_TITLE;
-        String description = resolveDescription(view);
+        String title = view != null ? NullUtils.orDefaultIfBlank(view.name(), DEFAULT_TITLE) : DEFAULT_TITLE;
+        String description = view != null
+            ? NullUtils.orDefaultIfBlank(view.comment(), DEFAULT_DESCRIPTION)
+            : DEFAULT_DESCRIPTION;
         String imageUrl = view != null ? view.imageUrl() : null;
-        String pageUrl = shareProperties.baseUrl() + "/" + token;
-        String storeUrl = appConfigProperties.ios().storeUrl();
-        return buildHtml(title, description, imageUrl, pageUrl, storeUrl);
+        String pageUrl = baseUrl() + "/" + token;
+        return buildHtml(title, description, imageUrl, pageUrl);
     }
 
-    private String resolveDescription(ShareView view) {
-        if (view == null || view.comment() == null || view.comment().isBlank()) {
-            return DEFAULT_DESCRIPTION;
-        }
-        return view.comment();
+    private String baseUrl() {
+        return NullUtils.orDefault(shareProperties.baseUrl(), "").replaceAll("/+$", "");
     }
 
-    private String buildHtml(String title, String description, String imageUrl, String pageUrl, String storeUrl) {
+    private String buildHtml(String title, String description, String imageUrl, String pageUrl) {
         StringBuilder html = new StringBuilder()
             .append("<!DOCTYPE html>\n")
             .append("<html lang=\"ko\">\n")
@@ -58,29 +57,40 @@ public class ShareHtmlRenderer {
         html.append("</head>\n")
             .append("<body>\n")
             .append("  <p>Pickflow 앱으로 이동 중...</p>\n")
-            .append("  <p><a href=\"").append(escapeHtml(storeUrl)).append("\">앱이 열리지 않으면 여기를 눌러 설치하세요</a></p>\n")
+            .append("  <p><a id=\"store-link\" href=\"").append(escapeHtml(appConfigProperties.ios().storeUrl()))
+            .append("\">앱이 열리지 않으면 여기를 눌러 설치하세요</a></p>\n")
             .append("  <script>\n")
-            .append(redirectScript(storeUrl))
+            .append(redirectScript())
             .append("  </script>\n")
             .append("</body>\n")
             .append("</html>\n");
         return html.toString();
     }
 
-    private String redirectScript(String storeUrl) {
+    private String redirectScript() {
         return """
               (function () {
-                var STORE_URL = "%s";
+                var IOS_STORE_URL = "%s";
+                var ANDROID_STORE_URL = "%s";
                 var ua = navigator.userAgent || "";
                 var isIOS = /iPhone|iPad|iPod/i.test(ua);
+                var isAndroid = /Android/i.test(ua);
                 var isKakao = /KAKAOTALK/i.test(ua);
-                if (isIOS && isKakao) {
+                var storeUrl = isAndroid ? ANDROID_STORE_URL : IOS_STORE_URL;
+                var link = document.getElementById("store-link");
+                if (link) {
+                  link.href = storeUrl;
+                }
+                if (isKakao && (isIOS || isAndroid)) {
                   location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href);
                   return;
                 }
-                location.replace(STORE_URL);
+                location.replace(storeUrl);
               })();
-            """.formatted(escapeJs(storeUrl));
+            """.formatted(
+            escapeJs(appConfigProperties.ios().storeUrl()),
+            escapeJs(appConfigProperties.android().storeUrl())
+        );
     }
 
     private String ogTag(String property, String content) {
