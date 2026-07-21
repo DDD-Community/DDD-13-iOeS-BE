@@ -7,8 +7,12 @@ import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -119,6 +123,30 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody().getCode()).isEqualTo("C005");
+    }
+
+    @Test
+    @DisplayName("NoResourceFoundException - 500이 아닌 404 반환")
+    void handleNoResourceFoundException() {
+        NoResourceFoundException ex = new NoResourceFoundException(
+            HttpMethod.GET, "/v1/share/wp-admin/setup-config.php", "wp-admin/setup-config.php");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleNoHandlerFoundException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getCode()).isEqualTo("C006");
+        assertThat(response.getBody().isSuccess()).isFalse();
+    }
+
+    @Test
+    @DisplayName("NoHandlerFoundException - 500이 아닌 404 반환")
+    void handleNoHandlerFoundException() {
+        NoHandlerFoundException ex = new NoHandlerFoundException("GET", "/v1/share/foo/bar", HttpHeaders.EMPTY);
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleNoHandlerFoundException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getCode()).isEqualTo("C006");
     }
 
     @Test

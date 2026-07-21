@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -100,6 +102,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(CommonErrorCode.ACCESS_DENIED.getStatus())
             .body(ApiResponse.error(CommonErrorCode.ACCESS_DENIED));
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(Exception e) {
+        log.warn("NoHandlerFound: {}", e.getMessage());
+        return ResponseEntity
+            .status(CommonErrorCode.RESOURCE_NOT_FOUND.getStatus())
+            .body(ApiResponse.error(CommonErrorCode.RESOURCE_NOT_FOUND));
     }
 
     @ExceptionHandler(Exception.class)
