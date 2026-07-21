@@ -95,6 +95,27 @@ app:
         - type: PRIVACY_POLICY
           title: "개인정보처리방침"
           url: "https://cubic-print-1cb.notion.site/07a90976df958319b6d1013e089c5ee6?pvs=143"
+    android:
+      # TODO: Android 배포 후 실제 버전/스토어 URL로 교체
+      minimum-version: "1.0.0"   # 이 버전 미만이면 앱 사용 불가
+      latest-version: "1.0.0"    # 플레이스토어 기준 최신 버전
+      force-update: false        # 강제 업데이트 기능 on/off 스위치
+      store-url: "https://play.google.com/store/apps/details?id=com.ioes.pickflow"
+      support-email: "pickflow.help@gmail.com"
+      terms-policies:
+        - type: TERMS_OF_SERVICE
+          title: "서비스 이용약관"
+          url: "https://cubic-print-1cb.notion.site/abe90976df958360b53001e6ee774eb3?pvs=143"
+        - type: LOCATION_TERMS
+          title: "위치정보 서비스 이용약관"
+          url: "https://cubic-print-1cb.notion.site/36390976df9580289cc9ebcba9ed7ffd?pvs=143"
+        - type: PRIVACY_POLICY
+          title: "개인정보처리방침"
+          url: "https://cubic-print-1cb.notion.site/07a90976df958319b6d1013e089c5ee6?pvs=143"
+
+  # 공유 링크
+  share:
+    base-url: ${SHARE_BASE_URL:https://pickflow-api.us}   # og:url 생성용 외부 도메인
 
   # 비동기 스레드 풀
   async:
@@ -122,6 +143,7 @@ app:
       - /v1/bbs/posts/**
       - /v1/address/**
       - /v1/app/config/**
+      - /v1/share/**
 
   #  Swagger / OpenAPI
   swagger:
@@ -282,6 +304,8 @@ app:
   # MDC 키 이름 (logback 패턴의 %X{키이름}과 반드시 일치)
   mdc:
     forwarded-ip-header: X-Forwarded-For
+    request-log-excluded-paths:
+      - /api/actuator
     keys:
       request-id: requestId
       user-id: userId

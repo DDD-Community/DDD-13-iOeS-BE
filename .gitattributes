@@ -1,0 +1,2 @@
+# 셸 스크립트는 Linux(EC2)에서 실행되므로 항상 LF 로 저장/체크아웃 (CRLF 시 bash 실행 실패 방지)
+*.sh text eol=lf

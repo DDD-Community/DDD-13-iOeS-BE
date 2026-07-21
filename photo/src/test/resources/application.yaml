@@ -36,6 +36,34 @@ app:
       height: 400
     presigned-url-expiry-minutes: 60
 
+  app-config:
+    ios:
+      minimum-version: "1.0.0"
+      latest-version: "1.0.0"
+      force-update: false
+      store-url: "https://apps.apple.com/app/id6761319884"
+      support-email: "pickflow.help@gmail.com"
+      terms-policies:
+        - type: TERMS_OF_SERVICE
+          title: "서비스 이용약관"
+          url: "https://example.com/terms"
+        - type: PRIVACY_POLICY
+          title: "개인정보처리방침"
+          url: "https://example.com/privacy"
+    android:
+      minimum-version: "1.0.0"
+      latest-version: "1.0.0"
+      force-update: false
+      store-url: "https://play.google.com/store/apps/details?id=com.ioes.pickflow"
+      support-email: "pickflow.help@gmail.com"
+      terms-policies:
+        - type: TERMS_OF_SERVICE
+          title: "서비스 이용약관"
+          url: "https://example.com/terms"
+        - type: PRIVACY_POLICY
+          title: "개인정보처리방침"
+          url: "https://example.com/privacy"
+
   external-api:
     data-go-kr:
       base-url: https://apis.data.go.kr
@@ -51,6 +79,9 @@ app:
   crowd:
     mapping:
       max-distance-meters: 3000
+
+  share:
+    base-url: https://pickflow-api.us
 
   async:
     core-pool-size: 2
@@ -110,6 +141,8 @@ app:
 
   mdc:
     forwarded-ip-header: X-Forwarded-For
+    request-log-excluded-paths:
+      - /api/actuator
     keys:
       request-id: requestId
       user-id: userId
