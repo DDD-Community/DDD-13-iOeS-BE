@@ -1,5 +1,6 @@
 package com.ioes.photo.global.config.security;
 
+import com.ioes.photo.domain.user.enums.UserRole;
 import com.ioes.photo.global.config.security.properties.SecurityProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         String[] publicUrls = securityProperties.publicUrls().toArray(String[]::new);
         String[] publicGetUrls = securityProperties.publicGetUrls().toArray(String[]::new);
+        String[] adminUrls = securityProperties.adminUrls().toArray(String[]::new);
 
         http
             .cors(AbstractHttpConfigurer::disable)
@@ -46,11 +48,14 @@ public class SecurityConfig {
                 .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(publicUrls).permitAll()
-                .requestMatchers(HttpMethod.GET, publicGetUrls).permitAll()
-                .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers(publicUrls).permitAll()
+                    .requestMatchers(HttpMethod.GET, publicGetUrls).permitAll();
+                if (adminUrls.length > 0) {
+                    auth.requestMatchers(adminUrls).hasRole(UserRole.USER_ADMIN.name());
+                }
+                auth.anyRequest().authenticated();
+            })
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(unauthorizedEntryPoint())
             )
