@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.user.entity;
 
 import com.ioes.photo.domain.user.entity.User;
+import com.ioes.photo.domain.user.enums.UserRole;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -74,6 +75,49 @@ class UserTest {
                 .build();
 
             assertThat(user.getArchiveName()).isEqualTo(User.DEFAULT_ARCHIVE_NAME);
+        }
+
+        @Test
+        @DisplayName("role 미지정 시 기본값 USER_CUSTOMER로 생성된다")
+        void shouldHaveDefaultRole_whenNotSpecified() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .build();
+
+            assertThat(user.getRole()).isEqualTo(UserRole.USER_CUSTOMER);
+        }
+
+        @Test
+        @DisplayName("role을 명시하면 해당 값으로 생성된다")
+        void shouldUseSpecifiedRole() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .role(UserRole.USER_ADMIN)
+                .build();
+
+            assertThat(user.getRole()).isEqualTo(UserRole.USER_ADMIN);
+        }
+    }
+
+    // ── changeRole ────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("changeRole()")
+    class ChangeRole {
+
+        @Test
+        @DisplayName("사용자 권한을 변경한다")
+        void shouldChangeRole() {
+            User user = User.builder()
+                .provider(OAuthProvider.KAKAO)
+                .providerUserId("kakao-123")
+                .build();
+
+            user.changeRole(UserRole.USER_ADMIN);
+
+            assertThat(user.getRole()).isEqualTo(UserRole.USER_ADMIN);
         }
     }
 

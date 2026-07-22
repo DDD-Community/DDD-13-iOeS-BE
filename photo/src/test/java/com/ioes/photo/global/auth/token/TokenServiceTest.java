@@ -1,5 +1,7 @@
 package com.ioes.photo.global.auth.token;
 
+import com.ioes.photo.domain.user.enums.UserRole;
+import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.config.security.JwtProvider;
 import com.ioes.photo.global.config.security.properties.TokenProperties;
 import com.ioes.photo.global.error.exception.BusinessException;
@@ -42,6 +44,7 @@ class TokenServiceTest {
     @Mock ValueOperations<String, String> valueOperations;
     @Mock SetOperations<String, String> setOperations;
     @Mock TokenProperties tokenProperties;
+    @Mock UserAccountService userAccountService;
 
     @InjectMocks TokenService tokenService;
 
@@ -58,7 +61,8 @@ class TokenServiceTest {
         given(tokenProperties.refreshExpirationMs()).willReturn(REFRESH_TTL_MS);
         given(tokenProperties.refreshKeyPrefix()).willReturn(REFRESH_PREFIX);
         given(tokenProperties.userTokensKeyPrefix()).willReturn(USER_TOKENS_PREFIX);
-        given(jwtProvider.generateToken(TEST_USER_ID)).willReturn(TEST_ACCESS_TOKEN);
+        given(jwtProvider.generateToken(eq(TEST_USER_ID), any())).willReturn(TEST_ACCESS_TOKEN);
+        given(userAccountService.findRole(anyLong())).willReturn(UserRole.USER_CUSTOMER);
     }
 
     // ── issueTokens ───────────────────────────────────────────────────────
@@ -70,7 +74,7 @@ class TokenServiceTest {
         @Test
         @DisplayName("Access Token과 Refresh Token 쌍을 반환한다")
         void shouldReturnTokenPair() {
-            String[] tokens = tokenService.issueTokens(TEST_USER_ID);
+            String[] tokens = tokenService.issueTokens(TEST_USER_ID, UserRole.USER_CUSTOMER);
 
             assertThat(tokens).hasSize(2);
             assertThat(tokens[0]).isEqualTo(TEST_ACCESS_TOKEN);
@@ -80,7 +84,7 @@ class TokenServiceTest {
         @Test
         @DisplayName("Refresh Token을 Redis에 TTL과 함께 저장한다")
         void shouldStoreRefreshTokenInRedis() {
-            String[] tokens = tokenService.issueTokens(TEST_USER_ID);
+            String[] tokens = tokenService.issueTokens(TEST_USER_ID, UserRole.USER_CUSTOMER);
             String refreshToken = tokens[1];
 
             then(valueOperations).should().set(
@@ -94,7 +98,7 @@ class TokenServiceTest {
         @Test
         @DisplayName("Refresh Token을 유저별 Set에도 추적 저장한다")
         void shouldTrackRefreshTokenInUserSet() {
-            String[] tokens = tokenService.issueTokens(TEST_USER_ID);
+            String[] tokens = tokenService.issueTokens(TEST_USER_ID, UserRole.USER_CUSTOMER);
             String refreshToken = tokens[1];
 
             then(setOperations).should().add(
@@ -111,7 +115,7 @@ class TokenServiceTest {
         @Test
         @DisplayName("Refresh Token은 32자리 UUID hex 문자열이다")
         void refreshTokenShouldBeUuidHex() {
-            String[] tokens = tokenService.issueTokens(TEST_USER_ID);
+            String[] tokens = tokenService.issueTokens(TEST_USER_ID, UserRole.USER_CUSTOMER);
 
             assertThat(tokens[1])
                 .hasSize(32)
