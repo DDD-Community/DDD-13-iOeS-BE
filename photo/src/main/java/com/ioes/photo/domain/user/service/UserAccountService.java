@@ -1,10 +1,13 @@
 package com.ioes.photo.domain.user.service;
 
 import com.ioes.photo.domain.user.entity.User;
+import com.ioes.photo.domain.user.enums.UserRole;
+import com.ioes.photo.domain.user.error.UserErrorCode;
 import com.ioes.photo.domain.user.repository.UserRepository;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.auth.oauth.OAuthUserInfo;
 import com.ioes.photo.global.common.util.NullUtils;
+import com.ioes.photo.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,13 @@ public class UserAccountService {
     @Transactional(readOnly = true)
     public Optional<User> findExistingUser(OAuthProvider provider, String providerId) {
         return userRepository.findByProviderAndProviderUserId(provider, providerId);
+    }
+
+    @Transactional(readOnly = true)
+    public UserRole findRole(Long userId) {
+        return userRepository.findById(userId)
+            .map(User::getRole)
+            .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
