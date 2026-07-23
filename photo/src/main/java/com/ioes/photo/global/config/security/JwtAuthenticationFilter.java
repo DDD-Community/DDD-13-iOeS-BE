@@ -6,9 +6,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.ioes.photo.domain.user.enums.UserRole;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -40,8 +42,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null && jwtProvider.validateToken(token) && isAccessToken(token) && !tokenService.isBlacklisted(token)) {
             String subject = jwtProvider.extractSubject(token);
+            UserRole role = jwtProvider.extractRole(token);
             UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(subject, null, List.of());
+                new UsernamePasswordAuthenticationToken(subject, null,
+                    List.of(new SimpleGrantedAuthority(role.authority())));
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
 

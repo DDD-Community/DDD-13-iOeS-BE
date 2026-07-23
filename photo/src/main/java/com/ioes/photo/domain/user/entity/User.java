@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.user.entity;
 
+import com.ioes.photo.domain.user.enums.UserRole;
 import com.ioes.photo.global.auth.oauth.OAuthProvider;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.entity.BaseEntity;
@@ -47,6 +48,9 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 4)
     private OAuthProvider provider;
 
+    @Column(nullable = false, length = 4)
+    private UserRole role;
+
     @Column(name = "provider_user_id", nullable = false)
     private String providerUserId;
 
@@ -76,13 +80,16 @@ public class User extends BaseEntity {
 
     @Builder
     private User(OAuthProvider provider, String providerUserId, String email,
-                 String nickname, String profileImageUrl, Long hashTag) {
+                 String nickname, String profileImageUrl, Long hashTag, UserRole role) {
         this.provider = provider;
         this.providerUserId = providerUserId;
         this.email = email;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.hashTag = hashTag;
+        this.role = role != null
+                ? role
+                : UserRole.USER_CUSTOMER;
     }
 
     public String getDisplayName() {
@@ -113,6 +120,10 @@ public class User extends BaseEntity {
 
     public void updateArchiveName(String archiveName) {
         this.archiveName = archiveName;
+    }
+
+    public void changeRole(UserRole role) {
+        this.role = role;
     }
 
 }

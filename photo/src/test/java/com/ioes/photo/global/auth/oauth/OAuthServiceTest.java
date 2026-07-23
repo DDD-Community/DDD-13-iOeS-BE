@@ -69,7 +69,7 @@ class OAuthServiceTest {
         @BeforeEach
         void setUp() {
             given(registry.getClient(OAuthProvider.KAKAO)).willReturn(oAuthClient);
-            given(tokenService.issueTokens(any())).willReturn(TEST_TOKENS);
+            given(tokenService.issueTokens(any(), any())).willReturn(TEST_TOKENS);
         }
 
         @Test
@@ -142,7 +142,7 @@ class OAuthServiceTest {
         @BeforeEach
         void setUp() {
             given(registry.getClient(OAuthProvider.APPLE)).willReturn(oAuthClient);
-            given(tokenService.issueTokens(any())).willReturn(TEST_TOKENS);
+            given(tokenService.issueTokens(any(), any())).willReturn(TEST_TOKENS);
         }
 
         @Test

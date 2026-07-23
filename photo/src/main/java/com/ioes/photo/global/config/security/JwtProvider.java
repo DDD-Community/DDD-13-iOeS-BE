@@ -1,5 +1,6 @@
 package com.ioes.photo.global.config.security;
 
+import com.ioes.photo.domain.user.enums.UserRole;
 import com.ioes.photo.global.config.security.properties.JwtProperties;
 import com.ioes.photo.global.config.security.properties.TokenProperties;
 import io.jsonwebtoken.Claims;
@@ -31,6 +32,7 @@ public class JwtProvider {
     public static final String TOKEN_TYPE_CLAIM = "type";
     public static final String TOKEN_TYPE_ACCESS = "ACCESS";
     public static final String TOKEN_TYPE_RESTORE = "RESTORE";
+    public static final String ROLE_CLAIM = "role";
 
     private final JwtProperties jwtProperties;
     private final TokenProperties tokenProperties;
@@ -42,16 +44,18 @@ public class JwtProvider {
     }
 
     /**
-     * subject(사용자 식별자)를 담은 JWT 토큰을 생성합니다.
+     * subject(사용자 식별자)와 권한을 담은 JWT 토큰을 생성합니다.
      *
      * @param subject 토큰에 저장할 사용자 식별자
+     * @param role    토큰에 저장할 사용자 권한
      * @return 서명된 JWT 토큰 문자열
      */
-    public String generateToken(String subject) {
+    public String generateToken(String subject, UserRole role) {
         Date now = new Date();
         return Jwts.builder()
             .subject(subject)
             .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS)
+            .claim(ROLE_CLAIM, role.name())
             .issuedAt(now)
             .expiration(new Date(now.getTime() + jwtProperties.expirationMs()))
             .signWith(secretKey())
@@ -71,6 +75,25 @@ public class JwtProvider {
 
     public String extractTokenType(String token) {
         return (String) parseClaims(token).get(TOKEN_TYPE_CLAIM);
+    }
+
+    /**
+     * 토큰에서 권한을 추출합니다.
+     * role claim이 없거나(배포 전 발급분) 알 수 없는 값이면 USER_CUSTOMER로 폴백합니다.
+     *
+     * @param token JWT 토큰 문자열
+     * @return 토큰의 권한
+     */
+    public UserRole extractRole(String token) {
+        String role = (String) parseClaims(token).get(ROLE_CLAIM);
+        if (role == null) {
+            return UserRole.USER_CUSTOMER;
+        }
+        try {
+            return UserRole.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            return UserRole.USER_CUSTOMER;
+        }
     }
 
     public long getRemainingValidityMs(String token) {

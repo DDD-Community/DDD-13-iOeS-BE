@@ -1,5 +1,7 @@
 package com.ioes.photo.global.auth.token;
 
+import com.ioes.photo.domain.user.enums.UserRole;
+import com.ioes.photo.domain.user.service.UserAccountService;
 import com.ioes.photo.global.config.security.JwtProvider;
 import com.ioes.photo.global.config.security.properties.TokenProperties;
 import com.ioes.photo.global.error.code.CommonErrorCode;
@@ -28,8 +30,10 @@ public class TokenService {
     private final JwtProvider jwtProvider;
     private final RedisTemplate<String, String> redisTemplate;
     private final TokenProperties tokenProperties;
-    public String[] issueTokens(String userId) {
-        String accessToken  = jwtProvider.generateToken(userId);
+    private final UserAccountService userAccountService;
+
+    public String[] issueTokens(String userId, UserRole role) {
+        String accessToken  = jwtProvider.generateToken(userId, role);
         String refreshToken = generateRefreshToken();
         storeRefreshToken(refreshToken, userId);
         return new String[]{accessToken, refreshToken};
@@ -45,7 +49,9 @@ public class TokenService {
         }
 
         redisTemplate.delete(key); // 기존 토큰 즉시 무효화 (Rotation)
-        return issueTokens(userId);
+        // Refresh 경로는 userId만 보유하므로 최신 권한을 DB에서 재조회한다
+        UserRole role = userAccountService.findRole(Long.parseLong(userId));
+        return issueTokens(userId, role);
     }
 
     public void logout(String refreshToken, String accessToken) {
