@@ -183,7 +183,8 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 2599200
+              # 30일 = 720h. Loki 기본 max_query_length(721h) 한도 이내로 유지한다.
+              from: 2592000
               to: 0
             datasourceUid: loki
             model:
@@ -196,7 +197,7 @@ groups:
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
-              expr: 'sum(absent_over_time({job="backup", type="applog"}[722h]))'
+              expr: 'sum(absent_over_time({job="backup", type="applog"}[720h]))'
           - refId: B
             datasourceUid: __expr__
             model:
@@ -221,7 +222,8 @@ groups:
                     type: last
                     params: []
         noDataState: OK
-        execErrState: KeepLast
+        # 쿼리 실패(한도 초과 등)를 삼키지 않고 DatasourceError 알림으로 표면화한다.
+        execErrState: Error
         for: 0s
         annotations:
           summary: 30일간 로그 백업 로그가 없습니다. Cron 등록 여부를 확인하세요.
