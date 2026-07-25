@@ -114,7 +114,9 @@ public class AppleOAuthClient implements OAuthClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Apple identity token 검증 실패", e);
+            // 만료/위조 토큰 재사용 등 클라이언트 원인이 대부분이라 401로 처리한다.
+            // ERROR로 남기면 critical 알림 노이즈가 되므로 WARN으로 기록한다.
+            log.warn("Apple identity token 검증 실패: {}", e.getMessage());
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED, "Apple 인증 토큰 검증 실패");
         }
     }
