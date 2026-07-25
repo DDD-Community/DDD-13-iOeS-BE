@@ -62,3 +62,23 @@ scrape_configs:
       - labels:
           level:
           type:
+
+  - job_name: nginx
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service_name: nginx
+          __path__: /var/log/nginx/*.log
+
+    pipeline_stages:
+      # error.log 라인의 [error]/[warn]/[crit] 레벨만 저카디널리티 레이블로 추출한다.
+      # access.log 라인은 매칭되지 않아 레이블 없이 그대로 수집된다.
+      - match:
+          selector: '{job="nginx"}'
+          stages:
+            - regex:
+                expression: '^\S+ \S+ \[(?P<level>\w+)\]'
+            - labels:
+                level:
