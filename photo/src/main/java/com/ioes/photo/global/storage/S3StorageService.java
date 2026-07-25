@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -148,17 +149,18 @@ public class S3StorageService implements StorageService {
     }
 
     private void putObject(MultipartFile file, String key) {
-        try {
-            byte[] bytes = file.getBytes();
+        // 파일 전체를 힙에 적재(file.getBytes())하지 않고 스트림으로 전송한다.
+        // Spring이 멀티파트를 디스크 임시파일로 스풀하므로, InputStream은 디스크에서 읽힌다.
+        try (InputStream in = file.getInputStream()) {
             s3Client.putObject(
                 PutObjectRequest.builder()
                     .bucket(s3Properties.bucket())
                     .key(key)
                     .contentType(resolveContentType(file))
-                    .contentLength((long) bytes.length)
+                    .contentLength(file.getSize())
                     .contentDisposition(buildContentDisposition(file.getOriginalFilename()))
                     .build(),
-                    RequestBody.fromBytes(bytes)
+                    RequestBody.fromInputStream(in, file.getSize())
             );
         } catch (IOException e) {
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,

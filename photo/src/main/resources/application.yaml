@@ -8,8 +8,12 @@ spring:
       - "optional:classpath:config/prod/yaml/application-prod.yaml"
   servlet:
     multipart:
-      max-file-size: 100MB       # 배치 업로드 ZIP 수용. 일반 사용자 이미지 크기는 서비스 계층에서 별도 검증(app.file.max-size)
-      max-request-size: 110MB    # 폼 필드 포함 전체 요청 크기
+      # 실사용 경로는 단일 이미지 업로드(archive/profile/my-spot)뿐이다.
+      # 배치 업로드(SpotAdminController)는 현재 비활성.
+      # 사진앱 특성상 고해상도 이미지(파노라마/HEIC/RAW 등)를 수용하도록 여유 있게 설정.
+      # 계층: app.file.max-size(50MB, 서비스 검증) < max-file-size(60MB) < max-request-size(70MB) < nginx /api/(75m)
+      max-file-size: 60MB        # 단일 파일 상한. app.file.max-size보다 높게 두어 서비스 계층 검증이 도달 가능하게 함
+      max-request-size: 70MB     # 폼 필드 포함 전체 요청 크기
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -49,7 +53,10 @@ app:
     presigned-url-expiry-minutes: 60   # Presigned URL 유효 시간(분)
 
   file:
-    max-size: 104857600         # 100MB (bytes)
+    # 서비스 계층 이미지 상한. 서블릿 max-file-size(60MB)보다 낮아야 FileUtils.validateSize가
+    # 실제로 동작한다(둘이 같으면 서블릿이 먼저 413을 던져 이 검증이 도달 불가).
+    # 고해상도 사진 업로드를 고려해 여유 있게 50MB로 설정.
+    max-size: 52428800          # 50MB (bytes)
     image-extensions: jpg,jpeg,png,gif,bmp,webp,svg,heic,heif
 
   # 외부 API
