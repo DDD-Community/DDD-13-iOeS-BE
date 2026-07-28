@@ -44,9 +44,9 @@ import static org.mockito.Mockito.times;
  * 이렇게 하면 각 createUser 호출이 독립 트랜잭션이 되고, 충돌 후 롤백이 깔끔히 처리된다.
  *
  * <h3>커넥션 점유 증명 원리</h3>
- * pool=2 / connection-timeout=2s 환경에서 2개 스레드가 동시에 충돌을 일으키고 재시도한다.
+ * pool=2 환경에서 여러 스레드가 동시에 충돌을 일으키고 재시도한다.
  * <ul>
- *   <li>커넥션 미반환(broken) 시: 두 스레드가 기존 커넥션을 쥔 채 재시도 → pool 고갈 → 2s timeout → 실패</li>
+ *   <li>커넥션 미반환(broken) 시: 스레드가 기존 커넥션을 쥔 채 재시도 → pool 고갈 → 획득 대기 latch(10s/30s) 초과 → 실패</li>
  *   <li>커넥션 반환(correct) 시: 트랜잭션 종료와 함께 커넥션 반환 → 재시도가 새 커넥션 획득 → 성공</li>
  * </ul>
  *
@@ -60,9 +60,13 @@ class UserAccountServiceIntegrationTest {
     static void overrideProperties(DynamicPropertyRegistry registry) {
         // HS512 최소 64바이트 — base64("secret-key-for-testing-purposes-only-must-be-at-least-64-bytes-long")
         registry.add("JWT_SECRET", () -> "c2VjcmV0LWtleS1mb3ItdGVzdGluZy1wdXJwb3Nlcy1vbmx5LW11c3QtYmUtYXQtbGVhc3QtNjQtYnl0ZXMtbG9uZw==");
+        // pool=2 는 커넥션 반환/동시성 증명을 위해 유지한다.
+        // minimum-idle=2 로 양쪽 커넥션을 예열해 획득 지연 스파이크를 줄이고,
+        // connection-timeout 은 CI 부하에서도 견디도록 10s 로 둔다.
+        // (2s 는 지나치게 빠듯해 단일 스레드 테스트조차 CI 에서 간헐 실패했다 — #133)
         registry.add("spring.datasource.hikari.maximum-pool-size", () -> 2);
-        registry.add("spring.datasource.hikari.minimum-idle",       () -> 1);
-        registry.add("spring.datasource.hikari.connection-timeout",  () -> 2000);
+        registry.add("spring.datasource.hikari.minimum-idle",       () -> 2);
+        registry.add("spring.datasource.hikari.connection-timeout",  () -> 10000);
     }
 
     @MockitoBean RedisConnectionFactory         redisConnectionFactory;
