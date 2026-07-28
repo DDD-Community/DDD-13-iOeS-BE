@@ -8,7 +8,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author 황제연
  */
 @Tag(name = "게시판", description = "게시판(공지사항 등) 조회 API")
+@Validated
 @RestController
 @RequestMapping("/v1/bbs")
 @RequiredArgsConstructor
@@ -38,7 +41,7 @@ public class BulletinBoardController {
         @Parameter(description = "게시판 구분 번호 (1: 공지사항)", required = true)
         @RequestParam Long masterId,
         @Parameter(description = "페이지 번호 (0부터 시작)")
-        @RequestParam(defaultValue = "0") int page
+        @RequestParam(defaultValue = "0") @Min(0) int page
     ) {
         return ApiResponse.success(bulletinBoardService.getPosts(masterId, page));
     }
