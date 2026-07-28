@@ -12,7 +12,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 300
+              from: 900
               to: 0
             datasourceUid: loki
             model:
@@ -25,7 +25,8 @@ groups:
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
-              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} | json | logger_name="com.ioes.photo.global.error.handler.GlobalExceptionHandler" [5m]))'
+              # or vector(0): 매칭 0건을 NoData가 아닌 0으로 확정 → "에러 없음"과 "관측 중단"을 구분
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} | json | logger_name="com.ioes.photo.global.error.handler.GlobalExceptionHandler" [15m])) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             model:
@@ -41,7 +42,9 @@ groups:
                 - type: query
                   evaluator:
                     type: gt
-                    params: [0]
+                    # count_over_time([5m])은 로그 1건이 5분간 윈도우에 남아 for: 만으로는
+                    # 단발 노이즈가 해소되지 않으므로, 임계값(건수)을 상향한다. 15분 내 3건 초과.
+                    params: [3]
                   operator:
                     type: and
                   query:
@@ -50,13 +53,13 @@ groups:
                     type: last
                     params: []
         noDataState: OK
-        execErrState: KeepLast
+        execErrState: Error
         for: 0s
         annotations:
-          summary: 미처리 예외(500)가 발생했습니다.
-          description: GlobalExceptionHandler에서 Unexpected error가 감지되었습니다. Grafana Explore에서 {job="photo-app", level="ERROR"} 로그를 확인하세요.
+          summary: 미처리 예외(500)가 반복 발생하고 있습니다.
+          description: GlobalExceptionHandler의 Unexpected error가 15분 내 3건을 초과했습니다. Grafana Explore에서 {job="photo-app", level="ERROR"} 로그를 확인하세요.
         labels:
-          severity: critical
+          severity: warning
         isPaused: false
 
       - uid: app-auth-infra-failure
@@ -78,7 +81,9 @@ groups:
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
-              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "Apple JWKS 조회 실패|Apple RSA 공개키 변환 실패|Apple identity token 검증 실패|Apple client_secret 생성 실패|닉네임/해시태그 충돌" [5m]))'
+              # "Apple identity token 검증 실패"는 사용자의 만료 토큰 재사용만으로도 발생하므로
+              # 인프라 장애 신호에서 제외한다. (해당 로그의 log.warn 하향은 AppleOAuthClient에서 별도 처리)
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "Apple JWKS 조회 실패|Apple RSA 공개키 변환 실패|Apple client_secret 생성 실패|닉네임/해시태그 충돌" [5m])) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             model:
@@ -103,7 +108,7 @@ groups:
                     type: last
                     params: []
         noDataState: OK
-        execErrState: KeepLast
+        execErrState: Error
         for: 0s
         annotations:
           summary: 인증 인프라 오류가 발생했습니다.
@@ -131,7 +136,7 @@ groups:
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
-              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |= "unexpected failure" [30m]))'
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |= "unexpected failure" [30m])) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             model:
@@ -156,7 +161,7 @@ groups:
                     type: last
                     params: []
         noDataState: OK
-        execErrState: KeepLast
+        execErrState: Error
         for: 0s
         annotations:
           summary: 수집 스케줄러 실패가 반복되고 있습니다.
@@ -184,7 +189,7 @@ groups:
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
-              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "API 타임아웃|API 호출 실패|외부 API 5xx" [10m]))'
+              expr: 'sum(count_over_time({job="photo-app", level="ERROR"} |~ "API 타임아웃|API 호출 실패|외부 API 5xx" [10m])) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             model:
@@ -209,7 +214,7 @@ groups:
                     type: last
                     params: []
         noDataState: OK
-        execErrState: KeepLast
+        execErrState: Error
         for: 0s
         annotations:
           summary: 외부 API 에러가 임계치를 초과했습니다.
@@ -256,8 +261,9 @@ groups:
               conditions:
                 - type: query
                   evaluator:
-                    type: gt
-                    params: [85]
+                    # critical(>92)과 동시 발화하지 않도록 85~92 구간에서만 warning
+                    type: within_range
+                    params: [85, 92]
                   operator:
                     type: and
                   query:
@@ -266,7 +272,7 @@ groups:
                     type: last
                     params: []
         noDataState: NoData
-        execErrState: KeepLast
+        execErrState: Error
         for: 5m
         annotations:
           summary: 루트 디스크 사용률이 85%를 초과했습니다.
@@ -318,11 +324,398 @@ groups:
                     type: last
                     params: []
         noDataState: NoData
-        execErrState: KeepLast
+        execErrState: Error
         for: 1m
         annotations:
           summary: 루트 디스크 사용률이 92%를 초과했습니다. 즉시 조치가 필요합니다.
           description: EC2 루트(/) 디스크 사용률이 92%를 넘었습니다. 서비스 중단 위험이 있으니 즉시 cleanup-disk.sh 를 수동 실행하거나 디스크를 확보하세요.
         labels:
           severity: critical
+        isPaused: false
+
+  # ── 가용성/장애 감지 공백 보완 ──────────────────────────────────────────────
+  # 기존 룰은 대부분 "특정 로그가 기록되었는가"에 의존하므로, 앱이 정지하면
+  # 로그 자체가 발생하지 않아 로그 기반 룰 전체가 조용히 Normal로 고정된다.
+  # 아래 룰은 로그 유무와 무관하게 프로세스/파이프라인 정지를 직접 감지한다.
+  - orgId: 1
+    name: app-availability-alerts
+    folder: Application
+    interval: 1m
+    rules:
+      - uid: app-down
+        title: 앱 다운 (프로세스/스크레이프 중단)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'up{job="spring-boot-app"}'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: lt
+                    params: [1]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        # up 메트릭이 사라지면(프로메테우스가 앱을 스크레이프하지 못하면) NoData →
+        # 이를 장애로 간주해 Alerting 처리한다. 배포 중 재시작 오탐 방지를 위해 for: 2m.
+        noDataState: Alerting
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: 애플리케이션이 다운되었거나 스크레이프가 중단되었습니다.
+          description: up{job="spring-boot-app"} 이 2분 이상 1 미만입니다. 앱 컨테이너 상태와 /api/actuator/prometheus 응답을 확인하세요. (배포 중 재시작이면 자동 해제됩니다.)
+        labels:
+          severity: critical
+        isPaused: false
+
+      - uid: app-log-silence
+        title: 로그 파이프라인 무음 (30분)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(count_over_time({job="photo-app"}[30m])) or vector(0)'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: lt
+                    params: [1]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        # 앱/Promtail/Loki 중 하나라도 멈추면 로그 수집이 끊긴다. up 룰이 놓치는
+        # 로그 파이프라인 장애(Promtail/Loki 정지)를 보완한다.
+        noDataState: Alerting
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 30분간 애플리케이션 로그가 수집되지 않았습니다.
+          description: 'job="photo-app" 로그가 30분간 0건입니다. 앱 정지 또는 Promtail/Loki 수집 파이프라인 장애를 확인하세요.'
+        labels:
+          severity: critical
+        isPaused: false
+
+      - uid: app-http-5xx-rate
+        title: HTTP 5xx 응답 급증
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(increase(http_server_requests_seconds_count{job="spring-boot-app", status=~"5.."}[10m])) or vector(0)'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [10]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        # GlobalExceptionHandler 로그를 타지 않는 5xx(예: 필터 단계 오류)까지 포착한다.
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: HTTP 5xx 응답이 급증했습니다.
+          description: 10분간 5xx 응답이 10건을 초과했습니다. actuator http_server_requests 메트릭과 앱 로그를 확인하세요.
+        labels:
+          severity: warning
+        isPaused: false
+
+  # ── 리소스/유지보수 ────────────────────────────────────────────────────────
+  - orgId: 1
+    name: infra-resource-alerts
+    folder: Infra
+    interval: 1m
+    rules:
+      - uid: infra-host-memory-high
+        title: 호스트 메모리 사용률 높음 (90%)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: '100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [90]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 호스트 메모리 사용률이 90%를 초과했습니다.
+          description: EC2 호스트 메모리 사용률이 5분 이상 90%를 넘었습니다. 컨테이너 메모리와 OOM 위험을 점검하세요.
+        labels:
+          severity: warning
+        isPaused: false
+
+      - uid: infra-jvm-heap-high
+        title: JVM 힙 사용률 높음 (90%)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              # max_bytes > 0 필터로 max=-1(무제한) 풀을 제외한다.
+              expr: '100 * sum(jvm_memory_used_bytes{job="spring-boot-app", area="heap"}) / sum(jvm_memory_max_bytes{job="spring-boot-app", area="heap"} > 0)'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [90]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: JVM 힙 사용률이 90%를 초과했습니다.
+          description: 힙 사용률이 10분 이상 90%를 넘었습니다. 메모리 누수 또는 부하 증가를 확인하세요.
+        labels:
+          severity: warning
+        isPaused: false
+
+      - uid: infra-db-pool-pending
+        title: DB 커넥션 풀 대기 발생
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'max(hikaricp_connections_pending{job="spring-boot-app"})'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [5]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: DB 커넥션을 대기하는 스레드가 발생했습니다.
+          description: hikaricp_connections_pending 이 2분 이상 5를 초과했습니다. 커넥션 풀 고갈 또는 느린 쿼리를 확인하세요.
+        labels:
+          severity: warning
+        isPaused: false
+
+      - uid: infra-maintenance-error
+        title: 유지보수 스크립트 실패
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              queryType: instant
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'sum(count_over_time({job="maintenance", level="ERROR"}[10m])) or vector(0)'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 유지보수 스크립트에서 ERROR가 감지되었습니다.
+          description: cleanup-disk.sh 등 {job="maintenance"} 로그에서 level=ERROR가 발생했습니다. /var/log/maintenance 로그를 확인하세요.
+        labels:
+          severity: warning
         isPaused: false
