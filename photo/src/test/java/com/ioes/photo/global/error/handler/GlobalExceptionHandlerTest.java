@@ -4,6 +4,7 @@ import com.ioes.photo.global.common.response.ApiResponse;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,12 +12,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.Set;
 
@@ -147,6 +155,109 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody().getCode()).isEqualTo("C006");
+    }
+
+    @Test
+    @DisplayName("HttpMediaTypeNotAcceptableException - 500이 아닌 406, 바디 없이 상태코드만 반환")
+    void handleHttpMediaTypeNotAcceptableException() {
+        HttpMediaTypeNotAcceptableException ex =
+                new HttpMediaTypeNotAcceptableException("No acceptable representation");
+
+        ResponseEntity<Void> response = handler.handleHttpMediaTypeNotAcceptableException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_ACCEPTABLE);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    @DisplayName("HttpMediaTypeNotSupportedException - 415 반환")
+    void handleHttpMediaTypeNotSupportedException() {
+        HttpMediaTypeNotSupportedException ex =
+                new HttpMediaTypeNotSupportedException("Unsupported");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleHttpMediaTypeNotSupportedException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(response.getBody().getCode()).isEqualTo("C010");
+    }
+
+    @Test
+    @DisplayName("HttpMessageNotReadableException - 500이 아닌 400 반환")
+    void handleHttpMessageNotReadableException() {
+        HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
+        when(ex.getMessage()).thenReturn("JSON parse error");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleHttpMessageNotReadableException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getCode()).isEqualTo("C001");
+    }
+
+    @Test
+    @DisplayName("MissingServletRequestPartException - 400 반환")
+    void handleMissingServletRequestPartException() {
+        MissingServletRequestPartException ex = new MissingServletRequestPartException("image");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMissingServletRequestPartException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getCode()).isEqualTo("C001");
+    }
+
+    @Test
+    @DisplayName("MaxUploadSizeExceededException - 413 반환 (MultipartException보다 우선 매칭)")
+    void handleMaxUploadSizeExceededException() {
+        MaxUploadSizeExceededException ex = new MaxUploadSizeExceededException(10_485_760L);
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMaxUploadSizeExceededException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
+        assertThat(response.getBody().getCode()).isEqualTo("C011");
+    }
+
+    @Test
+    @DisplayName("MultipartException - 400 반환")
+    void handleMultipartException() {
+        MultipartException ex = new MultipartException("multipart parse failed");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMultipartException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getCode()).isEqualTo("C001");
+    }
+
+    @Test
+    @DisplayName("HandlerMethodValidationException - 400 반환")
+    void handleHandlerMethodValidationException() {
+        HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
+        when(ex.getMessage()).thenReturn("validation failed");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleHandlerMethodValidationException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getCode()).isEqualTo("C001");
+    }
+
+    @Test
+    @DisplayName("ValidationException - NaN/Infinity 검증 실패(HV000028)가 500이 아닌 400 반환")
+    void handleValidationException() {
+        ValidationException ex = new ValidationException("HV000028: Unexpected exception during isValid call");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleValidationException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getCode()).isEqualTo("C001");
+    }
+
+    @Test
+    @DisplayName("IllegalArgumentException - PageRequest.of(음수) 등이 500이 아닌 400 반환")
+    void handleIllegalArgumentException() {
+        IllegalArgumentException ex = new IllegalArgumentException("Page index must not be less than zero");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleIllegalArgumentException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().getCode()).isEqualTo("C001");
     }
 
     @Test

@@ -34,7 +34,7 @@ public class ShareController {
     private final SpotShareService spotShareService;
     private final ShareHtmlRenderer shareHtmlRenderer;
 
-    @GetMapping(value = "/v1/share/{token}", produces = MediaType.TEXT_HTML_VALUE)
+    @GetMapping("/v1/share/{token}")
     public ResponseEntity<String> getSharePage(@PathVariable String token) {
         return ResponseEntity.ok()
             .contentType(TEXT_HTML_UTF8)

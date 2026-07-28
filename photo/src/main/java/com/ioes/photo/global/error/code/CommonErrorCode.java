@@ -20,6 +20,9 @@ import org.springframework.http.HttpStatus;
  * - C006: 리소스 없음 (404)</li>
  * - C007: HTTP 메서드 불가 (405)</li>
  * - C008: 리소스 충돌 (409)</li>
+ * - C009: 표현 형식 불가 (406)</li>
+ * - C010: 미디어 타입 미지원 (415)</li>
+ * - C011: 요청 크기 초과 (413)</li>
  * - C999: 서버 내부 오류 (500)</li>
  *
  * 코드는 이후 논의 후 변경 예정
@@ -38,6 +41,9 @@ public enum CommonErrorCode implements ErrorCode {
     RESOURCE_NOT_FOUND("C006", "요청한 리소스를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     METHOD_NOT_ALLOWED("C007", "지원하지 않는 HTTP 메서드입니다.", HttpStatus.METHOD_NOT_ALLOWED),
     CONFLICT("C008", "이미 존재하는 리소스입니다.", HttpStatus.CONFLICT),
+    NOT_ACCEPTABLE("C009", "요청하신 표현 형식으로 응답할 수 없습니다.", HttpStatus.NOT_ACCEPTABLE),
+    UNSUPPORTED_MEDIA_TYPE("C010", "지원하지 않는 미디어 타입입니다.", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    PAYLOAD_TOO_LARGE("C011", "요청 크기가 허용 한도를 초과했습니다.", HttpStatus.PAYLOAD_TOO_LARGE),
     INTERNAL_SERVER_ERROR("C999", "서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
