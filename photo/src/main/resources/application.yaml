@@ -96,11 +96,10 @@ app:
           title: "개인정보처리방침"
           url: "https://cubic-print-1cb.notion.site/07a90976df958319b6d1013e089c5ee6?pvs=143"
     android:
-      # TODO: Android 배포 후 실제 버전/스토어 URL로 교체
       minimum-version: "1.0.0"   # 이 버전 미만이면 앱 사용 불가
       latest-version: "1.0.0"    # 플레이스토어 기준 최신 버전
       force-update: false        # 강제 업데이트 기능 on/off 스위치
-      store-url: "https://play.google.com/store/apps/details?id=com.ioes.pickflow"
+      store-url: "https://play.google.com/store/apps/details?id=com.pickflow.app"
       support-email: "pickflow.help@gmail.com"
       terms-policies:
         - type: TERMS_OF_SERVICE
