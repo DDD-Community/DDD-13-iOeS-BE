@@ -35,6 +35,10 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
     @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount - 1 WHERE s.id = :spotId AND s.bookmarkCount > 0")
     void decrementBookmarkCount(@Param("spotId") Long spotId);
 
+    @Modifying
+    @Query("UPDATE Spot s SET s.viewCount = s.viewCount + 1 WHERE s.id = :spotId")
+    void incrementViewCount(@Param("spotId") Long spotId);
+
     @Query("SELECT s.bookmarkCount FROM Spot s WHERE s.id = :spotId")
     Optional<Long> findBookmarkCountById(@Param("spotId") Long spotId);
 

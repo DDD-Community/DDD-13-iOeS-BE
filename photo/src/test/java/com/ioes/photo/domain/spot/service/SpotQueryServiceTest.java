@@ -536,6 +536,30 @@ class SpotQueryServiceTest {
         }
 
         @Test
+        @DisplayName("상세 조회 시 조회수를 1 증가시킨다")
+        void incrementsViewCount_onDetailLookup() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            spotQueryService.findSpotDetail(1L, null);
+
+            then(spotRepository).should().incrementViewCount(1L);
+        }
+
+        @Test
+        @DisplayName("Spot이 존재하지 않으면 조회수를 증가시키지 않는다")
+        void doesNotIncrementViewCount_whenSpotMissing() {
+            given(spotRepository.findById(99L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> spotQueryService.findSpotDetail(99L, null))
+                .isInstanceOf(BusinessException.class);
+
+            then(spotRepository).should(never()).incrementViewCount(any());
+        }
+
+        @Test
         @DisplayName("SpotImage가 없으면 imageUrl/recordedDate/recordedTime은 null이다")
         void nullsImageFields_whenSpotImageMissing() {
             Spot spot = buildSpot(1L, 37.55, 127.05);
