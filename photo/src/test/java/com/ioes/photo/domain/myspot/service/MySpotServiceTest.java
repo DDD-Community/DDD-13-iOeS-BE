@@ -18,6 +18,7 @@ import com.ioes.photo.domain.myspot.mapper.MySpotRow;
 import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SpotSource;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
@@ -281,6 +282,7 @@ class MySpotServiceTest {
             ArgumentCaptor<Spot> captor = ArgumentCaptor.forClass(Spot.class);
             then(spotRepository).should().save(captor.capture());
             assertThat(captor.getValue().getStatus()).isEqualTo(SpotStatus.PENDING);
+            assertThat(captor.getValue().getSource()).isEqualTo(SpotSource.UGC);
             assertThat(captor.getValue().getUserId()).isEqualTo(USER_ID);
             assertThat(captor.getValue().getName()).isEqualTo("한강 노을 명소");
             assertThat(captor.getValue().getTheme()).isEqualTo(SpotTheme.SUNSET);

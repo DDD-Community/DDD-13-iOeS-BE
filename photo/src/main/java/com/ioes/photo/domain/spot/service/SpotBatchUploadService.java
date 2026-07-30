@@ -3,6 +3,7 @@ package com.ioes.photo.domain.spot.service;
 import com.ioes.photo.domain.spot.dto.SpotBatchUploadResponse;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SpotSource;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
@@ -102,6 +103,7 @@ public class SpotBatchUploadService {
             .longitude(row.longitude())
             .address(row.address())
             .status(SpotStatus.PUBLISHED)
+            .source(SpotSource.CURATION)
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(row))

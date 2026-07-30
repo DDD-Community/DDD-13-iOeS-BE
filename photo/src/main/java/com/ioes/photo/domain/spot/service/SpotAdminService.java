@@ -6,6 +6,7 @@ import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest.Item;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse.SpotResult;
 import com.ioes.photo.domain.spot.entity.Spot;
+import com.ioes.photo.domain.spot.enums.SpotSource;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
@@ -60,6 +61,7 @@ public class SpotAdminService {
             .longitude(item.longitude())
             .address(item.address())
             .status(SpotStatus.PUBLISHED)
+            .source(SpotSource.CURATION)
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(item))

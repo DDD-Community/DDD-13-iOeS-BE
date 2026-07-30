@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.entity;
 
+import com.ioes.photo.domain.spot.enums.SpotSource;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.global.entity.BaseEntity;
@@ -73,6 +74,9 @@ public class Spot extends BaseEntity {
     @Column(nullable = false, length = 4)
     private SpotStatus status;
 
+    @Column(nullable = false, length = 4)
+    private SpotSource source;
+
     @Column(name = "grid_nx")
     private Integer gridNx;
 
@@ -97,7 +101,8 @@ public class Spot extends BaseEntity {
     @Builder
     private Spot(String name, String comment, SpotTheme theme, Double latitude, Double longitude,
                  String address, String addressRoad, String addressJibun, SpotStatus status,
-                 Integer gridNx, Integer gridNy, String crowdAreaName, String parkingInfo, Long userId) {
+                 SpotSource source, Integer gridNx, Integer gridNy, String crowdAreaName,
+                 String parkingInfo, Long userId) {
         this.name = name;
         this.comment = comment;
         this.theme = theme;
@@ -108,6 +113,7 @@ public class Spot extends BaseEntity {
         this.addressRoad = addressRoad;
         this.addressJibun = addressJibun;
         this.status = status == null ? SpotStatus.PENDING : status;
+        this.source = source == null ? SpotSource.CURATION : source;
         this.gridNx = gridNx;
         this.gridNy = gridNy;
         this.crowdAreaName = crowdAreaName;

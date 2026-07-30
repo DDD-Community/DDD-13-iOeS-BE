@@ -11,6 +11,7 @@ import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SpotSource;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
@@ -105,6 +106,7 @@ public class MySpotService {
             .addressRoad(address == null ? null : address.roadAddress())
             .addressJibun(address == null ? null : address.jibunAddress())
             .status(SpotStatus.PENDING)
+            .source(SpotSource.UGC)
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(crowdAreaMapper.findNearestAreaName(

@@ -5,6 +5,7 @@ import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest.Item;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
 import com.ioes.photo.domain.spot.entity.Spot;
+import com.ioes.photo.domain.spot.enums.SpotSource;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
@@ -92,7 +93,7 @@ class SpotAdminServiceTest {
         }
 
         @Test
-        @DisplayName("등록된 스팟은 PUBLISHED 상태이다")
+        @DisplayName("등록된 스팟은 PUBLISHED 상태이고 출처는 CURATION이다")
         void shouldCreateWithPublishedStatus() {
             Item item = buildItem("한강 노을 포인트", SpotTheme.SUNSET, 37.55, 126.99);
             SpotAdminCreateRequest request = new SpotAdminCreateRequest(List.of(item));
@@ -102,9 +103,10 @@ class SpotAdminServiceTest {
 
             ArgumentCaptor<List<Spot>> captor = ArgumentCaptor.forClass(List.class);
             then(spotRepository).should().saveAll(captor.capture());
-            assertThat(captor.getValue()).allSatisfy(spot ->
-                assertThat(spot.getStatus()).isEqualTo(SpotStatus.PUBLISHED)
-            );
+            assertThat(captor.getValue()).allSatisfy(spot -> {
+                assertThat(spot.getStatus()).isEqualTo(SpotStatus.PUBLISHED);
+                assertThat(spot.getSource()).isEqualTo(SpotSource.CURATION);
+            });
         }
 
         @Test
