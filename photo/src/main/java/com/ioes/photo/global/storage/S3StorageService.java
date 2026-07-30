@@ -168,17 +168,19 @@ public class S3StorageService implements StorageService {
                     RequestBody.fromFile(temp)
             );
         } catch (IOException e) {
+            log.error("S3 업로드 파일 처리 실패: key={}", key, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
                 "파일 처리에 실패했습니다.");
         } catch (SdkException e) {
+            log.error("S3 업로드 실패: key={}", key, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
-                "S3 업로드에 실패했습니다: " + e.getMessage());
+                "S3 업로드에 실패했습니다.");
         } finally {
             if (temp != null) {
                 try {
                     Files.deleteIfExists(temp);
                 } catch (IOException e) {
-                    log.warn("S3 업로드 임시파일 삭제 실패: {}", temp.toAbsolutePath());
+                    log.warn("S3 업로드 임시파일 삭제 실패: {}", temp.toAbsolutePath(), e);
                 }
             }
         }
