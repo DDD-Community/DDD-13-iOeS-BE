@@ -2,9 +2,6 @@ package com.ioes.photo.global.common.validation;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -17,16 +14,14 @@ import java.lang.annotation.Target;
  *
  * - 범위: -90.0 ~ 90.0
  * - 소수점 최대 6자리
+ * - NaN/Infinity는 제약 위반으로 처리 (예외를 던지지 않음)
  *
  * @author 황제연
  */
 @Documented
-@Constraint(validatedBy = {})
+@Constraint(validatedBy = LatitudeValidator.class)
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
-@DecimalMin(value = "-90.0", message = "위도는 -90.0 이상이어야 합니다.")
-@DecimalMax(value = "90.0", message = "위도는 90.0 이하이어야 합니다.")
-@Digits(integer = 2, fraction = 6, message = "위도는 소수점 6자리까지 허용합니다.")
 public @interface Latitude {
 
     String message() default "유효하지 않은 위도 값입니다.";

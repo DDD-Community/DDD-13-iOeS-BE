@@ -10,6 +10,13 @@ policies:
     group_interval: 5m
     repeat_interval: 4h
     routes:
+      # 데이터소스 장애/NoData(execErrState: Error, noDataState 로 발생하는 Grafana 내장 알림)는
+      # 별도 그룹으로 묶어 과도한 반복을 억제한다.
+      - receiver: discord-alerts
+        matchers:
+          - alertname =~ DatasourceError|DatasourceNoData|DatasourceMissing
+        group_by: ['alertname', 'grafana_folder']
+        repeat_interval: 4h
       - receiver: discord-alerts
         matchers:
           - severity = critical

@@ -28,6 +28,11 @@ schema_config:
 
 limits_config:
   retention_period: 744h
+  # 보존 기간(744h) 전체를 조회할 수 있도록 쿼리 한도를 명시한다.
+  # 미지정 시 기본값 721h가 적용되어, 백업 미실행 알림(720h 조회 등)이
+  # 한도 초과로 거부될 수 있다.
+  max_query_length: 744h
+  max_query_lookback: 744h
 
 compactor:
   working_directory: /loki/compactor

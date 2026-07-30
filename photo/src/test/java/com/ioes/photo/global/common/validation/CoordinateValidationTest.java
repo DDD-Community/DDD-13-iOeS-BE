@@ -190,6 +190,45 @@ class CoordinateValidationTest {
         }
     }
 
+    // ── 비유한값(NaN/Infinity) ────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("비유한값(NaN/Infinity) - 예외 없이 제약 위반 처리")
+    class NonFiniteValues {
+
+        @Test
+        @DisplayName("위도 NaN은 예외를 던지지 않고 위반으로 처리한다")
+        void latitudeNaNFailsWithoutException() {
+            assertThat(latViolations(validate(
+                new ViewportRequest(Double.NaN, 127.0, 37.0, 127.0, 37.0, 127.0, 37.0, 127.0)
+            ))).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("위도 양의 무한대는 위반으로 처리한다")
+        void latitudePositiveInfinityFails() {
+            assertThat(latViolations(validate(
+                new ViewportRequest(Double.POSITIVE_INFINITY, 127.0, 37.0, 127.0, 37.0, 127.0, 37.0, 127.0)
+            ))).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("경도 NaN은 예외를 던지지 않고 위반으로 처리한다")
+        void longitudeNaNFailsWithoutException() {
+            assertThat(lngViolations(validate(
+                new ViewportRequest(37.0, Double.NaN, 37.0, 127.0, 37.0, 127.0, 37.0, 127.0)
+            ))).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("경도 음의 무한대는 위반으로 처리한다")
+        void longitudeNegativeInfinityFails() {
+            assertThat(lngViolations(validate(
+                new ViewportRequest(37.0, Double.NEGATIVE_INFINITY, 37.0, 127.0, 37.0, 127.0, 37.0, 127.0)
+            ))).isNotEmpty();
+        }
+    }
+
     // ── helper ──────────────────────────────────────────────────────────────
 
     private Set<ConstraintViolation<ViewportRequest>> validate(ViewportRequest request) {
