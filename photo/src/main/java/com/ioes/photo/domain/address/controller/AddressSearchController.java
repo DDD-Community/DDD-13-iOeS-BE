@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +39,7 @@ public class AddressSearchController {
     @SecurityRequirements
     @GetMapping("/search")
     public ApiResponse<AddressSearchResponse> searchAddress(
-        @Parameter(description = "검색어 (주소 키워드)", example = "서울 강남대로 396") @RequestParam @NotBlank String query,
+        @Parameter(description = "검색어 (주소 키워드)", example = "서울 강남대로 396") @RequestParam @NotBlank @Size(max = 100) String query,
         @Parameter(description = "페이지 번호 (1부터 시작)") @RequestParam(defaultValue = "1") @Min(1) int page,
         @Parameter(description = "페이지당 결과 수 (1~30)") @RequestParam(defaultValue = "10") @Min(1) @Max(30) int size
     ) {

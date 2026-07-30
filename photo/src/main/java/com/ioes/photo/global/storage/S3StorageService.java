@@ -30,6 +30,8 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 
 /**
@@ -148,24 +150,39 @@ public class S3StorageService implements StorageService {
     }
 
     private void putObject(MultipartFile file, String key) {
+        // 파일 전체를 힙에 적재(file.getBytes())하지 않도록 디스크 임시파일로 옮긴 뒤 업로드한다.
+        // RequestBody.fromFile 은 재시도 시 SDK 가 파일을 다시 열어 읽으므로(mark/reset 불필요),
+        // 네트워크 불안정으로 인한 리트라이에서도 안전하고 contentLength 도 파일 크기로 정확히 잡힌다.
+        Path temp = null;
         try {
-            byte[] bytes = file.getBytes();
+            temp = Files.createTempFile("s3-upload-", ".tmp");
+            file.transferTo(temp);
             s3Client.putObject(
                 PutObjectRequest.builder()
                     .bucket(s3Properties.bucket())
                     .key(key)
                     .contentType(resolveContentType(file))
-                    .contentLength((long) bytes.length)
+                    .contentLength(Files.size(temp))
                     .contentDisposition(buildContentDisposition(file.getOriginalFilename()))
                     .build(),
-                    RequestBody.fromBytes(bytes)
+                    RequestBody.fromFile(temp)
             );
         } catch (IOException e) {
+            log.error("S3 업로드 파일 처리 실패: key={}", key, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
-                "파일 스트림 읽기에 실패했습니다.");
+                "파일 처리에 실패했습니다.");
         } catch (SdkException e) {
+            log.error("S3 업로드 실패: key={}", key, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
-                "S3 업로드에 실패했습니다: " + e.getMessage());
+                "S3 업로드에 실패했습니다.");
+        } finally {
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException e) {
+                    log.warn("S3 업로드 임시파일 삭제 실패: {}", temp.toAbsolutePath(), e);
+                }
+            }
         }
     }
 
