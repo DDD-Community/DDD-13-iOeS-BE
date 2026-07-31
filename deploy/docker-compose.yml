@@ -1,20 +1,31 @@
 name: photo
 
+# 모든 컨테이너 로그가 무제한 누적되지 않도록 공통 로테이션 정책을 적용한다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   nginx:
     image: nginx:1.27-alpine
     container_name: photo-nginx
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/well-known:/etc/nginx/well-known:ro
       - ./nginx/html:/etc/nginx/html:ro
       - app_uploads:/var/www/uploads:ro
+      # 엣지 레벨 오류 관측을 위해 nginx 로그를 Promtail이 읽을 수 있도록 볼륨에 기록
+      - nginx_logs:/var/log/nginx
     depends_on:
       app:
         condition: service_healthy
@@ -30,6 +41,7 @@ services:
     image: ghcr.io/ddd-community/ddd-13-ioes-be:${APP_IMAGE_TAG:-prod-latest}
     container_name: photo-app
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     environment:
@@ -66,6 +78,7 @@ services:
     image: postgis/postgis:17-3.5
     container_name: photo-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -87,6 +100,7 @@ services:
     image: redis:7-alpine
     container_name: photo-redis
     restart: unless-stopped
+    logging: *default-logging
     # JWT refresh / OAuth state 등 단기성 키만 사용하므로 영속화 불필요.
     # AOF/RDB 모두 비활성화하여 메모리 전용으로 동작.
     command: >
@@ -112,6 +126,7 @@ services:
     image: prom/prometheus:v2.53.0
     container_name: photo-prometheus
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -131,6 +146,7 @@ services:
     image: grafana/grafana:11.1.0
     container_name: photo-grafana
     restart: unless-stopped
+    logging: *default-logging
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
@@ -151,6 +167,7 @@ services:
     image: grafana/loki:3.1.0
     container_name: photo-loki
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki_data:/loki
@@ -163,9 +180,11 @@ services:
     image: grafana/promtail:3.1.0
     container_name: photo-promtail
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
       - ./logs:/var/log/app:ro
+      - nginx_logs:/var/log/nginx:ro
       - ${BACKUP_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs}:/var/log/backup:ro
       - ${MAINTENANCE_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/maintenance/logs}:/var/log/maintenance:ro
     command: -config.file=/etc/promtail/promtail-config.yml
@@ -179,6 +198,7 @@ services:
     image: prom/node-exporter:v1.8.1
     container_name: photo-node-exporter
     restart: unless-stopped
+    logging: *default-logging
     pid: "host"
     volumes:
       - /proc:/host/proc:ro
@@ -187,6 +207,9 @@ services:
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
+      # 호스트 루트(/)를 기준으로 파일시스템 지표를 수집한다. 누락 시 컨테이너
+      # 파일시스템 기준으로 집계되어 디스크 사용률 알림이 부정확해진다.
+      - '--path.rootfs=/rootfs'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     mem_limit: 64m
     networks:
@@ -203,3 +226,4 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  nginx_logs:

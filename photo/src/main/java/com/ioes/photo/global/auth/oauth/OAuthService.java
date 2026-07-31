@@ -109,7 +109,7 @@ public class OAuthService {
         if (userInfo.providerRefreshToken() != null) {
             tokenService.storeProviderRefreshToken(userId, userInfo.providerRefreshToken());
         }
-        String[] tokens = tokenService.issueTokens(userId);
+        String[] tokens = tokenService.issueTokens(userId, user.getRole());
 
         TokenResponse.UserProfile profile = new TokenResponse.UserProfile(
             userId,

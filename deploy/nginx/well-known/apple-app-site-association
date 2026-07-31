@@ -4,6 +4,10 @@
       {
         "appIDs": ["4DUZKVXU2R.com.pickflow"],
         "components": [
+          { "/": "/api/*", "exclude": true, "comment": "API 경로는 유니버설 링크 대상에서 제외" },
+          { "/": "/grafana/*", "exclude": true, "comment": "Grafana 경로 제외" },
+          { "/": "/uploads/*", "exclude": true, "comment": "정적 업로드 경로 제외" },
+          { "/": "/.well-known/*", "exclude": true, "comment": "검증 파일 경로 제외" },
           {
             "/": "/*",
             "comment": "encoded token - type+id (e.g. spot: k-3mHv)"

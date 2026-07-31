@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.pickflow.app",
+      "sha256_cert_fingerprints": [
+        "E8:A1:EB:05:89:10:20:22:CB:E4:6A:86:69:73:4F:A0:BB:0B:38:EE:5E:8C:B5:57:C2:CB:FA:52:A8:5C:17:95",
+        "27:F1:FA:47:91:A3:39:6F:3A:10:D8:5D:48:4B:4F:8C:67:90:C6:3E:E3:CE:2D:F8:1D:6C:B0:38:6E:35:DA:A2"
+      ]
+    }
+  }
+]
