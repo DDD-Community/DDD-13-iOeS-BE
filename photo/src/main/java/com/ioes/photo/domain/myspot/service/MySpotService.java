@@ -5,6 +5,7 @@ import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse.MySpotItem;
+import com.ioes.photo.domain.myspot.dto.OpenMySpotResponse;
 import com.ioes.photo.domain.myspot.mapper.MySpotMapper;
 import com.ioes.photo.domain.myspot.mapper.MySpotRow;
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
@@ -12,6 +13,7 @@ import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
+import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
@@ -29,6 +31,7 @@ import com.ioes.photo.global.storage.StoragePathUtils;
 import com.ioes.photo.global.storage.StorageService;
 import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import com.ioes.photo.global.storage.UploadResult;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +47,9 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 나만의 스팟(사용자가 등록한 스팟) 서비스.
  *
- * 조회: 사용자가 등록한 모든 상태(PENDING/PUBLISHED/REJECTED)의 스팟을 노출한다.
- * 등록: PENDING 상태로 저장하며, 업로드된 이미지를 서버가 S3에 저장하고 썸네일을 생성한다.
+ * 조회: 사용자가 등록한 모든 상태(DRAFT/PENDING/RE_REVIEW_PENDING/PUBLISHED/REJECTED)의 스팟을 노출한다.
+ * 등록: DRAFT(나만보기) 상태로 저장하며, 업로드된 이미지를 서버가 S3에 저장하고 썸네일을 생성한다.
+ * 검수는 사용자가 '오픈하기'를 눌러 오픈 신청한 시점(PENDING)부터 시작된다.
  *
  * @author 김성민
  */
@@ -104,7 +108,7 @@ public class MySpotService {
             .address(address == null ? null : address.simpleAddress())
             .addressRoad(address == null ? null : address.roadAddress())
             .addressJibun(address == null ? null : address.jibunAddress())
-            .status(SpotStatus.PENDING)
+            .status(SpotStatus.DRAFT)
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(crowdAreaMapper.findNearestAreaName(
@@ -114,7 +118,7 @@ public class MySpotService {
         eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
 
         String imageKey = StoragePathUtils.generate(
-            storageProperties.env(), AccessType.PUBLIC, IMAGE_ENTITY, spot.getId(),
+            storageProperties.env(), AccessType.PRIVATE, IMAGE_ENTITY, spot.getId(),
             IMAGE_TYPE_ORIGINAL, image.getOriginalFilename());
         UploadResult upload = storageService.upload(image, imageKey);
         eventPublisher.publishEvent(new StorageUploadRollbackEvent(upload.key()));
@@ -134,9 +138,25 @@ public class MySpotService {
 
         return new CreateMySpotResponse(
             spot.getId(),
-            SpotStatus.PENDING.name(),
+            SpotStatus.DRAFT.name(),
             storageService.getUrl(upload.key())
         );
+    }
+
+    @Transactional
+    public OpenMySpotResponse requestOpen(Long userId, Long spotId) {
+        Spot spot = spotRepository.findById(spotId)
+            .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
+
+        if (!spot.getUserId().equals(userId)) {
+            throw new BusinessException(SpotErrorCode.SPOT_ACCESS_DENIED);
+        }
+        if (!spot.isOpenRequestable()) {
+            throw new BusinessException(SpotErrorCode.SPOT_NOT_OPENABLE);
+        }
+
+        spot.requestOpen(LocalDateTime.now());
+        return new OpenMySpotResponse(spot.getId(), spot.getStatus().name());
     }
 
     private KakaoAddress resolveAddress(double latitude, double longitude) {
