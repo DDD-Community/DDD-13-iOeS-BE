@@ -219,6 +219,88 @@ class MySpotServiceTest {
     }
 
     @Nested
+    @DisplayName("requestOpen()")
+    class RequestOpen {
+
+        @Test
+        @DisplayName("DRAFT 스팟을 오픈 신청하면 PENDING으로 전이된다")
+        void draftBecomesPending() {
+            Spot spot = buildOwnedSpot(SpotStatus.DRAFT);
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            var response = mySpotService.requestOpen(USER_ID, SPOT_ID);
+
+            assertThat(response.status()).isEqualTo(SpotStatus.PENDING.name());
+            assertThat(spot.getAppliedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("REJECTED 스팟을 재신청하면 RE_REVIEW_PENDING으로 전이된다")
+        void rejectedBecomesReReviewPending() {
+            Spot spot = buildOwnedSpot(SpotStatus.REJECTED);
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            var response = mySpotService.requestOpen(USER_ID, SPOT_ID);
+
+            assertThat(response.status()).isEqualTo(SpotStatus.RE_REVIEW_PENDING.name());
+        }
+
+        @Test
+        @DisplayName("본인 스팟이 아니면 SPOT_ACCESS_DENIED 예외를 던진다")
+        void throwsWhenNotOwner() {
+            Spot spot = buildOwnedSpot(SpotStatus.DRAFT);
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            assertThatThrownBy(() -> mySpotService.requestOpen(999L, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ioes.photo.domain.spot.error.SpotErrorCode.SPOT_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("오픈 신청 불가 상태(PENDING)면 SPOT_NOT_OPENABLE 예외를 던진다")
+        void throwsWhenNotOpenable() {
+            Spot spot = buildOwnedSpot(SpotStatus.PENDING);
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            assertThatThrownBy(() -> mySpotService.requestOpen(USER_ID, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ioes.photo.domain.spot.error.SpotErrorCode.SPOT_NOT_OPENABLE);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 스팟이면 SPOT_NOT_FOUND 예외를 던진다")
+        void throwsWhenNotFound() {
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> mySpotService.requestOpen(USER_ID, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ioes.photo.domain.spot.error.SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        private Spot buildOwnedSpot(SpotStatus status) {
+            Spot spot = Spot.builder()
+                .name("테스트스팟")
+                .theme(SpotTheme.SUNSET)
+                .latitude(37.5)
+                .longitude(127.0)
+                .status(status)
+                .userId(USER_ID)
+                .build();
+            try {
+                Field idField = spot.getClass().getSuperclass().getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(spot, SPOT_ID);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
+            return spot;
+        }
+    }
+
+    @Nested
     @DisplayName("createMySpot()")
     class CreateMySpot {
 
@@ -265,8 +347,8 @@ class MySpotServiceTest {
         }
 
         @Test
-        @DisplayName("Spot을 PENDING 상태와 userId로 저장한다")
-        void savesSpotAsPendingWithUserId() {
+        @DisplayName("Spot을 DRAFT(나만보기) 상태와 userId로 저장한다")
+        void savesSpotAsDraftWithUserId() {
             givenImageUploaded();
             given(spotRepository.save(any(Spot.class))).willAnswer(inv -> {
                 Spot s = inv.getArgument(0);
@@ -280,7 +362,7 @@ class MySpotServiceTest {
 
             ArgumentCaptor<Spot> captor = ArgumentCaptor.forClass(Spot.class);
             then(spotRepository).should().save(captor.capture());
-            assertThat(captor.getValue().getStatus()).isEqualTo(SpotStatus.PENDING);
+            assertThat(captor.getValue().getStatus()).isEqualTo(SpotStatus.DRAFT);
             assertThat(captor.getValue().getUserId()).isEqualTo(USER_ID);
             assertThat(captor.getValue().getName()).isEqualTo("한강 노을 명소");
             assertThat(captor.getValue().getTheme()).isEqualTo(SpotTheme.SUNSET);
@@ -311,7 +393,7 @@ class MySpotServiceTest {
             CreateMySpotResponse response = mySpotService.createMySpot(USER_ID, request(), image());
 
             assertThat(response.spotId()).isEqualTo(SPOT_ID);
-            assertThat(response.status()).isEqualTo(SpotStatus.PENDING.name());
+            assertThat(response.status()).isEqualTo(SpotStatus.DRAFT.name());
             assertThat(response.imageUrl()).isEqualTo("https://cdn/img");
         }
 

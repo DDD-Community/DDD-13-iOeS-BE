@@ -150,6 +150,13 @@ app:
       method: method
       client-ip: clientIp
 
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
+
 logging:
   level:
     root: WARN
