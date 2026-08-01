@@ -50,6 +50,9 @@ public class SpotReviewService {
         Spot spot = spotRepository.findById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
 
+        // 검수 동시성 미방어(check-then-act). 운영자 2~3명 규모라 같은 건을 동시에 처리할
+        // 확률이 희박하고, 겹치더라도 승인+승인이면 상태가 동일해 피해가 검수 이력 중복에 그친다.
+        // 운영자가 늘거나 검수가 자동화되면 findWithLockById(PESSIMISTIC_WRITE)로 전환한다.
         if (!spot.isReviewable()) {
             throw new BusinessException(SpotErrorCode.SPOT_ALREADY_REVIEWED);
         }
