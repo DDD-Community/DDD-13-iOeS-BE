@@ -13,11 +13,14 @@ import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
 import com.ioes.photo.global.storage.AccessType;
+import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StoragePathUtils;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * 검수 가능한 상태(PENDING/RE_REVIEW_PENDING)에서만 처리되며, 그 외 상태는 이미 처리된 것으로 보고 409로 응답한다.
  * 승인 시 미승인(PRIVATE) 이미지를 공개(PUBLIC) 경로로 이동해 지도 공개용 영구 URL을 확보한다.
+ * 이미지 이동은 복사만 트랜잭션 안에서 수행하고, 원본 삭제는 커밋 이후(StorageCleanupEvent),
+ * 사본 정리는 롤백 이후(StorageUploadRollbackEvent)로 미뤄 DB와 스토리지의 정합성을 맞춘다.
  *
  * @author 황제연
  */
@@ -38,6 +43,7 @@ public class SpotReviewService {
     private final SpotReviewRepository spotReviewRepository;
     private final SpotImageRepository spotImageRepository;
     private final StorageService storageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SpotReviewResultResponse review(Long spotId, SpotReviewRequest request, Long reviewerId) {
@@ -91,7 +97,8 @@ public class SpotReviewService {
         }
         String publicKey = StoragePathUtils.withAccess(key, AccessType.PUBLIC);
         storageService.copy(key, publicKey);
-        storageService.delete(key);
+        eventPublisher.publishEvent(new StorageUploadRollbackEvent(publicKey));
+        eventPublisher.publishEvent(new StorageCleanupEvent(key));
         return publicKey;
     }
 }
