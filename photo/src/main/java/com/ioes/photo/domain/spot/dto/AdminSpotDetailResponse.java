@@ -20,6 +20,8 @@ public record AdminSpotDetailResponse(
     @Schema(description = "오픈 신청 일시") LocalDateTime appliedAt,
     @Schema(description = "사진 URL 목록 (미승인 건은 만료되는 presigned URL)") List<String> photoUrls,
     @Schema(description = "상세 주소") String address,
+    @Schema(description = "위도 (위치 무관 반려 판단용)") Double latitude,
+    @Schema(description = "경도 (위치 무관 반려 판단용)") Double longitude,
     @Schema(description = "한줄 코멘트") String comment,
     @Schema(description = "촬영 일시") LocalDateTime shotAt,
     @Schema(description = "테마 코드 (SUNSET/YUNSEUL)") String theme,
