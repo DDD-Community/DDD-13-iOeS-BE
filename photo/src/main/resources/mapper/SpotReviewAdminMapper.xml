@@ -3,10 +3,15 @@
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ioes.photo.domain.spot.mapper.SpotReviewAdminMapper">
 
-    <!-- 오픈 신청된 건만 노출(DRAFT 'D' 제외). status/q 는 선택 조건 -->
+    <!--
+      검수 대상: 사용자가 등록한 스팟(user_id NOT NULL) 중 나만보기(DRAFT 'D')를 제외한 건.
+      운영진이 배치/어드민으로 직접 등록한 스팟은 user_id 가 없으므로 검수 큐에 나오지 않는다.
+      status/q 는 선택 조건.
+    -->
     <sql id="reviewSpotConditions">
         <where>
             s.deleted_at IS NULL
+            AND s.user_id IS NOT NULL
             AND s.status &lt;&gt; 'D'
             <if test="status != null">
                 AND s.status = #{status}
@@ -31,10 +36,15 @@
         LEFT JOIN users owner   ON owner.id   = s.user_id
         LEFT JOIN users handler ON handler.id = s.reviewer_id
         <include refid="reviewSpotConditions"/>
+        <!--
+          NULLS FIRST/LAST 를 명시한다. 검수 기능 도입(V12) 이전에 등록된 건은
+          applied_at / reviewed_at 이 NULL 인데, PostgreSQL 기본값(ASC=NULLS LAST, DESC=NULLS FIRST)을
+          따르면 신청 대기 큐의 최고참 건이 맨 뒤로, 처리 일시를 모르는 옛 완료건이 맨 앞으로 밀린다.
+        -->
         ORDER BY
             CASE s.status WHEN 'V' THEN 0 WHEN 'P' THEN 1 ELSE 2 END,
-            CASE WHEN s.status IN ('V', 'P') THEN s.applied_at END ASC,
-            CASE WHEN s.status IN ('B', 'R') THEN s.reviewed_at END DESC,
+            CASE WHEN s.status IN ('V', 'P') THEN s.applied_at END ASC NULLS FIRST,
+            CASE WHEN s.status IN ('B', 'R') THEN s.reviewed_at END DESC NULLS LAST,
             s.id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
