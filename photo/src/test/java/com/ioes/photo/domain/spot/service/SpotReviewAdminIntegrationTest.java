@@ -89,6 +89,45 @@ class SpotReviewAdminIntegrationTest {
     }
 
     @Test
+    @DisplayName("운영진이 직접 등록한 스팟(user_id 없음)은 검수 목록에서 제외된다")
+    void listExcludesOperatorRegisteredSpots() {
+        Long owner = saveUser("등록유저");
+        Long userSpot = saveSpot("유저 등록", SpotStatus.PUBLISHED, owner, daysAgo(2), daysAgo(1));
+        saveSpot("운영진 배치 등록", SpotStatus.PUBLISHED, null, null, null);
+
+        AdminSpotListResponse response = spotReviewQueryService.findReviewSpots(null, null, 0, 20);
+
+        assertThat(response.items()).extracting(AdminSpotListResponse.AdminSpotItem::id)
+            .containsExactly(userSpot);
+    }
+
+    @Test
+    @DisplayName("검수 기능 도입 전 등록된 PENDING 건(applied_at 없음)도 대기 큐 최상단에 노출된다")
+    void listIncludesLegacyPendingSpots() {
+        Long owner = saveUser("등록유저");
+        Long legacyPending = saveSpot("구버전 검수중", SpotStatus.PENDING, owner, null, null);
+        Long newPending = saveSpot("신규 검수중", SpotStatus.PENDING, owner, daysAgo(1), null);
+
+        AdminSpotListResponse response = spotReviewQueryService.findReviewSpots(null, null, 0, 20);
+
+        assertThat(response.items()).extracting(AdminSpotListResponse.AdminSpotItem::id)
+            .containsExactly(legacyPending, newPending);
+    }
+
+    @Test
+    @DisplayName("처리 일시가 없는 옛 완료건은 완료 그룹 최신순 정렬에서 맨 뒤로 밀린다")
+    void listSortsLegacyHandledSpotsLast() {
+        Long owner = saveUser("등록유저");
+        Long legacyHandled = saveSpot("구버전 승인", SpotStatus.PUBLISHED, owner, null, null);
+        Long recentHandled = saveSpot("최근 승인", SpotStatus.PUBLISHED, owner, daysAgo(3), daysAgo(1));
+
+        AdminSpotListResponse response = spotReviewQueryService.findReviewSpots(null, null, 0, 20);
+
+        assertThat(response.items()).extracting(AdminSpotListResponse.AdminSpotItem::id)
+            .containsExactly(recentHandled, legacyHandled);
+    }
+
+    @Test
     @DisplayName("상태 필터: status=PENDING 이면 검수중 건만 반환한다")
     void listStatusFilter() {
         Long owner = saveUser("등록유저");
@@ -159,6 +198,8 @@ class SpotReviewAdminIntegrationTest {
         AdminSpotDetailResponse detail = spotReviewQueryService.getReviewSpotDetail(spotId);
 
         assertThat(detail.status()).isEqualTo(SpotStatus.REJECTED.name());
+        assertThat(detail.latitude()).isEqualTo(37.5);
+        assertThat(detail.longitude()).isEqualTo(127.0);
         assertThat(detail.rejectionHistory()).hasSize(1);
         assertThat(detail.rejectionHistory().get(0).reason()).isEqualTo("LOW_QUALITY");
         assertThat(detail.rejectionHistory().get(0).reasonLabel()).isEqualTo("사진 상태 불량");

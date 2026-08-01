@@ -23,7 +23,9 @@ import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
 import com.ioes.photo.global.error.exception.BusinessException;
+import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StorageService;
+import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -44,10 +47,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 @DisplayName("SpotReviewService 단위 테스트")
 class SpotReviewServiceTest {
 
-    @Mock SpotRepository       spotRepository;
-    @Mock SpotReviewRepository spotReviewRepository;
-    @Mock SpotImageRepository  spotImageRepository;
-    @Mock StorageService       storageService;
+    @Mock SpotRepository            spotRepository;
+    @Mock SpotReviewRepository      spotReviewRepository;
+    @Mock SpotImageRepository       spotImageRepository;
+    @Mock StorageService            storageService;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks SpotReviewService spotReviewService;
 
@@ -55,6 +59,8 @@ class SpotReviewServiceTest {
     private static final Long REVIEWER_ID  = 99L;
     private static final String PRIVATE_KEY   = "prod/private/spots/7/original/202607/abc.jpg";
     private static final String PRIVATE_THUMB = "prod/private/spots/7/thumbnail/202607/abc.jpg";
+    private static final String PUBLIC_KEY    = "prod/public/spots/7/original/202607/abc.jpg";
+    private static final String PUBLIC_THUMB  = "prod/public/spots/7/thumbnail/202607/abc.jpg";
 
     @Nested
     @DisplayName("승인")
@@ -91,13 +97,25 @@ class SpotReviewServiceTest {
 
             spotReviewService.review(SPOT_ID, approveRequest(), REVIEWER_ID);
 
-            then(storageService).should()
-                .copy(eq(PRIVATE_KEY), eq("prod/public/spots/7/original/202607/abc.jpg"));
-            then(storageService).should().delete(PRIVATE_KEY);
-            then(storageService).should()
-                .copy(eq(PRIVATE_THUMB), eq("prod/public/spots/7/thumbnail/202607/abc.jpg"));
-            assertThat(image.getImageKey()).isEqualTo("prod/public/spots/7/original/202607/abc.jpg");
-            assertThat(image.getThumbnailKey()).isEqualTo("prod/public/spots/7/thumbnail/202607/abc.jpg");
+            then(storageService).should().copy(eq(PRIVATE_KEY), eq(PUBLIC_KEY));
+            then(storageService).should().copy(eq(PRIVATE_THUMB), eq(PUBLIC_THUMB));
+            assertThat(image.getImageKey()).isEqualTo(PUBLIC_KEY);
+            assertThat(image.getThumbnailKey()).isEqualTo(PUBLIC_THUMB);
+        }
+
+        @Test
+        @DisplayName("원본 삭제는 즉시 수행하지 않고 커밋/롤백 이후로 미루는 이벤트만 발행한다")
+        void defersStorageMutationToTransactionBoundary() {
+            Spot spot = buildSpot(SpotStatus.PENDING);
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(SPOT_ID))
+                .willReturn(Optional.of(SpotImage.create(SPOT_ID, PRIVATE_KEY)));
+
+            spotReviewService.review(SPOT_ID, approveRequest(), REVIEWER_ID);
+
+            then(storageService).should(never()).delete(anyString());
+            then(eventPublisher).should().publishEvent(new StorageUploadRollbackEvent(PUBLIC_KEY));
+            then(eventPublisher).should().publishEvent(new StorageCleanupEvent(PRIVATE_KEY));
         }
     }
 
