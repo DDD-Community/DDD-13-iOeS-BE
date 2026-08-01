@@ -77,6 +77,8 @@ public class SpotReviewQueryService {
             spot.getAppliedAt(),
             resolvePhotoUrls(image),
             spot.getAddress(),
+            spot.getLatitude(),
+            spot.getLongitude(),
             spot.getComment(),
             resolveShotAt(image),
             spot.getTheme().name(),
