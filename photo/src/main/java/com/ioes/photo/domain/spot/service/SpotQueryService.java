@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 스팟 조회 서비스.
@@ -50,9 +51,12 @@ public class SpotQueryService {
     private final SpotMapper spotMapper;
     private final UserRepository userRepository;
 
+    @Transactional
     public SpotDetailResponse findSpotDetail(Long spotId, Long userId) {
         Spot spot = spotRepository.findById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
+
+        spotRepository.incrementViewCount(spotId);
 
         SpotImage spotImage = spotImageRepository.findById(spotId).orElse(null);
         SpotInfo spotInfo = spotInfoRepository.findById(spotId).orElse(null);

@@ -100,6 +100,9 @@ public class Spot extends BaseEntity {
     @Column(name = "reviewer_id")
     private Long reviewerId;
 
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
