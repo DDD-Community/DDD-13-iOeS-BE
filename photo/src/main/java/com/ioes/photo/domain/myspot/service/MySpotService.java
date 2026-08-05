@@ -148,7 +148,7 @@ public class MySpotService {
         Spot spot = spotRepository.findById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
 
-        if (!spot.getUserId().equals(userId)) {
+        if (!userId.equals(spot.getUserId())) {
             throw new BusinessException(SpotErrorCode.SPOT_ACCESS_DENIED);
         }
         if (!spot.isOpenRequestable()) {
