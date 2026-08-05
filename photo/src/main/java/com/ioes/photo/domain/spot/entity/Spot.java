@@ -91,6 +91,9 @@ public class Spot extends BaseEntity {
     @Column(name = "bookmark_count", nullable = false)
     private long bookmarkCount = 0;
 
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
