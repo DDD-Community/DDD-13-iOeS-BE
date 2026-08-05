@@ -151,6 +151,22 @@ app:
       - /v1/app/config/**
       - /v1/share/**
 
+  # CORS 허용 (어드민 웹 도메인) — Origin은 스킴+호스트+포트만, 끝 슬래시/경로 불가
+  # 어드민 프론트는 모든 환경(운영 포함)의 서버를 보고 로컬 개발하므로 localhost도 전 프로필 공통 허용.
+  # 자격증명 미전송(allowCredentials 미설정=false)이라 브라우저가 쿠키/Authorization 을 자동으로 싣지 않는다.
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - https://pickflow-admin.vercel.app
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    max-age: 3600
+
   #  Swagger / OpenAPI
   swagger:
     title: "Photo API"

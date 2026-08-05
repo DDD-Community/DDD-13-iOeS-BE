@@ -12,10 +12,11 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum SpotTheme implements CodedEnum {
-    SUNSET("SS"),
-    YUNSEUL("YS");
+    SUNSET("SS", "노을"),
+    YUNSEUL("YS", "윤슬");
 
     private final String code;
+    private final String label;
 
     public static SpotTheme fromCode(String code) {
         for (SpotTheme theme : values()) {
