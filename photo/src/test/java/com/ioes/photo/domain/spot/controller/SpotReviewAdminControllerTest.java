@@ -9,7 +9,9 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ioes.photo.domain.spot.dto.AdminSpotDetailResponse;
@@ -152,6 +154,31 @@ class SpotReviewAdminControllerTest {
         void rejectsAnonymous() throws Exception {
             mockMvc.perform(get(LIST_URI))
                 .andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Nested
+    @DisplayName("CORS preflight")
+    class Cors {
+
+        @Test
+        @DisplayName("허용된 어드민 도메인의 preflight 는 200 과 허용 헤더를 반환한다")
+        void allowsAdminOrigin() throws Exception {
+            mockMvc.perform(options(LIST_URI)
+                    .header("Origin", "https://pickflow-admin.vercel.app")
+                    .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin",
+                    "https://pickflow-admin.vercel.app"));
+        }
+
+        @Test
+        @DisplayName("허용되지 않은 도메인의 preflight 는 403 이다")
+        void rejectsUnknownOrigin() throws Exception {
+            mockMvc.perform(options(LIST_URI)
+                    .header("Origin", "https://evil.example.com")
+                    .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
         }
     }
 

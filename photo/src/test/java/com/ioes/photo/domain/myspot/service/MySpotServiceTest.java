@@ -258,6 +258,18 @@ class MySpotServiceTest {
         }
 
         @Test
+        @DisplayName("운영진 등록 스팟(userId null)이면 NPE 없이 SPOT_ACCESS_DENIED 예외를 던진다")
+        void throwsWhenOwnerIsNull() {
+            Spot spot = buildSpot(SpotStatus.DRAFT, null);
+            given(spotRepository.findById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            assertThatThrownBy(() -> mySpotService.requestOpen(USER_ID, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.ioes.photo.domain.spot.error.SpotErrorCode.SPOT_ACCESS_DENIED);
+        }
+
+        @Test
         @DisplayName("오픈 신청 불가 상태(PENDING)면 SPOT_NOT_OPENABLE 예외를 던진다")
         void throwsWhenNotOpenable() {
             Spot spot = buildOwnedSpot(SpotStatus.PENDING);
@@ -281,13 +293,17 @@ class MySpotServiceTest {
         }
 
         private Spot buildOwnedSpot(SpotStatus status) {
+            return buildSpot(status, USER_ID);
+        }
+
+        private Spot buildSpot(SpotStatus status, Long ownerId) {
             Spot spot = Spot.builder()
                 .name("테스트스팟")
                 .theme(SpotTheme.SUNSET)
                 .latitude(37.5)
                 .longitude(127.0)
                 .status(status)
-                .userId(USER_ID)
+                .userId(ownerId)
                 .build();
             try {
                 Field idField = spot.getClass().getSuperclass().getDeclaredField("id");
