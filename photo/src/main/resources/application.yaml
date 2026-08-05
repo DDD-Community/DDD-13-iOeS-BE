@@ -321,7 +321,7 @@ app:
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper,com.ioes.photo.domain.metrics.mapper
   configuration:
     map-underscore-to-camel-case: true
     jdbc-type-for-null: NULL
