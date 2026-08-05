@@ -91,6 +91,18 @@ public class Spot extends BaseEntity {
     @Column(name = "bookmark_count", nullable = false)
     private long bookmarkCount = 0;
 
+    @Column(name = "applied_at")
+    private LocalDateTime appliedAt;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "reviewer_id")
+    private Long reviewerId;
+
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -107,7 +119,7 @@ public class Spot extends BaseEntity {
         this.address = address;
         this.addressRoad = addressRoad;
         this.addressJibun = addressJibun;
-        this.status = status == null ? SpotStatus.PENDING : status;
+        this.status = status == null ? SpotStatus.DRAFT : status;
         this.gridNx = gridNx;
         this.gridNy = gridNy;
         this.crowdAreaName = crowdAreaName;
@@ -122,5 +134,24 @@ public class Spot extends BaseEntity {
 
     public void assignCrowdAreaName(String crowdAreaName) {
         this.crowdAreaName = crowdAreaName;
+    }
+
+    public boolean isOpenRequestable() {
+        return status == SpotStatus.DRAFT || status == SpotStatus.REJECTED;
+    }
+
+    public boolean isReviewable() {
+        return status == SpotStatus.PENDING || status == SpotStatus.RE_REVIEW_PENDING;
+    }
+
+    public void requestOpen(LocalDateTime requestedAt) {
+        this.status = status == SpotStatus.REJECTED ? SpotStatus.RE_REVIEW_PENDING : SpotStatus.PENDING;
+        this.appliedAt = requestedAt;
+    }
+
+    public void applyReview(boolean approved, Long reviewerId, LocalDateTime reviewedAt) {
+        this.status = approved ? SpotStatus.PUBLISHED : SpotStatus.REJECTED;
+        this.reviewerId = reviewerId;
+        this.reviewedAt = reviewedAt;
     }
 }

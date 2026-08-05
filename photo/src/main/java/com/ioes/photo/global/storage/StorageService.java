@@ -22,5 +22,7 @@ public interface StorageService {
 
     String getUrl(String key);
 
+    void copy(String sourceKey, String destinationKey);
+
     void delete(String key);
 }
