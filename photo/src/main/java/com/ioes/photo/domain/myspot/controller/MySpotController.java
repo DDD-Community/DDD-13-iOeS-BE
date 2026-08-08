@@ -1,9 +1,12 @@
 package com.ioes.photo.domain.myspot.controller;
 
+import com.ioes.photo.domain.myspot.dto.CancelPublicationResponse;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.dto.OpenMySpotResponse;
+import com.ioes.photo.domain.myspot.dto.UpdateMySpotRequest;
+import com.ioes.photo.domain.myspot.dto.UpdateMySpotResponse;
 import com.ioes.photo.domain.myspot.service.MySpotService;
 import com.ioes.photo.global.auth.CurrentUserId;
 import com.ioes.photo.global.common.response.ApiResponse;
@@ -22,9 +25,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -93,6 +98,56 @@ public class MySpotController {
         return ApiResponse.success(mySpotService.createMySpot(userId, request, image));
     }
 
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        content = @Content(
+            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object"),
+            schemaProperties = {
+                @SchemaProperty(name = "request",
+                    schema = @Schema(implementation = UpdateMySpotRequest.class)),
+                @SchemaProperty(name = "image",
+                    schema = @Schema(type = "string", format = "binary",
+                        description = "교체할 스팟 이미지 파일. 미첨부 시 기존 이미지를 그대로 유지합니다."))
+            },
+            encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)
+        )
+    )
+    @Operation(
+        summary = "나만의 스팟 수정",
+        description = "나만보기(DRAFT) 또는 반려(REJECTED) 상태의 스팟을 수정합니다. "
+            + "검수중이거나 공개된 스팟은 SP010으로 응답하므로, 공개를 먼저 해제한 뒤 수정해야 합니다. "
+            + "반려된 스팟은 수정 후 오픈 신청으로 재검수를 요청할 수 있습니다. "
+            + "좌표를 변경하면 주소·기상 격자·혼잡 지역과 날씨 정보가 새 위치 기준으로 다시 계산됩니다. "
+            + "이미지를 첨부하지 않으면 기존 이미지가 유지되며, 수정으로 스팟 상태가 바뀌지는 않습니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PutMapping(value = "/users/me/my-spots/{spotId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UpdateMySpotResponse> updateMySpot(
+        @CurrentUserId Long userId,
+        @PathVariable Long spotId,
+        @RequestPart("request") @Valid UpdateMySpotRequest request,
+        @RequestPart(value = "image", required = false) MultipartFile image
+    ) {
+        return ApiResponse.success(mySpotService.updateMySpot(userId, spotId, request, image));
+    }
+
+    @Operation(
+        summary = "나만의 스팟 삭제",
+        description = "본인이 등록한 스팟을 삭제합니다(논리삭제). "
+            + "검수중(PENDING)/재검토대기(RE_REVIEW_PENDING) 상태에서는 SP011로 응답하므로, "
+            + "오픈 신청을 먼저 철회한 뒤 삭제해야 합니다. "
+            + "다른 사용자의 북마크 목록에는 '삭제된 스팟'으로 표시됩니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @DeleteMapping("/users/me/my-spots/{spotId}")
+    public ApiResponse<Void> deleteMySpot(
+        @CurrentUserId Long userId,
+        @PathVariable Long spotId
+    ) {
+        mySpotService.deleteMySpot(userId, spotId);
+        return ApiResponse.success();
+    }
+
     @Operation(
         summary = "나만의 스팟 오픈 신청(검수 요청)",
         description = "나만보기(DRAFT) 또는 반려(REJECTED) 상태의 스팟을 지도에 공개하기 위해 오픈 신청합니다. "
@@ -106,5 +161,24 @@ public class MySpotController {
         @PathVariable Long spotId
     ) {
         return ApiResponse.success(mySpotService.requestOpen(userId, spotId));
+    }
+
+    @Operation(
+        summary = "나만의 스팟 공개 해제(오픈 신청 철회 / 비공개 전환)",
+        description = "스팟의 공개 상태를 해제해 나만보기(DRAFT)로 되돌립니다. "
+            + "검수중(PENDING)/재검토대기(RE_REVIEW_PENDING)이면 오픈 신청 철회로, 공개(PUBLISHED)면 비공개 전환으로 처리되며 "
+            + "응답의 previousStatus 로 어느 쪽이었는지 구분할 수 있습니다. "
+            + "이미 쌓인 좋아요/북마크는 그대로 유지됩니다. "
+            + "나만보기(DRAFT) 상태는 해제할 대상이 없어 SP009, "
+            + "철회 직전에 운영자 검수가 확정된 경우에는 SP009 대신 SP004(이미 처리된 신청이에요)로 응답합니다. "
+            + "본인이 등록한 스팟만 해제할 수 있습니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @DeleteMapping("/users/me/my-spots/{spotId}/publications")
+    public ApiResponse<CancelPublicationResponse> cancelPublication(
+        @CurrentUserId Long userId,
+        @PathVariable Long spotId
+    ) {
+        return ApiResponse.success(mySpotService.cancelPublication(userId, spotId));
     }
 }
