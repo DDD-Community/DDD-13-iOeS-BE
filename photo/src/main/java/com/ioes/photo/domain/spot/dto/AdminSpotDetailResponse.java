@@ -24,7 +24,7 @@ public record AdminSpotDetailResponse(
     @Schema(description = "경도 (위치 무관 반려 판단용)") Double longitude,
     @Schema(description = "한줄 코멘트") String comment,
     @Schema(description = "촬영 일시") LocalDateTime shotAt,
-    @Schema(description = "테마 코드 (SUNSET/YUNSEUL)") String theme,
+    @Schema(description = "테마 코드 (SUNSET=노을, YUNSEUL=윤슬, SUNLIGHT=햇살, NIGHT_VIEW=야경)") String theme,
     @Schema(description = "테마 한글명") String themeLabel,
     @Schema(description = "과거 반려 이력 (최신순)") List<RejectionHistoryItem> rejectionHistory,
     @Schema(description = "등록 유저 신뢰도 정보") UserTrust userTrust
