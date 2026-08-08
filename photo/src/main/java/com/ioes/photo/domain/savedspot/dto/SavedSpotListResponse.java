@@ -22,12 +22,13 @@ public record SavedSpotListResponse(
         @Schema(description = "스팟 ID") Long spotId,
         @Schema(description = "스팟 이름") String name,
         @Schema(description = "스팟 테마 코드") String theme,
-        @Schema(description = "원본 이미지 URL (없으면 null)") String imageUrl,
+        @Schema(description = "원본 이미지 URL (비공개 전환된 스팟이거나 이미지가 없으면 null)") String imageUrl,
         @Schema(description = "스팟 위도") Double latitude,
         @Schema(description = "스팟 경도") Double longitude,
         @Schema(description = "사용자 위치 기준 거리 (km), 위치 미전달 시 null") @TruncateDecimal Double distanceKm,
         @Schema(description = "북마크 수") long bookmarkCount,
         @Schema(description = "북마크 저장 시각") LocalDateTime savedAt,
-        @Schema(description = "스팟 삭제 여부") boolean deleted
+        @Schema(description = "스팟 삭제 여부") boolean deleted,
+        @Schema(description = "비공개 여부 (등록자가 공개를 해제했거나 아직 승인되지 않은 상태)") boolean isPrivate
     ) {}
 }
