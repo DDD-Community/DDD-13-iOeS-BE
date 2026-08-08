@@ -3,6 +3,7 @@ package com.ioes.photo.domain.spot.repository;
 import com.ioes.photo.domain.spot.entity.SpotReview;
 import com.ioes.photo.domain.spot.enums.ReviewDecision;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -13,4 +14,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SpotReviewRepository extends JpaRepository<SpotReview, Long> {
 
     List<SpotReview> findBySpotIdAndDecisionOrderByCreatedAtDesc(Long spotId, ReviewDecision decision);
+
+    Optional<SpotReview> findFirstBySpotIdAndDecisionOrderByCreatedAtDesc(Long spotId, ReviewDecision decision);
 }
