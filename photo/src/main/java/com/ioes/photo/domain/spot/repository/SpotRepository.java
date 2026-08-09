@@ -46,4 +46,6 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
     Optional<Spot> findByIdIncludingDeleted(@Param("spotId") Long spotId);
 
     long countByUserId(Long userId);
+
+    long countByUserIdAndStatus(Long userId, SpotStatus status);
 }

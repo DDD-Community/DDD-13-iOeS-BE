@@ -46,6 +46,18 @@ public final class StoragePathUtils {
         return parts.length >= 2 && AccessType.PUBLIC.getValue().equals(parts[ACCESS_TYPE_INDEX]);
     }
 
+    public static String withAccess(String key, AccessType access) {
+        if (NullUtils.isBlank(key)) {
+            return key;
+        }
+        String[] parts = key.split("/");
+        if (parts.length < 2) {
+            return key;
+        }
+        parts[ACCESS_TYPE_INDEX] = access.getValue();
+        return String.join("/", parts);
+    }
+
     private static String buildKey(String env, AccessType access, String entity,
                                     Long entityId, String type, String ext) {
         String yyyyMM = LocalDate.now().format(MONTH_FORMATTER);
