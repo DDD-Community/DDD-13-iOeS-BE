@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.ioes.photo.domain.metrics.mapper.MetricsMapper">
+<mapper namespace="com.ioes.photo.domain.statistics.mapper.StatisticsMapper">
 
     <!--
       날짜 그룹핑을 DB 날짜 함수(DATE()/AT TIME ZONE) 없이 [start, end) 범위 조건으로 처리한다.

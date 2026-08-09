@@ -1,4 +1,4 @@
-package com.ioes.photo.domain.metrics.mapper;
+package com.ioes.photo.domain.statistics.mapper;
 
 /**
  * 저장 수 상위 스팟 집계 Row.

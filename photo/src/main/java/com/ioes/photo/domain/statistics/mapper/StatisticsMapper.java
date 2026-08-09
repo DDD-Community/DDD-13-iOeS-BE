@@ -1,4 +1,4 @@
-package com.ioes.photo.domain.metrics.mapper;
+package com.ioes.photo.domain.statistics.mapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +15,7 @@ import org.apache.ibatis.annotations.Param;
  * @author 김성민
  */
 @Mapper
-public interface MetricsMapper {
+public interface StatisticsMapper {
 
     /** 대상 기간 [start, end) 신규 가입자 수 (탈퇴 포함). */
     long countSignups(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);

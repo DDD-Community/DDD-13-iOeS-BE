@@ -1,4 +1,4 @@
-package com.ioes.photo.domain.metrics.mapper;
+package com.ioes.photo.domain.statistics.mapper;
 
 /**
  * 로그인 경로(provider)별 가입자 수 집계 Row.

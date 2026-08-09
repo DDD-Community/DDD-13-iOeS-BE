@@ -1,4 +1,4 @@
-package com.ioes.photo.domain.metrics.dto;
+package com.ioes.photo.domain.statistics.dto;
 
 import java.time.LocalDate;
 
@@ -19,7 +19,7 @@ import java.time.LocalDate;
  * @param topSpots          저장 수 상위 스팟 요약 (예: "여의도한강공원(31), 남산타워(22)")
  * @author 김성민
  */
-public record MetricsSnapshot(
+public record StatisticsSnapshot(
     LocalDate date,
     long newSignups,
     long newSignupsKakao,

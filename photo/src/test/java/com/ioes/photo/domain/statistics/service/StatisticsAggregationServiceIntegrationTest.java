@@ -1,6 +1,6 @@
-package com.ioes.photo.domain.metrics.service;
+package com.ioes.photo.domain.statistics.service;
 
-import com.ioes.photo.domain.metrics.dto.MetricsSnapshot;
+import com.ioes.photo.domain.statistics.dto.StatisticsSnapshot;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
@@ -26,13 +26,13 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link MetricsAggregationService} 통합 테스트 — 실제 MyBatis + H2로 지표 집계 검증.
+ * {@link StatisticsAggregationService} 통합 테스트 — 실제 MyBatis + H2로 지표 집계 검증.
  *
  * @author 김성민
  */
 @SpringBootTest
-@DisplayName("MetricsAggregationService 통합 테스트")
-class MetricsAggregationServiceIntegrationTest {
+@DisplayName("StatisticsAggregationService 통합 테스트")
+class StatisticsAggregationServiceIntegrationTest {
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
@@ -44,7 +44,7 @@ class MetricsAggregationServiceIntegrationTest {
     @MockitoBean ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
     @MockitoBean S3StorageService storageService;
 
-    @Autowired MetricsAggregationService metricsAggregationService;
+    @Autowired StatisticsAggregationService metricsAggregationService;
     @Autowired SpotRepository spotRepository;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -70,12 +70,12 @@ class MetricsAggregationServiceIntegrationTest {
 
     @Test
     @DisplayName("가입 지표: 대상일 신규 가입은 탈퇴 유저를 포함하고 provider별로 분리되며, 누적은 이전 가입을 포함한다")
-    void aggregatesSignupMetrics() {
+    void aggregatesSignupStatistics() {
         insertUser("K", "kakao-yesterday", TARGET.atTime(12, 0), null);       // 어제 가입, 활성
         insertUser("A", "apple-yesterday", TARGET.atTime(12, 0), LocalDateTime.now()); // 어제 가입, 탈퇴
         insertUser("K", "kakao-2days", TARGET.minusDays(1).atTime(12, 0), null);       // 이틀 전 가입
 
-        MetricsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
+        StatisticsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
 
         assertThat(snapshot.date()).isEqualTo(TARGET);
         assertThat(snapshot.newSignups()).isEqualTo(2);        // 탈퇴 포함
@@ -86,7 +86,7 @@ class MetricsAggregationServiceIntegrationTest {
 
     @Test
     @DisplayName("저장 지표: 활성 저장 유저 수/비율은 활성 유저 기준이고, TOP 스팟은 활성 저장 건수 순으로 정렬된다")
-    void aggregatesSaveMetrics() {
+    void aggregatesSaveStatistics() {
         Long userA = insertUser("K", "saver-a", TARGET.atTime(9, 0), null);            // 활성
         Long userB = insertUser("A", "saver-b", TARGET.atTime(9, 0), LocalDateTime.now()); // 탈퇴
         Long userC = insertUser("K", "saver-c", TARGET.atTime(9, 0), null);            // 활성
@@ -99,7 +99,7 @@ class MetricsAggregationServiceIntegrationTest {
         insertActiveSave(userB, spot1); // 탈퇴 유저의 활성 저장
         insertActiveSave(userC, spot1);
 
-        MetricsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
+        StatisticsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
 
         assertThat(snapshot.totalUsers()).isEqualTo(2);                 // 활성 유저 A, C
         assertThat(snapshot.activeSavers()).isEqualTo(2);               // A, C (B는 탈퇴로 제외)
@@ -114,7 +114,7 @@ class MetricsAggregationServiceIntegrationTest {
         Long spot1 = spotRepository.save(buildSpot("한강")).getId();
         insertSoftDeletedSave(userA, spot1);
 
-        MetricsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
+        StatisticsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
 
         assertThat(snapshot.activeSavers()).isZero();
         assertThat(snapshot.topSpots()).isEmpty();
@@ -123,7 +123,7 @@ class MetricsAggregationServiceIntegrationTest {
     @Test
     @DisplayName("활성 유저가 없으면 저장 비율은 0으로 처리된다 (0 나눗셈 방어)")
     void ratioIsZeroWhenNoActiveUsers() {
-        MetricsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
+        StatisticsSnapshot snapshot = metricsAggregationService.aggregate(TARGET);
 
         assertThat(snapshot.totalUsers()).isZero();
         assertThat(snapshot.saveUsageRatio()).isZero();
