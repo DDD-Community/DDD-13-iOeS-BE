@@ -37,16 +37,9 @@ public class SpotLikeService {
     public SpotLikeResponse addLike(Long userId, Long spotId) {
         validateLikeable(spotId);
 
-        spotLikeRepository.findByUserIdAndSpotIdIncludingDeleted(userId, spotId)
-            .ifPresentOrElse(
-                like -> {
-                    if (like.isActive()) {
-                        throw new BusinessException(SpotLikeErrorCode.ALREADY_LIKED);
-                    }
-                    like.restore();
-                },
-                () -> insertLike(userId, spotId)
-            );
+        if (spotLikeRepository.restoreLike(userId, spotId) == 0) {
+            insertLike(userId, spotId);
+        }
 
         spotRepository.incrementLikeCount(spotId);
         return new SpotLikeResponse(fetchLikeCount(spotId), true);
@@ -56,10 +49,10 @@ public class SpotLikeService {
     public SpotLikeResponse removeLike(Long userId, Long spotId) {
         validateSpotExists(spotId);
 
-        SpotLike like = spotLikeRepository.findByUserIdAndSpotId(userId, spotId)
-            .orElseThrow(() -> new BusinessException(SpotLikeErrorCode.NOT_LIKED));
+        if (spotLikeRepository.softDeleteLike(userId, spotId) == 0) {
+            throw new BusinessException(SpotLikeErrorCode.NOT_LIKED);
+        }
 
-        like.softDelete();
         spotRepository.decrementLikeCount(spotId);
         return new SpotLikeResponse(fetchLikeCount(spotId), false);
     }

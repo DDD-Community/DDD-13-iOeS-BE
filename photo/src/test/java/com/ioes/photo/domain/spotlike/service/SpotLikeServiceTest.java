@@ -57,8 +57,7 @@ class SpotLikeServiceTest {
         @DisplayName("처음 누르면 좋아요를 저장하고 카운터를 1 올린다")
         void savesLikeAndIncrementsCount() {
             givenSpot(publishedUserSpot());
-            given(spotLikeRepository.findByUserIdAndSpotIdIncludingDeleted(USER_ID, SPOT_ID))
-                .willReturn(Optional.empty());
+            given(spotLikeRepository.restoreLike(USER_ID, SPOT_ID)).willReturn(0);
             given(spotRepository.findLikeCountById(SPOT_ID)).willReturn(Optional.of(4L));
 
             SpotLikeResponse response = spotLikeService.addLike(USER_ID, SPOT_ID);
@@ -72,16 +71,12 @@ class SpotLikeServiceTest {
         @Test
         @DisplayName("취소했던 좋아요는 새로 저장하지 않고 되살린다")
         void restoresSoftDeletedLike() {
-            SpotLike canceled = buildLike();
-            canceled.softDelete();
             givenSpot(publishedUserSpot());
-            given(spotLikeRepository.findByUserIdAndSpotIdIncludingDeleted(USER_ID, SPOT_ID))
-                .willReturn(Optional.of(canceled));
+            given(spotLikeRepository.restoreLike(USER_ID, SPOT_ID)).willReturn(1);
             given(spotRepository.findLikeCountById(SPOT_ID)).willReturn(Optional.of(1L));
 
             spotLikeService.addLike(USER_ID, SPOT_ID);
 
-            assertThat(canceled.isActive()).isTrue();
             then(spotLikeRepository).should(never()).saveAndFlush(any());
             then(spotRepository).should().incrementLikeCount(SPOT_ID);
         }
@@ -90,8 +85,9 @@ class SpotLikeServiceTest {
         @DisplayName("이미 좋아요한 스팟이면 ALREADY_LIKED 예외를 던지고 카운터를 올리지 않는다")
         void throwsWhenAlreadyLiked() {
             givenSpot(publishedUserSpot());
-            given(spotLikeRepository.findByUserIdAndSpotIdIncludingDeleted(USER_ID, SPOT_ID))
-                .willReturn(Optional.of(buildLike()));
+            given(spotLikeRepository.restoreLike(USER_ID, SPOT_ID)).willReturn(0);
+            given(spotLikeRepository.saveAndFlush(any(SpotLike.class)))
+                .willThrow(new DataIntegrityViolationException("uk_spot_likes_user_spot"));
 
             assertThatThrownBy(() -> spotLikeService.addLike(USER_ID, SPOT_ID))
                 .isInstanceOf(BusinessException.class)
@@ -105,8 +101,7 @@ class SpotLikeServiceTest {
         @DisplayName("동시에 두 요청이 들어와 UNIQUE 제약을 위반하면 ALREADY_LIKED 예외로 변환한다")
         void translatesUniqueViolationToAlreadyLiked() {
             givenSpot(publishedUserSpot());
-            given(spotLikeRepository.findByUserIdAndSpotIdIncludingDeleted(USER_ID, SPOT_ID))
-                .willReturn(Optional.empty());
+            given(spotLikeRepository.restoreLike(USER_ID, SPOT_ID)).willReturn(0);
             given(spotLikeRepository.saveAndFlush(any(SpotLike.class)))
                 .willThrow(new DataIntegrityViolationException("uk_spot_likes_user_spot"));
 
@@ -138,8 +133,7 @@ class SpotLikeServiceTest {
         @DisplayName("관리자 큐레이션 스팟은 상태와 무관하게 좋아요할 수 있다")
         void allowsCuratedSpotRegardlessOfStatus(SpotStatus status) {
             givenSpot(curatedSpot(status));
-            given(spotLikeRepository.findByUserIdAndSpotIdIncludingDeleted(USER_ID, SPOT_ID))
-                .willReturn(Optional.empty());
+            given(spotLikeRepository.restoreLike(USER_ID, SPOT_ID)).willReturn(0);
             given(spotRepository.findLikeCountById(SPOT_ID)).willReturn(Optional.of(1L));
 
             SpotLikeResponse response = spotLikeService.addLike(USER_ID, SPOT_ID);
@@ -179,14 +173,12 @@ class SpotLikeServiceTest {
         @Test
         @DisplayName("좋아요를 논리삭제하고 카운터를 1 내린다")
         void softDeletesLikeAndDecrementsCount() {
-            SpotLike like = buildLike();
             givenSpot(publishedUserSpot());
-            given(spotLikeRepository.findByUserIdAndSpotId(USER_ID, SPOT_ID)).willReturn(Optional.of(like));
+            given(spotLikeRepository.softDeleteLike(USER_ID, SPOT_ID)).willReturn(1);
             given(spotRepository.findLikeCountById(SPOT_ID)).willReturn(Optional.of(2L));
 
             SpotLikeResponse response = spotLikeService.removeLike(USER_ID, SPOT_ID);
 
-            assertThat(like.isActive()).isFalse();
             then(spotRepository).should().decrementLikeCount(SPOT_ID);
             assertThat(response.likeCount()).isEqualTo(2L);
             assertThat(response.isLiked()).isFalse();
@@ -196,7 +188,7 @@ class SpotLikeServiceTest {
         @DisplayName("좋아요하지 않은 스팟이면 NOT_LIKED 예외를 던진다")
         void throwsWhenNotLiked() {
             givenSpot(publishedUserSpot());
-            given(spotLikeRepository.findByUserIdAndSpotId(USER_ID, SPOT_ID)).willReturn(Optional.empty());
+            given(spotLikeRepository.softDeleteLike(USER_ID, SPOT_ID)).willReturn(0);
 
             assertThatThrownBy(() -> spotLikeService.removeLike(USER_ID, SPOT_ID))
                 .isInstanceOf(BusinessException.class)
@@ -209,23 +201,18 @@ class SpotLikeServiceTest {
         @Test
         @DisplayName("비공개로 전환된 스팟이라도 이미 누른 좋아요는 취소할 수 있다")
         void allowsCancelOnUnpublishedSpot() {
-            SpotLike like = buildLike();
             givenSpot(userSpot(SpotStatus.DRAFT));
-            given(spotLikeRepository.findByUserIdAndSpotId(USER_ID, SPOT_ID)).willReturn(Optional.of(like));
+            given(spotLikeRepository.softDeleteLike(USER_ID, SPOT_ID)).willReturn(1);
             given(spotRepository.findLikeCountById(SPOT_ID)).willReturn(Optional.of(0L));
 
             spotLikeService.removeLike(USER_ID, SPOT_ID);
 
-            assertThat(like.isActive()).isFalse();
+            then(spotRepository).should().decrementLikeCount(SPOT_ID);
         }
     }
 
     private void givenSpot(Spot spot) {
         given(spotRepository.findByIdIncludingDeleted(SPOT_ID)).willReturn(Optional.of(spot));
-    }
-
-    private static SpotLike buildLike() {
-        return SpotLike.builder().userId(USER_ID).spotId(SPOT_ID).build();
     }
 
     private static Spot publishedUserSpot() {

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -28,6 +29,26 @@ public interface SpotLikeRepository extends JpaRepository<SpotLike, Long> {
         @Param("userId") Long userId,
         @Param("spotId") Long spotId
     );
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE spot_likes SET deleted_at = NULL
+             WHERE user_id = :userId AND spot_id = :spotId AND deleted_at IS NOT NULL
+            """,
+        nativeQuery = true
+    )
+    int restoreLike(@Param("userId") Long userId, @Param("spotId") Long spotId);
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE spot_likes SET deleted_at = CURRENT_TIMESTAMP
+             WHERE user_id = :userId AND spot_id = :spotId AND deleted_at IS NULL
+            """,
+        nativeQuery = true
+    )
+    int softDeleteLike(@Param("userId") Long userId, @Param("spotId") Long spotId);
 
     @Query("SELECT l.spotId FROM SpotLike l WHERE l.userId = :userId AND l.spotId IN :spotIds")
     Set<Long> findLikedSpotIds(@Param("userId") Long userId, @Param("spotIds") Collection<Long> spotIds);
