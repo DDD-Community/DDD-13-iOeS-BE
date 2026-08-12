@@ -67,7 +67,7 @@ class SpotControllerTest {
                 SkyStatus.CLEAR, PrecipitationType.NONE, 20,
                 CongestionLevel.NORMAL, LocalTime.of(18, 55),
                 null, null, null,
-                "정보 없음", 0L, false, false
+                "정보 없음", 0L, false, false, "PUBLISHED", true, 0L, false, true, null
             );
             given(spotQueryService.findSpotDetail(1L, null)).willReturn(detail);
 
@@ -86,7 +86,7 @@ class SpotControllerTest {
                     1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
                     null, null,
                     null, null, null, null, null, null, null, null, null, null, null,
-                    "정보 없음", 0L, true, true
+                    "정보 없음", 0L, true, true, "PUBLISHED", false, 0L, true, true, null
                 ));
 
             spotController.getSpotDetail(1L, 42L);
@@ -102,7 +102,7 @@ class SpotControllerTest {
                     1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
                     null, null,
                     null, null, null, null, null, null, null, null, null, null, null,
-                    "정보 없음", 0L, false, false
+                    "정보 없음", 0L, false, false, "PUBLISHED", true, 0L, false, true, null
                 ));
 
             spotController.getSpotDetail(1L, null);
@@ -189,7 +189,7 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             SpotPreviewResponse preview = new SpotPreviewResponse(
-                1L, "한강공원", false, SpotTheme.SUNSET, 5L, 1.2, null, "서울시 마포구", null, null, false
+                1L, "한강공원", false, SpotTheme.SUNSET, 5L, 1.2, null, "서울시 마포구", null, null, false, 3L, false, true, true
             );
             given(spotQueryService.findSpotPreview(1L, 37.5, 127.0, null)).willReturn(preview);
 
@@ -203,7 +203,7 @@ class SpotControllerTest {
         @DisplayName("spotId, 위치, userId를 서비스에 그대로 전달한다")
         void passesAllParamsToService() {
             given(spotQueryService.findSpotPreview(1L, null, null, 42L))
-                .willReturn(new SpotPreviewResponse(1L, "스팟", true, SpotTheme.SUNSET, 0L, null, null, null, null, null, false));
+                .willReturn(new SpotPreviewResponse(1L, "스팟", true, SpotTheme.SUNSET, 0L, null, null, null, null, null, false, 0L, false, true, false));
 
             spotController.getSpotPreview(1L, null, null, 42L);
 
@@ -221,7 +221,7 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             List<SpotItem> items = List.of(
-                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2, 7L, false)
+                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2, 7L, false, 3L, false)
             );
             given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null))
                 .willReturn(new SpotListResponse(items, 0, false));

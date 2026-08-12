@@ -214,11 +214,11 @@ public class SpotBatchUploadService {
         if (themeKr == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "테마 값이 없습니다.");
         }
-        return switch (themeKr.trim()) {
-            case "노을" -> SpotTheme.SUNSET;
-            case "윤슬" -> SpotTheme.YUNSEUL;
-            default -> throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "알 수 없는 테마: " + themeKr);
-        };
+        try {
+            return SpotTheme.fromLabel(themeKr.trim());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "알 수 없는 테마: " + themeKr);
+        }
     }
 
     private String getStringValue(Cell cell) {

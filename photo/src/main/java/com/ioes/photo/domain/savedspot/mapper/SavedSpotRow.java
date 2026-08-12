@@ -15,6 +15,7 @@ public record SavedSpotRow(
     Double longitude,
     Double distanceKm,
     long bookmarkCount,
+    String status,
     LocalDateTime savedAt,
     boolean deleted
 ) {}

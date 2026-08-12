@@ -10,5 +10,6 @@ public record SpotRow(
     String name,
     String theme,
     long bookmarkCount,
+    long likeCount,
     Double distanceKm
 ) {}

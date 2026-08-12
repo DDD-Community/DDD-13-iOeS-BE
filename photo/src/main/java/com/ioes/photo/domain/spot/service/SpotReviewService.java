@@ -3,24 +3,18 @@ package com.ioes.photo.domain.spot.service;
 import com.ioes.photo.domain.spot.dto.SpotReviewRequest;
 import com.ioes.photo.domain.spot.dto.SpotReviewResultResponse;
 import com.ioes.photo.domain.spot.entity.Spot;
-import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.entity.SpotReview;
 import com.ioes.photo.domain.spot.enums.RejectionReason;
+import com.ioes.photo.domain.spot.enums.SpotOpenRequestStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
-import com.ioes.photo.domain.spot.repository.SpotImageRepository;
+import com.ioes.photo.domain.spot.repository.SpotOpenRequestRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.storage.AccessType;
-import com.ioes.photo.global.storage.StorageCleanupEvent;
-import com.ioes.photo.global.storage.StoragePathUtils;
-import com.ioes.photo.global.storage.StorageService;
-import com.ioes.photo.global.storage.StorageUploadRollbackEvent;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 스팟 검수(승인/반려) 처리 서비스.
  *
  * 검수 가능한 상태(PENDING/RE_REVIEW_PENDING)에서만 처리되며, 그 외 상태는 이미 처리된 것으로 보고 409로 응답한다.
- * 승인 시 미승인(PRIVATE) 이미지를 공개(PUBLIC) 경로로 이동해 지도 공개용 영구 URL을 확보한다.
- * 이미지 이동은 복사만 트랜잭션 안에서 수행하고, 원본 삭제는 커밋 이후(StorageCleanupEvent),
- * 사본 정리는 롤백 이후(StorageUploadRollbackEvent)로 미뤄 DB와 스토리지의 정합성을 맞춘다.
+ * 사용자의 오픈 철회와 같은 행을 동시에 건드릴 수 있어, 조회 시점부터 행 잠금을 잡아 상태 판단을 직렬화한다.
+ * 승인 시 미승인(PRIVATE) 이미지를 공개(PUBLIC) 경로로 옮겨 지도 공개용 영구 URL을 확보한다.
  *
  * @author 황제연
  */
@@ -41,38 +34,37 @@ public class SpotReviewService {
 
     private final SpotRepository spotRepository;
     private final SpotReviewRepository spotReviewRepository;
-    private final SpotImageRepository spotImageRepository;
-    private final StorageService storageService;
-    private final ApplicationEventPublisher eventPublisher;
+    private final SpotOpenRequestRepository spotOpenRequestRepository;
+    private final SpotImageAccessService spotImageAccessService;
 
     @Transactional
     public SpotReviewResultResponse review(Long spotId, SpotReviewRequest request, Long reviewerId) {
-        Spot spot = spotRepository.findById(spotId)
+        Spot spot = spotRepository.findWithLockById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
 
-        // 검수 동시성 미방어(check-then-act). 운영자 2~3명 규모라 같은 건을 동시에 처리할
-        // 확률이 희박하고, 겹치더라도 승인+승인이면 상태가 동일해 피해가 검수 이력 중복에 그친다.
-        // 운영자가 늘거나 검수가 자동화되면 findWithLockById(PESSIMISTIC_WRITE)로 전환한다.
         if (!spot.isReviewable()) {
             throw new BusinessException(SpotErrorCode.SPOT_ALREADY_REVIEWED);
         }
 
-        if (request.decision().isApproved()) {
-            approve(spot, reviewerId);
-        } else {
-            reject(spot, request, reviewerId);
-        }
+        SpotReview review = request.decision().isApproved()
+            ? approve(spot, reviewerId)
+            : reject(spot, request, reviewerId);
+
+        resolveOpenRequest(spotId, request.decision().isApproved(), review.getId(), spot.getReviewedAt());
 
         return new SpotReviewResultResponse(spot.getId(), spot.getStatus().name());
     }
 
-    private void approve(Spot spot, Long reviewerId) {
+    // saveAndFlush 로 식별자를 확보한 뒤, 오픈 신청 이력이 이 검수 건을 가리키도록 연결한다.
+    private SpotReview approve(Spot spot, Long reviewerId) {
         spot.applyReview(true, reviewerId, LocalDateTime.now());
-        spotReviewRepository.save(SpotReview.approved(spot.getId(), reviewerId));
-        publishImages(spot.getId());
+        SpotReview review = SpotReview.approved(spot.getId(), reviewerId);
+        spotReviewRepository.saveAndFlush(review);
+        spotImageAccessService.publish(spot.getId());
+        return review;
     }
 
-    private void reject(Spot spot, SpotReviewRequest request, Long reviewerId) {
+    private SpotReview reject(Spot spot, SpotReviewRequest request, Long reviewerId) {
         RejectionReason reason = request.reason();
         if (reason == null) {
             throw new BusinessException(SpotErrorCode.SPOT_REJECTION_REASON_REQUIRED);
@@ -82,26 +74,15 @@ public class SpotReviewService {
         }
 
         spot.applyReview(false, reviewerId, LocalDateTime.now());
-        spotReviewRepository.save(SpotReview.rejected(spot.getId(), reviewerId, reason, request.detail()));
+        SpotReview review = SpotReview.rejected(spot.getId(), reviewerId, reason, request.detail());
+        spotReviewRepository.saveAndFlush(review);
+        return review;
     }
 
-    private void publishImages(Long spotId) {
-        spotImageRepository.findById(spotId).ifPresent(image -> {
-            image.updateImageKey(moveToPublic(image.getImageKey()));
-            if (NullUtils.isNotBlank(image.getThumbnailKey())) {
-                image.updateThumbnailKey(moveToPublic(image.getThumbnailKey()));
-            }
-        });
-    }
-
-    private String moveToPublic(String key) {
-        if (NullUtils.isBlank(key) || StoragePathUtils.isPublic(key)) {
-            return key;
-        }
-        String publicKey = StoragePathUtils.withAccess(key, AccessType.PUBLIC);
-        storageService.copy(key, publicKey);
-        eventPublisher.publishEvent(new StorageUploadRollbackEvent(publicKey));
-        eventPublisher.publishEvent(new StorageCleanupEvent(key));
-        return publicKey;
+    // 검수 도입 이전에 신청된 스팟은 대응하는 이력이 없으므로 마감 대상에서 조용히 빠진다.
+    private void resolveOpenRequest(Long spotId, boolean approved, Long reviewId, LocalDateTime reviewedAt) {
+        spotOpenRequestRepository
+            .findFirstBySpotIdAndStatusOrderByRequestedAtDesc(spotId, SpotOpenRequestStatus.REQUESTED)
+            .ifPresent(openRequest -> openRequest.resolveByReview(approved, reviewId, reviewedAt));
     }
 }

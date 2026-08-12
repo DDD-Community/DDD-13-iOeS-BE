@@ -9,6 +9,9 @@ import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.entity.SpotReview;
+import com.ioes.photo.domain.spot.enums.RejectionReason;
+import com.ioes.photo.domain.spot.enums.ReviewDecision;
 import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
@@ -21,6 +24,9 @@ import com.ioes.photo.domain.savedspot.entity.SavedSpotArchive;
 import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
+import com.ioes.photo.domain.spotlike.entity.SpotLike;
+import com.ioes.photo.domain.spotlike.repository.SpotLikeRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
 import com.ioes.photo.domain.user.repository.UserRepository;
@@ -66,6 +72,8 @@ class SpotQueryServiceTest {
     @Mock SpotImageRepository spotImageRepository;
     @Mock SpotInfoRepository  spotInfoRepository;
     @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
+    @Mock SpotLikeRepository  spotLikeRepository;
+    @Mock SpotReviewRepository spotReviewRepository;
     @Mock SpotThumbnailService spotThumbnailService;
     @Mock SpotMapper          spotMapper;
     @Mock UserRepository      userRepository;
@@ -193,7 +201,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("스팟이 존재하면 미리보기 응답을 반환한다")
         void returnsPreview_whenSpotExists() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, 1.2,
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, 5L, 3L, 1.2,
                 "서울시 마포구", "서울시 마포구 월드컵로 21", "서울시 마포구 망원동 1");
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/original/key.jpg");
             given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
@@ -217,7 +225,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("이미지가 없는 스팟의 imageUrl은 null이다")
         void imageUrlNull_whenNoImage() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -240,7 +248,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("로그인 사용자가 스팟 등록자면 isMySpot이 true다")
         void isMySpotTrue_whenUserIsOwner() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -252,7 +260,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("다른 사용자면 isMySpot이 false다")
         void isMySpotFalse_whenDifferentUser() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, 5L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -264,7 +272,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 미제공 시 distanceKm는 null이다")
         void distanceKmNull_whenNoCoordinates() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, 5L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -276,13 +284,55 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("userId가 null이면 isMySpot은 false다")
         void isMySpotFalse_whenUserIdNull() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, 5L, 1.2, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, PUBLISHED_CODE, 5L, 3L, 1.2, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
 
             assertThat(response.isMySpot()).isFalse();
+        }
+
+        @Test
+        @DisplayName("공개되지 않은 남의 스팟은 SPOT_NOT_FOUND를 던진다")
+        void throwsNotFound_whenUnpublishedAndNotOwner() {
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(previewRow(42L, SpotStatus.PENDING));
+
+            assertThatThrownBy(() -> spotQueryService.findSpotPreview(1L, null, null, 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("공개되지 않은 스팟이라도 등록한 본인은 미리보기를 볼 수 있다")
+        void returnsPreview_toOwnerOfUnpublishedSpot() {
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(previewRow(42L, SpotStatus.DRAFT));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, 42L);
+
+            assertThat(response.isMySpot()).isTrue();
+            assertThat(response.isLikeable()).isFalse();
+            assertThat(response.isCurated()).isFalse();
+        }
+
+        @Test
+        @DisplayName("관리자 큐레이션 스팟은 isCurated가 true이고 좋아요가 허용된다")
+        void curatedPreviewIsLikeable() {
+            given(spotMapper.findSpotPreview(1L, null, null)).willReturn(previewRow(null, SpotStatus.PUBLISHED));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, null);
+
+            assertThat(response.isCurated()).isTrue();
+            assertThat(response.isLikeable()).isTrue();
+            assertThat(response.likeCount()).isEqualTo(3L);
+        }
+
+        private SpotPreviewRow previewRow(Long ownerId, SpotStatus status) {
+            return new SpotPreviewRow(1L, "한강공원", "SS", ownerId, status.getCode(), 5L, 3L,
+                null, "서울시 마포구", null, null);
         }
     }
 
@@ -353,12 +403,12 @@ class SpotQueryServiceTest {
         @DisplayName("전체 개수가 다음 페이지 기준을 초과하면 hasNext가 true다")
         void hasNextTrue_whenMorePagesExist() {
             List<SpotRow> rows = List.of(
-                new SpotRow(1L, "스팟A", "SS", 0L, null),
-                new SpotRow(2L, "스팟B", "SS", 0L, null),
-                new SpotRow(3L, "스팟C", "SS", 0L, null),
-                new SpotRow(4L, "스팟D", "SS", 0L, null),
-                new SpotRow(5L, "스팟E", "SS", 0L, null),
-                new SpotRow(6L, "스팟F", "SS", 0L, null)
+                new SpotRow(1L, "스팟A", "SS", 0L, 0L, null),
+                new SpotRow(2L, "스팟B", "SS", 0L, 0L, null),
+                new SpotRow(3L, "스팟C", "SS", 0L, 0L, null),
+                new SpotRow(4L, "스팟D", "SS", 0L, 0L, null),
+                new SpotRow(5L, "스팟E", "SS", 0L, 0L, null),
+                new SpotRow(6L, "스팟F", "SS", 0L, 0L, null)
             );
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(rows);
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(7L);
@@ -406,7 +456,7 @@ class SpotQueryServiceTest {
         @DisplayName("SpotRow의 모든 필드가 SpotItem에 올바르게 매핑된다")
         void mapsSpotRowToSpotItemCorrectly() {
             SpotImage image = SpotImage.create(1L, "key.jpg");
-            SpotRow row = new SpotRow(1L, "한강공원", "SS", 12L, 1.5);
+            SpotRow row = new SpotRow(1L, "한강공원", "SS", 12L, 4L, 1.5);
             given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of(row));
             given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L))).willReturn(List.of(image));
@@ -643,25 +693,169 @@ class SpotQueryServiceTest {
         }
 
         @Test
-        @DisplayName("PENDING/REJECTED 상태의 Spot도 조회된다")
-        void returnsNonPublishedSpot() {
-            Spot pending = Spot.builder()
-                .name("승인대기")
-                .theme(SpotTheme.YUNSEUL)
-                .latitude(37.5)
-                .longitude(127.0)
-                .status(SpotStatus.PENDING)
-                .build();
-            ReflectionTestUtils.setField(pending, "id", 7L);
+        @DisplayName("공개되지 않은 스팟을 비로그인으로 조회하면 존재를 알리지 않도록 SPOT_NOT_FOUND를 던진다")
+        void throwsNotFound_whenUnpublishedAndAnonymous() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.PENDING, 42L)));
 
-            given(spotRepository.findById(7L)).willReturn(Optional.of(pending));
+            assertThatThrownBy(() -> spotQueryService.findSpotDetail(7L, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("공개되지 않은 남의 스팟을 조회하면 SPOT_NOT_FOUND를 던진다")
+        void throwsNotFound_whenUnpublishedAndNotOwner() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.REJECTED, 42L)));
+
+            assertThatThrownBy(() -> spotQueryService.findSpotDetail(7L, 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("공개되지 않은 스팟이라도 등록한 본인은 조회할 수 있다")
+        void returnsUnpublishedSpot_toOwner() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.DRAFT, 42L)));
             given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
             given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
 
-            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, null);
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
 
             assertThat(response.spotId()).isEqualTo(7L);
-            assertThat(response.name()).isEqualTo("승인대기");
+            assertThat(response.status()).isEqualTo(SpotStatus.DRAFT.name());
+            assertThat(response.isMySpot()).isTrue();
+        }
+
+        @Test
+        @DisplayName("공개되지 않은 스팟은 조회수를 올리지 않는다")
+        void doesNotIncrementViewCount_whenUnpublished() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.DRAFT, 42L)));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+
+            spotQueryService.findSpotDetail(7L, 42L);
+
+            then(spotRepository).should(never()).incrementViewCount(any());
+        }
+
+        @Test
+        @DisplayName("등록자 본인의 조회는 조회수 집계에서 제외한다")
+        void doesNotIncrementViewCount_whenOwnerViewsOwnSpot() {
+            Spot spot = buildOwnedSpot(SpotStatus.PUBLISHED, 42L);
+            given(spotRepository.findById(7L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(42L, 7L)).willReturn(Optional.empty());
+            given(spotLikeRepository.findByUserIdAndSpotId(42L, 7L)).willReturn(Optional.empty());
+
+            spotQueryService.findSpotDetail(7L, 42L);
+
+            then(spotRepository).should(never()).incrementViewCount(any());
+        }
+
+        @Test
+        @DisplayName("반려된 내 스팟은 가장 최근 반려 사유가 함께 내려간다")
+        void includesRejectionReason_forOwnRejectedSpot() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.REJECTED, 42L)));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotReviewRepository.findFirstBySpotIdAndDecisionOrderByCreatedAtDesc(7L, ReviewDecision.REJECTED))
+                .willReturn(Optional.of(SpotReview.rejected(7L, 1L, RejectionReason.LOW_QUALITY, null)));
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
+
+            assertThat(response.rejection()).isNotNull();
+            assertThat(response.rejection().reason()).isEqualTo(RejectionReason.LOW_QUALITY.name());
+            assertThat(response.rejection().reasonLabel()).isEqualTo("사진 상태 불량");
+            assertThat(response.rejection().guideMessage())
+                .isEqualTo(RejectionReason.LOW_QUALITY.getGuideMessage());
+        }
+
+        @Test
+        @DisplayName("기타 사유로 반려된 경우 운영자가 입력한 상세 설명을 안내 문구로 사용한다")
+        void usesDetailAsGuideMessage_forEtcReason() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.REJECTED, 42L)));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotReviewRepository.findFirstBySpotIdAndDecisionOrderByCreatedAtDesc(7L, ReviewDecision.REJECTED))
+                .willReturn(Optional.of(SpotReview.rejected(7L, 1L, RejectionReason.ETC, "저작권 확인이 필요해요.")));
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
+
+            assertThat(response.rejection().guideMessage()).isEqualTo("저작권 확인이 필요해요.");
+            assertThat(response.rejection().detail()).isEqualTo("저작권 확인이 필요해요.");
+        }
+
+        @Test
+        @DisplayName("반려 상태가 아니면 반려 사유를 조회하지 않는다")
+        void skipsRejectionLookup_whenNotRejected() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.PUBLISHED, 42L)));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(42L, 7L)).willReturn(Optional.empty());
+            given(spotLikeRepository.findByUserIdAndSpotId(42L, 7L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
+
+            assertThat(response.rejection()).isNull();
+            then(spotReviewRepository).should(never())
+                .findFirstBySpotIdAndDecisionOrderByCreatedAtDesc(any(), any());
+        }
+
+        @Test
+        @DisplayName("관리자 큐레이션 스팟은 isCurated가 true이고 좋아요가 허용된다")
+        void curatedSpotIsLikeable() {
+            given(spotRepository.findById(1L)).willReturn(Optional.of(buildSpot(1L, 37.55, 127.05)));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.isCurated()).isTrue();
+            assertThat(response.isLikeable()).isTrue();
+        }
+
+        @Test
+        @DisplayName("공개되지 않은 내 스팟은 isCurated가 false이고 좋아요가 허용되지 않는다")
+        void unpublishedUserSpotIsNotLikeable() {
+            given(spotRepository.findById(7L)).willReturn(Optional.of(buildOwnedSpot(SpotStatus.DRAFT, 42L)));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
+
+            assertThat(response.isCurated()).isFalse();
+            assertThat(response.isLikeable()).isFalse();
+        }
+
+        @Test
+        @DisplayName("좋아요한 스팟이면 isLiked가 true다")
+        void isLikedTrue_whenLikeExists() {
+            given(spotRepository.findById(1L)).willReturn(Optional.of(buildSpot(1L, 37.55, 127.05)));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(7L, 1L)).willReturn(Optional.empty());
+            given(spotLikeRepository.findByUserIdAndSpotId(7L, 1L))
+                .willReturn(Optional.of(SpotLike.builder().userId(7L).spotId(1L).build()));
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, 7L);
+
+            assertThat(response.isLiked()).isTrue();
+        }
+
+        private Spot buildOwnedSpot(SpotStatus status, Long ownerId) {
+            Spot spot = Spot.builder()
+                .name("내 스팟")
+                .theme(SpotTheme.YUNSEUL)
+                .latitude(37.5)
+                .longitude(127.0)
+                .status(status)
+                .userId(ownerId)
+                .build();
+            ReflectionTestUtils.setField(spot, "id", 7L);
+            return spot;
         }
     }
 

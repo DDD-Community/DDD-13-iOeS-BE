@@ -9,6 +9,7 @@ import com.ioes.photo.domain.savedspot.mapper.SavedSpotMapper;
 import com.ioes.photo.domain.savedspot.mapper.SavedSpotRow;
 import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
@@ -126,11 +127,14 @@ public class SavedSpotService {
             .stream().collect(Collectors.toMap(SpotImage::getSpotId, image -> image));
     }
 
+    // 비공개 전환된 스팟은 이미지를 내리지 않는다. 이름과 좌표는 어떤 스팟을 저장했는지 알 수 있게 남긴다.
     private SavedSpotItem toSavedSpotItem(SavedSpotRow row, Map<Long, SpotImage> imageMap) {
-        String imageUrl = resolveImageUrl(imageMap.get(row.spotId()));
+        boolean isPrivate = !SpotStatus.PUBLISHED.getCode().equals(row.status());
+        String imageUrl = isPrivate ? null : resolveImageUrl(imageMap.get(row.spotId()));
         return new SavedSpotItem(
             row.spotId(), row.name(), row.theme(), imageUrl,
-            row.latitude(), row.longitude(), row.distanceKm(), row.bookmarkCount(), row.savedAt(), row.deleted()
+            row.latitude(), row.longitude(), row.distanceKm(), row.bookmarkCount(),
+            row.savedAt(), row.deleted(), isPrivate
         );
     }
 
