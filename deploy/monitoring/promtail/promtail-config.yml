@@ -27,6 +27,25 @@ scrape_configs:
       - labels:
           level:
 
+  # dev 브랜치 테스트 서버 로그.
+  # ⚠️ 운영과 반드시 다른 job 라벨을 쓴다. Loki 기반 알림 5종이 모두 {job="photo-app"}
+  # 셀렉터를 사용하므로, 같은 라벨로 수집하면 테스트 서버의 에러가 운영 알림을 발생시킨다.
+  - job_name: photo-app-dev-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: photo-app-dev
+          service_name: photo-app-dev
+          __path__: /var/log/app-dev/*.log
+
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+      - labels:
+          level:
+
   - job_name: backup
     static_configs:
       - targets:

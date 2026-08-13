@@ -1,0 +1,100 @@
+name: Deploy (dev test server)
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build & Push image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=dev-latest
+            type=sha,prefix=dev-,format=long
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./photo
+          file: ./photo/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to EC2 (test server)
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy & verify
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          DEV_IMAGE_TAG: dev-${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GHCR_PAT,DEV_IMAGE_TAG
+          script: |
+            set -e
+            cd ${{ secrets.EC2_DEPLOY_PATH }}
+
+            # 운영 배포(deploy-prod.yml)와 달리 git 조작을 하지 않는다.
+            # 같은 체크아웃을 공유하므로 여기서 checkout/reset 하면 운영 설정 파일이 덮어써진다.
+            # 배포 설정 변경은 main 병합 시점에 운영 배포가 반영한다.
+            echo "$GHCR_PAT" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            COMPOSE="docker compose -f docker-compose.yml -f docker-compose.dev.yml"
+            $COMPOSE pull app-dev
+            $COMPOSE up -d app-dev
+
+            # 테스트 서버 전용 헬스체크. nginx 의 dev 가상호스트를 함께 검증한다.
+            for i in $(seq 1 30); do
+              if curl -fsSk -H 'Host: dev-api.pickflow-api.us' https://localhost/healthz > /dev/null 2>&1; then
+                echo "Health check passed (attempt $i)"
+                docker image prune -f
+                exit 0
+              fi
+              echo "Waiting... ($i/30)"
+              sleep 5
+            done
+
+            # 테스트 서버이므로 자동 롤백은 하지 않는다. 실패 상태를 그대로 남겨
+            # 로그로 원인을 확인하고 dev 브랜치에서 고쳐 다시 배포한다.
+            echo "Health check failed after 150s"
+            $COMPOSE logs --tail=100 app-dev
+            exit 1
