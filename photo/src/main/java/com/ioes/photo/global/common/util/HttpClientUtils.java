@@ -155,6 +155,16 @@ public class HttpClientUtils {
             .body(responseType);
     }
 
+    public <T> T patch(String url, Object body, Consumer<HttpHeaders> headersConsumer, Class<T> responseType) {
+        return restClient.patch()
+            .uri(url)
+            .headers(headersConsumer)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(body)
+            .retrieve()
+            .body(responseType);
+    }
+
     public void patch(String url, Object body) {
         restClient.patch()
             .uri(url)

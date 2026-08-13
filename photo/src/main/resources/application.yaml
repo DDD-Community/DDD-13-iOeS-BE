@@ -123,6 +123,11 @@ app:
   share:
     base-url: ${SHARE_BASE_URL:https://pickflow-api.us}   # og:url 생성용 외부 도메인
 
+  # 노션 운영 지표 동기화 (매일 06시) — 미설정 시 스케줄러 스킵
+  notion:
+    token: ${NOTION_TOKEN:}
+    database-id: ${NOTION_DATABASE_ID:}
+
   # 비동기 스레드 풀
   async:
     core-pool-size: 4
