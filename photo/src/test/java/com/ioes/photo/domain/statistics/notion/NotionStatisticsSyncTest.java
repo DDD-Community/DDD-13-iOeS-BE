@@ -50,8 +50,8 @@ class NotionStatisticsSyncTest {
         verify(httpClientUtils, never()).patch(any(), any(), any(), eq(JsonNode.class));
 
         assertThat(properties(body.getValue())).containsKey("일자");
-        assertThat(number(body.getValue(), "신규가입_카카오")).isEqualTo(3);
-        assertThat(number(body.getValue(), "저장사용유저비율")).isEqualTo(0.5);
+        assertThat(number(body.getValue(), "신규가입_카카오").longValue()).isEqualTo(3L);
+        assertThat(number(body.getValue(), "저장사용유저비율").doubleValue()).isEqualTo(0.5);
     }
 
     @Test
