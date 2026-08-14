@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
  * spots와 1:1 관계를 공유 PK(spot_id)로 표현한다.
  * imageSourceType이 INTERNAL이면 image_key는 자사 S3/MinIO 객체 키이며 URL은 조회 시점에 동적 생성한다.
  * EXTERNAL이면 image_key에 외부 호스팅 URL을 그대로 저장하며 조회 시에도 그 URL을 그대로 반환한다(hotlink).
+ * EXTERNAL 행은 이 엔티티가 만들지 않으며, 데이터 적재용 SQL이 직접 세팅한 값을 읽기만 한다.
  *
  * @author 황제연
  */
@@ -65,26 +66,20 @@ public class SpotImage {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    private SpotImage(Long spotId, String imageKey, String originalFilename, String contentType,
-                       ImageSourceType imageSourceType) {
+    private SpotImage(Long spotId, String imageKey, String originalFilename, String contentType) {
         this.spotId = spotId;
         this.imageKey = imageKey;
         this.originalFilename = originalFilename;
         this.contentType = contentType;
-        this.imageSourceType = imageSourceType;
+        this.imageSourceType = ImageSourceType.INTERNAL;
     }
 
     public static SpotImage create(Long spotId, String imageKey) {
-        return new SpotImage(spotId, imageKey, null, null, ImageSourceType.INTERNAL);
+        return new SpotImage(spotId, imageKey, null, null);
     }
 
     public static SpotImage create(Long spotId, String imageKey, String originalFilename, String contentType) {
-        return new SpotImage(spotId, imageKey, originalFilename, contentType, ImageSourceType.INTERNAL);
-    }
-
-    // 외부 호스팅 이미지 연동(hotlink). 자사 스토리지 업로드나 썸네일 생성을 하지 않는다.
-    public static SpotImage createExternal(Long spotId, String externalUrl) {
-        return new SpotImage(spotId, externalUrl, null, null, ImageSourceType.EXTERNAL);
+        return new SpotImage(spotId, imageKey, originalFilename, contentType);
     }
 
     public boolean isExternal() {
@@ -93,10 +88,6 @@ public class SpotImage {
 
     public void updateImageKey(String imageKey) {
         this.imageKey = imageKey;
-    }
-
-    public void updateImageSourceType(ImageSourceType imageSourceType) {
-        this.imageSourceType = imageSourceType;
     }
 
     public void updateThumbnailKey(String thumbnailKey) {
