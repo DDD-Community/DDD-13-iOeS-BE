@@ -7,6 +7,10 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
+      # 운영과 같은 Redis 인스턴스를 공유하므로 논리 DB 를 분리한다.
+      # 토큰 키 prefix(refresh:/blacklist: 등)가 프로필과 무관하게 동일해,
+      # 같은 DB 를 쓰면 같은 유저의 리프레시 토큰이 서로 덮어써진다.
+      database: 1
   datasource:
     url: ${TEST_DB_URL:jdbc:postgresql://postgres:5432/photo}
     username: ${TEST_DB_USERNAME}
@@ -35,6 +39,12 @@ spring:
 app:
   storage:
     env: test
+
+  # 운영과 외부 API 서비스키를 공유하므로 테스트 서버에서는 수집을 돌리지 않는다.
+  # 켜야 할 경우 dev 전용 서비스키를 발급받아 .env 에 주입한 뒤 true 로 변경한다.
+  spotinfo:
+    collect:
+      enabled: false
 
   jwt:
     secret: ${JWT_SECRET}
