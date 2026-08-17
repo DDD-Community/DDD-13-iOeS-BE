@@ -5,8 +5,11 @@ on:
     branches: [dev]
   workflow_dispatch:
 
+# 운영 배포와 같은 그룹을 쓴다. 한 EC2 를 공유하므로 두 배포가 겹치면
+# 2 vCPU 에서 JVM 두 개가 동시에 재기동되고, 운영 헬스체크가 그 부하로 실패할 수 있다.
+# 겹치면 취소가 아니라 큐잉되도록 cancel-in-progress 는 false 로 둔다.
 concurrency:
-  group: deploy-dev
+  group: deploy-ec2
   cancel-in-progress: false
 
 env:

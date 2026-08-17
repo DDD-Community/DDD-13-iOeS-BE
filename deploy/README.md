@@ -309,15 +309,25 @@ sudo chown -R 1000:1000 logs-dev
 #    DB/프로필 관련 값은 docker-compose.dev.yml 의 environment 가 덮으므로 그대로 둬도 된다.
 cp .env .env.dev
 chmod 600 .env.dev
+
+#    노션 지표 동기화는 운영에서만 돈다. 값을 비워 두면 스케줄러가 스킵한다.
+#    비우지 않으면 테스트 서버가 매일 06시에 photo_dev(빈 DB) 집계로
+#    운영 노션 페이지를 덮어쓴다(upsert 가 날짜로 찾아 PATCH 한다).
+sed -i -E 's#^([[:space:]]*)NOTION_(TOKEN|DATABASE_ID)=.*#\1NOTION_\2=#' .env.dev
+
 vi .env.dev
 ```
 
 `.env.dev`에서 반드시 운영과 다르게 둘 값:
 
-- `JWT_SECRET` — **새로 생성**(`openssl rand -base64 64`). 같은 값이면 운영 토큰이 테스트 서버에서 그대로 통합니다
+- `JWT_SECRET` — **새로 생성**. `JwtProvider`가 `Decoders.BASE64URL`로 디코딩하므로 base64url 이어야 합니다:
+  `openssl rand -base64 64 | tr -d '\n' | tr '+/' '-_' | tr -d '='`
+  같은 값이면 운영 토큰이 테스트 서버에서 그대로 통합니다
 - `SHARE_BASE_URL=https://dev-api.pickflow-api.us` — `.env.example`에 없는 항목이라 **줄을 새로 추가**해야 합니다.
   누락하면 테스트 서버가 만든 공유 링크의 `og:url`이 운영 도메인을 가리킵니다
 - `SPRING_PROFILES_ACTIVE=test` — compose 가 어차피 덮어쓰지만 혼동을 줄이기 위해 맞춰 둡니다
+
+- `NOTION_TOKEN` / `NOTION_DATABASE_ID` — **반드시 빈 값**(위 `sed` 가 처리). 값이 있으면 테스트 서버가 운영 지표를 덮어씁니다
 
 `REDIS_PASSWORD`·`POSTGRES_*`·`S3_*`·외부 API 키는 공유 자원에 접속하므로 운영과 **같은 값**을 그대로 둡니다.
 S3 는 같은 버킷을 쓰되 `app.storage.env=test` 라 객체 키가 `test/` prefix 로 분리됩니다.

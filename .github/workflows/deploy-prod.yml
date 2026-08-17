@@ -5,8 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 테스트 서버 배포(deploy-dev.yml)와 같은 그룹. 한 EC2 를 공유하므로 동시 실행을 막는다.
 concurrency:
-  group: deploy-prod
+  group: deploy-ec2
   cancel-in-progress: false
 
 env:
