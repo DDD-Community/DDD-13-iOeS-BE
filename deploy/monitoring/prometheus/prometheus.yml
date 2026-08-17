@@ -11,6 +11,17 @@ scrape_configs:
       - targets:
           - app:8080
 
+  # dev 브랜치 테스트 서버.
+  # ⚠️ 운영과 반드시 다른 job 명을 쓴다. 앱 다운 알림이 up{job="spring-boot-app"} 을
+  # instance 필터 없이 평가하므로, 같은 job 에 타겟만 추가하면 테스트 서버를 재배포할 때마다
+  # 운영 장애 알림이 Discord 로 발송된다.
+  # 테스트 서버 미기동 시에는 이 job 이 down 으로 남을 뿐 알림 대상이 아니다.
+  - job_name: spring-boot-app-dev
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets:
+          - app-dev:8080
+
   - job_name: node-exporter
     static_configs:
       - targets:

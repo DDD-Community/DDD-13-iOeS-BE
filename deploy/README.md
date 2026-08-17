@@ -269,6 +269,108 @@ curl https://pickflow-api.us/healthz
 
 ---
 
+## dev 테스트 서버
+
+`dev` 브랜치를 운영 EC2의 잔여 리소스에 함께 올려 앱 팀 검증용으로 운영합니다.
+컨테이너는 `photo-app-dev` **하나만** 추가하고 postgres/redis/nginx/모니터링은 운영 스택을 공유합니다.
+t3.medium(약 3.8GB)에 두 번째 DB·JVM 세트를 올릴 여유가 없기 때문입니다.
+
+| 자원 | 운영 | 테스트 서버 |
+|---|---|---|
+| 도메인 | `pickflow-api.us` | `dev-api.pickflow-api.us` |
+| 컨테이너 | `photo-app` (`mem_limit` 1300m) | `photo-app-dev` (900m) |
+| Spring 프로필 | `prod` | `test` |
+| DB | `photo` | `photo_dev` (같은 postgres 인스턴스) |
+| Redis | 논리 DB `0` | 논리 DB `1` (같은 인스턴스) |
+| S3 키 prefix | `prod/` | `test/` |
+| 이미지 태그 | `prod-latest` / `prod-<sha>` | `dev-latest` / `dev-<sha>` |
+| Prometheus job | `spring-boot-app` | `spring-boot-app-dev` |
+| Loki job 라벨 | `photo-app` | `photo-app-dev` |
+| 외부 API 수집 | 활성 | **비활성** (`app.spotinfo.collect.enabled=false`) |
+
+> 모니터링 job 이름과 로그 라벨을 분리한 이유는 알림 오탐 방지입니다. 앱 다운 알림이
+> `up{job="spring-boot-app"}` 을 instance 필터 없이 평가하고, Loki 알림 5종이 모두
+> `{job="photo-app"}` 셀렉터를 쓰기 때문에, 같은 라벨을 쓰면 테스트 서버를 재배포할 때마다
+> 운영 장애 알림이 Discord 로 발송됩니다.
+
+### 최초 1회 준비 (서버 수작업)
+
+```bash
+cd <레포>/deploy
+
+# 1) 테스트용 DB 생성 (운영과 같은 postgres 인스턴스, 데이터베이스만 분리)
+#    작은따옴표를 써서 컨테이너 안에서 $POSTGRES_USER 가 치환되게 한다.
+#    (큰따옴표면 호스트 셸이 빈 값으로 치환해 psql -U 가 깨진다)
+#    postgis extension 은 Flyway V1 이 CREATE EXTENSION IF NOT EXISTS 로 처리하므로 생략한다.
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -c "CREATE DATABASE photo_dev;"'
+
+# 2) 로그 디렉토리 (컨테이너 photo 사용자 uid=1000)
+mkdir -p logs-dev
+sudo chown -R 1000:1000 logs-dev
+
+# 3) 테스트 서버 환경변수. 운영 .env 와 별도 파일이다.
+#    .env.example(빈 템플릿)보다 운영 .env 를 복사해 다른 값만 바꾸는 편이 누락이 적다.
+#    DB/프로필 관련 값은 docker-compose.dev.yml 의 environment 가 덮으므로 그대로 둬도 된다.
+cp .env .env.dev
+chmod 600 .env.dev
+
+#    노션 지표 동기화는 운영에서만 돈다. 값을 비워 두면 스케줄러가 스킵한다.
+#    비우지 않으면 테스트 서버가 매일 06시에 photo_dev(빈 DB) 집계로
+#    운영 노션 페이지를 덮어쓴다(upsert 가 날짜로 찾아 PATCH 한다).
+sed -i -E 's#^([[:space:]]*)NOTION_(TOKEN|DATABASE_ID)=.*#\1NOTION_\2=#' .env.dev
+
+vi .env.dev
+```
+
+`.env.dev`에서 반드시 운영과 다르게 둘 값:
+
+- `JWT_SECRET` — **새로 생성**. `JwtProvider`가 `Decoders.BASE64URL`로 디코딩하므로 base64url 이어야 합니다:
+  `openssl rand -base64 64 | tr -d '\n' | tr '+/' '-_' | tr -d '='`
+  같은 값이면 운영 토큰이 테스트 서버에서 그대로 통합니다
+- `SHARE_BASE_URL=https://dev-api.pickflow-api.us` — `.env.example`에 없는 항목이라 **줄을 새로 추가**해야 합니다.
+  누락하면 테스트 서버가 만든 공유 링크의 `og:url`이 운영 도메인을 가리킵니다
+- `SPRING_PROFILES_ACTIVE=test` — compose 가 어차피 덮어쓰지만 혼동을 줄이기 위해 맞춰 둡니다
+
+- `NOTION_TOKEN` / `NOTION_DATABASE_ID` — **반드시 빈 값**(위 `sed` 가 처리). 값이 있으면 테스트 서버가 운영 지표를 덮어씁니다
+
+`REDIS_PASSWORD`·`POSTGRES_*`·`S3_*`·외부 API 키는 공유 자원에 접속하므로 운영과 **같은 값**을 그대로 둡니다.
+S3 는 같은 버킷을 쓰되 `app.storage.env=test` 라 객체 키가 `test/` prefix 로 분리됩니다.
+
+마지막으로 Cloudflare DNS에 A 레코드 `dev-api`(IP = EC2 EIP, 프록시됨 ON)를 추가합니다.
+인증서는 운영 Origin Cert가 `*.pickflow-api.us`를 포함하므로 추가 발급이 필요 없습니다.
+
+### 배포
+
+`dev` 브랜치에 push하면 `deploy-dev.yml`이 이미지를 빌드해 배포합니다. 수동으로 할 때는:
+
+```bash
+cd <레포>/deploy
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.dev.yml"
+
+$COMPOSE pull app-dev
+$COMPOSE up -d app-dev
+$COMPOSE logs -f app-dev
+
+# 헬스체크
+curl -H 'Host: dev-api.pickflow-api.us' https://localhost/healthz -k
+```
+
+운영 배포(`deploy-prod.yml`)는 EC2에서 `git reset --hard`를 수행하므로, 테스트 서버 배포는
+git을 건드리지 않습니다. **배포 설정 파일 변경은 `main` 병합 시점에만 서버에 반영됩니다.**
+
+### 주의사항
+
+- **외부 API 수집이 꺼져 있어** 테스트 서버의 스팟 상세에는 날씨·혼잡도가 비어 보입니다.
+  운영과 서비스키를 공유해 호출량이 두 배가 되면 일일 트래픽 한도를 넘겨 운영 수집까지 실패하기 때문입니다.
+  해당 화면을 검증해야 하면 dev 전용 서비스키를 발급받아 `.env.dev`에 넣고 프로필 설정을 켜세요.
+- **카카오 탈퇴(연동 해제)는 테스트 전용 계정으로만** 하세요. 카카오 앱이 하나뿐이라
+  `KAKAO_ADMIN_KEY` 기준으로 동작하며, 테스트 서버에서 탈퇴하면 그 계정의 운영 연동도 끊깁니다.
+- `photo_dev`는 백업 대상이 아닙니다(`backup-db.sh`는 운영 DB만 처리). 테스트 데이터이므로 의도된 동작입니다.
+- 테스트 서버 컨테이너가 없어도 운영 nginx는 정상 기동합니다. dev 가상호스트는 upstream을 변수로 두어
+  요청 시점에 해석하므로, 테스트 서버가 죽어 있으면 502만 응답합니다.
+
+---
+
 ## 트러블슈팅
 
 | 증상 | 원인 / 조치 |
