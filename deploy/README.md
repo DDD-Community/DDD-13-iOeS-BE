@@ -48,9 +48,13 @@ Docker Compose 기반으로 **Nginx + Spring Boot + PostgreSQL + Redis** 스택�
 | Swagger UI | 노출 (`/api/swagger-ui.html`) | 차단 |
 | 앱 로그 레벨 | DEBUG | INFO |
 | `show-sql` | true | false |
-| Actuator endpoints | health, info, metrics, env | health 만 |
-| 헬스 상세 | always | never |
-| DDL | update | update (이후 Flyway 도입 시 validate) |
+| Actuator endpoints | health, info, metrics, prometheus | health, prometheus |
+| 비로그인 허용 actuator | health, prometheus | health, prometheus |
+| 헬스 상세 | when-authorized | never |
+| DDL | validate | validate |
+
+> actuator 경로(`/api/actuator/`)는 nginx에서 외부 접근을 차단합니다. 헬스 확인은 `/healthz`,
+> 메트릭 수집은 Prometheus 컨테이너가 내부 네트워크로 직접 스크레이프합니다.
 
 **테스트 서버 EC2의 `.env`**:
 
@@ -89,7 +93,7 @@ docker compose up -d --build
 docker compose logs -f app
 
 # 헬스체크
-curl http://localhost/api/actuator/health
+curl http://localhost/healthz
 # → {"status":"UP"}
 ```
 
@@ -182,7 +186,7 @@ docker compose logs -f app
 모든 서비스가 `healthy` 상태가 되면 접속 가능:
 
 ```bash
-curl http://<EC2_PUBLIC_IP>/api/actuator/health
+curl http://<EC2_PUBLIC_IP>/healthz
 ```
 
 ### 6) 운영 명령어
@@ -254,7 +258,7 @@ docker compose logs nginx   # 에러 없는지 확인
 ### 4) 검증
 
 ```bash
-curl https://pickflow-api.us/api/actuator/health
+curl https://pickflow-api.us/healthz
 # → {"status":"UP"}
 ```
 
