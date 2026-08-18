@@ -180,15 +180,39 @@ class SpotQueryServiceTest {
         }
 
         @Test
-        @DisplayName("theme 필터를 mapper에 코드값으로 전달한다")
+        @DisplayName("theme 필터를 mapper에 코드값 리스트로 전달한다")
         void passesThemeCodeToMapper() {
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, SpotTheme.SUNSET.getCode()))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode())))
                 .willReturn(List.of());
 
-            spotQueryService.findSpotsInViewport(viewport, SpotTheme.SUNSET, null);
+            spotQueryService.findSpotsInViewport(viewport, List.of(SpotTheme.SUNSET), null);
 
             then(spotMapper).should()
-                .findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, SpotTheme.SUNSET.getCode());
+                .findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()));
+        }
+
+        @Test
+        @DisplayName("theme을 여러 개 선택하면 mapper에 코드값 리스트가 순서대로 전달된다")
+        void passesMultipleThemeCodesToMapper() {
+            given(spotMapper.findSpotsInViewport(
+                37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode())))
+                .willReturn(List.of());
+
+            spotQueryService.findSpotsInViewport(viewport, List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL), null);
+
+            then(spotMapper).should().findSpotsInViewport(
+                37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode()));
+        }
+
+        @Test
+        @DisplayName("theme이 빈 리스트면 mapper에는 필터 없음(null)으로 전달된다")
+        void passesNullToMapper_whenThemeListEmpty() {
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null))
+                .willReturn(List.of());
+
+            spotQueryService.findSpotsInViewport(viewport, List.of(), null);
+
+            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null);
         }
     }
 
@@ -388,15 +412,40 @@ class SpotQueryServiceTest {
         }
 
         @Test
-        @DisplayName("테마 필터가 있으면 mapper에 테마 코드를 전달한다")
+        @DisplayName("테마 필터가 있으면 mapper에 테마 코드 리스트를 전달한다")
         void passesThemeCodeToMapper() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode())).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()))).willReturn(0L);
 
-            spotQueryService.findSpots(0, SpotTheme.SUNSET, null, null, SortType.RECOMMENDED, null);
+            spotQueryService.findSpots(0, List.of(SpotTheme.SUNSET), null, null, SortType.RECOMMENDED, null);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, SpotTheme.SUNSET.getCode(), null, null, 0, 6, SortType.RECOMMENDED.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null, 0, 6, SortType.RECOMMENDED.getCode());
+        }
+
+        @Test
+        @DisplayName("테마를 여러 개 선택하면 mapper에 테마 코드 리스트가 순서대로 전달된다")
+        void passesMultipleThemeCodesToMapper() {
+            List<String> codes = List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode());
+            given(spotMapper.findSpots(PUBLISHED_CODE, codes, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+                .willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, codes)).willReturn(0L);
+
+            spotQueryService.findSpots(0, List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL), null, null, SortType.RECOMMENDED, null);
+
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, codes, null, null, 0, 6, SortType.RECOMMENDED.getCode());
+        }
+
+        @Test
+        @DisplayName("테마가 빈 리스트면 mapper에는 필터 없음(null)으로 전달된다")
+        void passesNullToMapper_whenThemeListEmpty() {
+            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+                .willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, null)).willReturn(0L);
+
+            spotQueryService.findSpots(0, List.of(), null, null, SortType.RECOMMENDED, null);
+
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
