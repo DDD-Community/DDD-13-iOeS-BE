@@ -20,10 +20,12 @@ public record SpotListResponse(
     public record SpotItem(
         @Schema(description = "스팟 ID") Long spotId,
         @Schema(description = "스팟 이름") String name,
-        @Schema(description = "테마 (SUNSET=노을, YUNSEUL=윤슬)") String theme,
+        @Schema(description = "테마 코드 (SS=노을, YS=윤슬, SL=햇살, NV=야경)") String theme,
         @Schema(description = "썸네일 이미지 URL") String thumbnailUrl,
         @Schema(description = "사용자 위치 기준 거리(km), 위치 미전달 시 null") @TruncateDecimal Double distanceKm,
         @Schema(description = "북마크 수") long bookmarkCount,
-        @Schema(description = "북마크 여부 (비로그인 시 false)") boolean isBookmarked
+        @Schema(description = "북마크 여부 (비로그인 시 false)") boolean isBookmarked,
+        @Schema(description = "좋아요(추천) 수") long likeCount,
+        @Schema(description = "좋아요 여부 (비로그인 시 false)") boolean isLiked
     ) {}
 }

@@ -16,7 +16,15 @@ public enum SpotErrorCode implements ErrorCode {
 
     SPOT_NOT_FOUND("SP001", "존재하지 않는 스팟입니다.", HttpStatus.NOT_FOUND),
     SPOT_NOT_PUBLISHED("SP002", "아직 승인되지 않은 스팟입니다. 승인되지 않은 스팟은 신고할 수 없습니다.", HttpStatus.BAD_REQUEST),
-    SPOT_DELETED("SP003", "삭제된 스팟은 북마크로 지정할 수 없습니다.", HttpStatus.BAD_REQUEST);
+    SPOT_DELETED("SP003", "삭제된 스팟은 북마크로 지정할 수 없습니다.", HttpStatus.BAD_REQUEST),
+    SPOT_ALREADY_REVIEWED("SP004", "이미 처리된 스팟입니다.", HttpStatus.CONFLICT),
+    SPOT_NOT_OPENABLE("SP005", "오픈 신청할 수 없는 상태의 스팟입니다.", HttpStatus.BAD_REQUEST),
+    SPOT_REJECTION_REASON_REQUIRED("SP006", "반려 사유를 선택해야 합니다.", HttpStatus.BAD_REQUEST),
+    SPOT_REJECTION_DETAIL_REQUIRED("SP007", "기타 사유는 상세 설명을 입력해야 합니다.", HttpStatus.BAD_REQUEST),
+    SPOT_ACCESS_DENIED("SP008", "본인이 등록한 스팟만 처리할 수 있습니다.", HttpStatus.FORBIDDEN),
+    SPOT_NOT_CANCELABLE("SP009", "공개 상태를 해제할 수 없는 스팟이에요.", HttpStatus.BAD_REQUEST),
+    SPOT_NOT_EDITABLE("SP010", "검수 중이거나 공개된 스팟은 수정할 수 없어요. 오픈을 취소한 뒤 수정해주세요.", HttpStatus.BAD_REQUEST),
+    SPOT_NOT_DELETABLE("SP011", "검수 중인 스팟은 삭제할 수 없어요. 오픈 신청을 먼저 취소해주세요.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

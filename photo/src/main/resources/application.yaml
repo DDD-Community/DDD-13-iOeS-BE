@@ -73,6 +73,14 @@ app:
     connect-timeout: 5000       # ms
     read-timeout: 30000         # ms
 
+  # 스팟 부가정보(날씨/천문/혼잡도) 수집 스위치.
+  # false 로 두면 수집 스케줄러와 기동 시 초기 수집 빈이 생성되지 않는다.
+  # 운영과 외부 API 서비스키를 공유하는 환경(테스트 서버)에서 호출량이 두 배가 되어
+  # 일일 트래픽 한도를 소진하는 것을 막기 위한 설정이다.
+  spotinfo:
+    collect:
+      enabled: true
+
   # 기상청 단기예보 수집
   weather:
     # 발표 시각으로부터 조회 가능해지기까지 지연(분). 운영 중 실측에 따라 조정 가능.
@@ -123,6 +131,11 @@ app:
   share:
     base-url: ${SHARE_BASE_URL:https://pickflow-api.us}   # og:url 생성용 외부 도메인
 
+  # 노션 운영 지표 동기화 (매일 06시) — 미설정 시 스케줄러 스킵
+  notion:
+    token: ${NOTION_TOKEN:}
+    database-id: ${NOTION_DATABASE_ID:}
+
   # 비동기 스레드 풀
   async:
     core-pool-size: 4
@@ -150,6 +163,22 @@ app:
       - /v1/address/**
       - /v1/app/config/**
       - /v1/share/**
+
+  # CORS 허용 (어드민 웹 도메인) — Origin은 스킴+호스트+포트만, 끝 슬래시/경로 불가
+  # 어드민 프론트는 모든 환경(운영 포함)의 서버를 보고 로컬 개발하므로 localhost도 전 프로필 공통 허용.
+  # 자격증명 미전송(allowCredentials 미설정=false)이라 브라우저가 쿠키/Authorization 을 자동으로 싣지 않는다.
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - https://pickflow-admin.vercel.app
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    max-age: 3600
 
   #  Swagger / OpenAPI
   swagger:
@@ -321,7 +350,7 @@ app:
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper,com.ioes.photo.domain.statistics.mapper
   configuration:
     map-underscore-to-camel-case: true
     jdbc-type-for-null: NULL

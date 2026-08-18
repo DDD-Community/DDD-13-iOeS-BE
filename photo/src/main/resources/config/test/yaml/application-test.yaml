@@ -7,6 +7,10 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
+      # 운영과 같은 Redis 인스턴스를 공유하므로 논리 DB 를 분리한다.
+      # 토큰 키 prefix(refresh:/blacklist: 등)가 프로필과 무관하게 동일해,
+      # 같은 DB 를 쓰면 같은 유저의 리프레시 토큰이 서로 덮어써진다.
+      database: 1
   datasource:
     url: ${TEST_DB_URL:jdbc:postgresql://postgres:5432/photo}
     username: ${TEST_DB_USERNAME}
@@ -36,6 +40,12 @@ app:
   storage:
     env: test
 
+  # 운영과 외부 API 서비스키를 공유하므로 테스트 서버에서는 수집을 돌리지 않는다.
+  # 켜야 할 경우 dev 전용 서비스키를 발급받아 .env 에 주입한 뒤 true 로 변경한다.
+  spotinfo:
+    collect:
+      enabled: false
+
   jwt:
     secret: ${JWT_SECRET}
 
@@ -50,23 +60,20 @@ app:
       private-key: ${APPLE_PRIVATE_KEY}
       client-secret-ttl-ms: 600000
 
+  # 프로필별 목록은 병합이 아니라 전체 치환이므로, 공통 application.yaml 목록을 그대로 옮겨 적고
+  # 테스트 서버에만 필요한 항목을 더한다. public-get-urls 는 공통 목록과 동일해 재정의하지 않는다.
   security:
     public-urls:
       - /swagger-ui/**
       - /api-docs/**
       - /swagger-ui.html
-      - /actuator/**
+      - /actuator/health
+      # Prometheus 컨테이너가 내부 네트워크로 스크레이프한다. 외부 접근은 nginx 에서 차단.
+      - /actuator/prometheus
       - /v1/auth/kakao
       - /v1/auth/apple
       - /v1/auth/refresh
       - /v1/users/restore
-      - /v1/internal/**
-    public-get-urls:
-      - /v1/spots
-      - /v1/spots/**
-      - /v1/bbs/posts
-      - /v1/bbs/posts/**
-      - /v1/address/**
 
 logging:
   config: classpath:config/test/logback/logback-test.xml
@@ -82,11 +89,15 @@ server:
 management:
   endpoints:
     web:
+      # env 는 서버 환경 프로퍼티를 그대로 반환하므로 노출하지 않는다.
+      # info/metrics 는 노출하되 public-urls 에 없어 인증된 요청만 접근 가능하다.
       exposure:
-        include: health,info,metrics,env,prometheus
+        include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      # health 는 비로그인 허용이라 always 로 두면 DB/Redis 연결 상태와 오류 메시지가 그대로 공개된다.
+      # 인증된 요청에만 상세를 노출해 디버깅 편의는 유지한다.
+      show-details: when-authorized
       probes:
         enabled: true
 

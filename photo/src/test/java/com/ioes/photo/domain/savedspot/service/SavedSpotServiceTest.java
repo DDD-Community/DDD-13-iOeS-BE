@@ -9,11 +9,12 @@ import com.ioes.photo.domain.savedspot.mapper.SavedSpotRow;
 import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spot.service.SpotThumbnailService;
 import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ class SavedSpotServiceTest {
     @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
     @Mock SpotRepository spotRepository;
     @Mock SpotImageRepository spotImageRepository;
-    @Mock StorageService storageService;
+    @Mock SpotThumbnailService spotThumbnailService;
     @Mock SavedSpotMapper savedSpotMapper;
 
     @InjectMocks SavedSpotService savedSpotService;
@@ -256,14 +257,14 @@ class SavedSpotServiceTest {
         }
 
         @Test
-        @DisplayName("조회된 스팟의 imageUrl은 StorageService.getUrl 결과다")
-        void imageUrlIsFromStorageService() {
+        @DisplayName("조회된 스팟의 imageUrl은 SpotThumbnailService.getImageUrl 결과다")
+        void imageUrlIsFromSpotThumbnailService() {
             SavedSpotRow row = buildRow(SPOT_ID, false);
             SpotImage image = SpotImage.create(SPOT_ID, "spots/1/image.jpg");
             given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
             given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of(image));
-            given(storageService.getUrl("spots/1/image.jpg")).willReturn("https://cdn.example.com/image.jpg");
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/image.jpg");
 
             SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
 
@@ -295,6 +296,49 @@ class SavedSpotServiceTest {
             SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
 
             assertThat(response.spots().get(0).deleted()).isTrue();
+        }
+
+        @Test
+        @DisplayName("공개 상태의 스팟은 isPrivate이 false다")
+        void isPrivateFalse_whenPublished() {
+            SavedSpotRow row = buildRow(SPOT_ID, false);
+            given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).isPrivate()).isFalse();
+        }
+
+        @Test
+        @DisplayName("등록자가 비공개로 전환한 스팟도 목록에는 남되 isPrivate이 true로 표기된다")
+        void isPrivateTrue_whenOwnerUnpublished() {
+            SavedSpotRow row = buildRow(SPOT_ID, false, SpotStatus.DRAFT);
+            given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots()).hasSize(1);
+            assertThat(response.spots().get(0).isPrivate()).isTrue();
+            assertThat(response.spots().get(0).name()).isEqualTo("테스트스팟");
+        }
+
+        @Test
+        @DisplayName("비공개로 전환된 스팟의 이미지는 내려주지 않는다")
+        void imageUrlIsMasked_whenPrivate() {
+            SavedSpotRow row = buildRow(SPOT_ID, false, SpotStatus.DRAFT);
+            SpotImage image = SpotImage.create(SPOT_ID, "spots/1/image.jpg");
+            given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of(image));
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).imageUrl()).isNull();
+            then(spotThumbnailService).should(never()).getImageUrl(any());
         }
 
         @Test
@@ -347,6 +391,11 @@ class SavedSpotServiceTest {
     }
 
     private SavedSpotRow buildRow(Long spotId, boolean deleted) {
-        return new SavedSpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, 0L, LocalDateTime.now(), deleted);
+        return buildRow(spotId, deleted, SpotStatus.PUBLISHED);
+    }
+
+    private SavedSpotRow buildRow(Long spotId, boolean deleted, SpotStatus status) {
+        return new SavedSpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, 0L,
+            status.getCode(), LocalDateTime.now(), deleted);
     }
 }

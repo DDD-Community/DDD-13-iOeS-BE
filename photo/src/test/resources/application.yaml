@@ -130,6 +130,7 @@ app:
   cors:
     allowed-origins:
       - http://localhost:3000
+      - https://pickflow-admin.vercel.app
     allowed-methods:
       - GET
       - POST
@@ -149,6 +150,13 @@ app:
       request-uri: uri
       method: method
       client-ip: clientIp
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.ioes.photo.domain.spot.mapper,com.ioes.photo.domain.savedspot.mapper,com.ioes.photo.domain.myspot.mapper,com.ioes.photo.domain.statistics.mapper
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: NULL
 
 logging:
   level:

@@ -1,6 +1,8 @@
 package com.ioes.photo.domain.spot.service;
 
 import com.ioes.photo.domain.spot.dto.SpotDetailResponse;
+import com.ioes.photo.domain.spot.dto.SpotDetailResponse.RejectionInfo;
+import com.ioes.photo.domain.spot.dto.SpotDetailResponse.SpotDetailFlags;
 import com.ioes.photo.domain.spot.dto.SpotListResponse;
 import com.ioes.photo.domain.spot.dto.SpotListResponse.SpotItem;
 import com.ioes.photo.domain.spot.dto.SpotPreviewResponse;
@@ -9,6 +11,7 @@ import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.ReviewDecision;
 import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
@@ -20,6 +23,8 @@ import com.ioes.photo.domain.spot.mapper.SpotViewportRow;
 import com.ioes.photo.domain.savedspot.repository.SavedSpotArchiveRepository;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
+import com.ioes.photo.domain.spotlike.repository.SpotLikeRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
 import com.ioes.photo.domain.user.repository.UserRepository;
@@ -30,6 +35,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 스팟 조회 서비스.
@@ -46,13 +52,27 @@ public class SpotQueryService {
     private final SpotImageRepository spotImageRepository;
     private final SpotInfoRepository spotInfoRepository;
     private final SavedSpotArchiveRepository savedSpotArchiveRepository;
+    private final SpotLikeRepository spotLikeRepository;
+    private final SpotReviewRepository spotReviewRepository;
     private final SpotThumbnailService spotThumbnailService;
     private final SpotMapper spotMapper;
     private final UserRepository userRepository;
 
+    // 비공개 스팟에 403 이 아니라 404 를 주는 이유는, 403 이 그 ID 의 스팟 존재 자체를 알려주기 때문이다.
+    @Transactional
     public SpotDetailResponse findSpotDetail(Long spotId, Long userId) {
         Spot spot = spotRepository.findById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
+
+        boolean owner = spot.isOwnedBy(userId);
+        if (!spot.isPublished() && !owner) {
+            throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        // 소유자의 자가 조회는 집계에서 제외한다.
+        if (spot.isPublished() && !owner) {
+            spotRepository.incrementViewCount(spotId);
+        }
 
         SpotImage spotImage = spotImageRepository.findById(spotId).orElse(null);
         SpotInfo spotInfo = spotInfoRepository.findById(spotId).orElse(null);
@@ -63,10 +83,25 @@ public class SpotQueryService {
 
         boolean isBookmarked = userId != null
             && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
-        Long resolvedUploaderId = resolveActiveUploaderId(spot.getUserId());
-        boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
+        boolean isLiked = userId != null
+            && spotLikeRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
+        boolean isMySpot = owner && resolveActiveUploaderId(spot.getUserId()) != null;
 
-        return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl, isBookmarked, isMySpot);
+        SpotDetailFlags flags =
+            new SpotDetailFlags(isBookmarked, isMySpot, isLiked, resolveRejection(spot, owner));
+
+        return SpotDetailResponse.of(spot, spotImage, spotInfo, imageUrl, flags);
+    }
+
+    // 반려 사유는 운영 판단 근거라서 소유자에게만 노출한다.
+    private RejectionInfo resolveRejection(Spot spot, boolean owner) {
+        if (!owner || spot.getStatus() != SpotStatus.REJECTED) {
+            return null;
+        }
+        return spotReviewRepository
+            .findFirstBySpotIdAndDecisionOrderByCreatedAtDesc(spot.getId(), ReviewDecision.REJECTED)
+            .map(RejectionInfo::from)
+            .orElse(null);
     }
 
     public SpotViewportResponse findSpotsInViewport(ViewportRequest request, SpotTheme theme, Long userId) {
@@ -94,17 +129,28 @@ public class SpotQueryService {
         if (row == null) {
             throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
         }
-        Long resolvedUploaderId = resolveActiveUploaderId(row.userId());
-        boolean isMySpot = userId != null && userId.equals(resolvedUploaderId);
+
+        boolean owner = userId != null && userId.equals(row.userId());
+        boolean published = SpotStatus.PUBLISHED.getCode().equals(row.status());
+        if (!published && !owner) {
+            throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        boolean isCurated = row.userId() == null;
+        boolean isMySpot = owner && resolveActiveUploaderId(row.userId()) != null;
         boolean isBookmarked = userId != null
             && savedSpotArchiveRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
+        boolean isLiked = userId != null
+            && spotLikeRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
         String imageUrl = spotImageRepository.findById(spotId)
             .map(spotThumbnailService::getImageUrl)
             .orElse(null);
+
         return new SpotPreviewResponse(
             row.id(), row.name(), isMySpot, SpotTheme.fromCode(row.theme()),
             row.bookmarkCount(), row.distanceKm(), imageUrl,
-            row.addressSimple(), row.addressRoad(), row.addressJibun(), isBookmarked
+            row.addressSimple(), row.addressRoad(), row.addressJibun(), isBookmarked,
+            row.likeCount(), isLiked, published || isCurated, isCurated
         );
     }
 
@@ -125,9 +171,11 @@ public class SpotQueryService {
 
         List<Long> spotIds = rows.stream().map(SpotRow::id).toList();
         Set<Long> bookmarkedIds = resolveBookmarkedIds(userId, spotIds);
+        Set<Long> likedIds = resolveLikedIds(userId, spotIds);
 
         List<SpotItem> items = rows.stream()
-            .map(row -> toSpotItem(row, imageMap, bookmarkedIds.contains(row.id())))
+            .map(row -> toSpotItem(row, imageMap,
+                bookmarkedIds.contains(row.id()), likedIds.contains(row.id())))
             .toList();
 
         return new SpotListResponse(items, page, spotMapper.countSpots(status, themeCode) > (long) (page + 1) * LIST_PAGE_SIZE);
@@ -177,9 +225,18 @@ public class SpotQueryService {
         return savedSpotArchiveRepository.findBookmarkedSpotIds(userId, spotIds);
     }
 
-    private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap, boolean isBookmarked) {
+    private Set<Long> resolveLikedIds(Long userId, List<Long> spotIds) {
+        if (userId == null || spotIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return spotLikeRepository.findLikedSpotIds(userId, spotIds);
+    }
+
+    private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap,
+                                boolean isBookmarked, boolean isLiked) {
         String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
-        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm(), row.bookmarkCount(), isBookmarked);
+        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm(),
+            row.bookmarkCount(), isBookmarked, row.likeCount(), isLiked);
     }
 
     private String thumbnailUrl(SpotImage spotImage) {

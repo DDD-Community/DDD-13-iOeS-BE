@@ -11,14 +11,18 @@ import lombok.RequiredArgsConstructor;
 /**
  * 스팟 공개 상태.
  *
- * 사용자 등록 스팟은 기본 PENDING 으로 생성되며, 운영자 검수 이후 PUBLISHED/REJECTED 로 전이된다.
+ * 사용자 등록 스팟은 기본 DRAFT(나만보기) 로 생성되며, 사용자가 '오픈하기' 를 누르면
+ * PENDING(검수중) 으로 전이된다. 운영자 검수 이후 PUBLISHED(승인)/REJECTED(반려) 로 전이되며,
+ * 반려된 스팟을 사용자가 재신청하면 RE_REVIEW_PENDING(재검토대기) 으로 전이된다.
  *
- * @author 김성민
+ * @author 김성민, 황제연
  */
 @Getter
 @RequiredArgsConstructor
 public enum SpotStatus implements CodedEnum {
+    DRAFT("D"),
     PENDING("P"),
+    RE_REVIEW_PENDING("V"),
     PUBLISHED("B"),
     REJECTED("R");
 

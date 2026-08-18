@@ -11,6 +11,7 @@ import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -23,10 +24,14 @@ import org.springframework.stereotype.Component;
  * 다음 스케줄 주기를 기다리지 않도록 날씨/천문 수집을 1회 수행한다.
  * 배포 직후 정보 공백이 즉시 복구되며, 모든 단계는 멱등하다.
  *
+ * {@code app.spotinfo.collect.enabled=false} 인 환경에서는 빈이 생성되지 않아 격자 백필도 함께 생략된다.
+ * 백필은 수집 대상 산출용이므로 수집을 끈 환경에서는 필요하지 않다.
+ *
  * @author 김성민
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "app.spotinfo.collect.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class SpotInfoBootstrap {
 

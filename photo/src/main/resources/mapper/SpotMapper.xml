@@ -10,6 +10,7 @@
             s.name,
             s.theme,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
+            COALESCE(s.like_count, 0) AS like_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
@@ -41,7 +42,8 @@
                 )
             </when>
             <otherwise>
-                s.bookmark_count DESC
+                /* 추천순 = 좋아요 많은 순. 동률은 북마크 수, 그다음 최신 등록 순으로 가른다 */
+                s.like_count DESC, s.bookmark_count DESC, s.id DESC
             </otherwise>
         </choose>
         LIMIT #{size} OFFSET #{offset}
@@ -78,7 +80,9 @@
             s.name,
             s.theme,
             s.user_id,
+            s.status,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
+            COALESCE(s.like_count, 0) AS like_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
