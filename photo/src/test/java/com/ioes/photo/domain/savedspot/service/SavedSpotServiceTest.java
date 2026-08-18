@@ -13,8 +13,8 @@ import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spot.service.SpotThumbnailService;
 import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -50,7 +49,7 @@ class SavedSpotServiceTest {
     @Mock SavedSpotArchiveRepository savedSpotArchiveRepository;
     @Mock SpotRepository spotRepository;
     @Mock SpotImageRepository spotImageRepository;
-    @Mock StorageService storageService;
+    @Mock SpotThumbnailService spotThumbnailService;
     @Mock SavedSpotMapper savedSpotMapper;
 
     @InjectMocks SavedSpotService savedSpotService;
@@ -258,14 +257,14 @@ class SavedSpotServiceTest {
         }
 
         @Test
-        @DisplayName("조회된 스팟의 imageUrl은 StorageService.getUrl 결과다")
-        void imageUrlIsFromStorageService() {
+        @DisplayName("조회된 스팟의 imageUrl은 SpotThumbnailService.getImageUrl 결과다")
+        void imageUrlIsFromSpotThumbnailService() {
             SavedSpotRow row = buildRow(SPOT_ID, false);
             SpotImage image = SpotImage.create(SPOT_ID, "spots/1/image.jpg");
             given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
             given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of(image));
-            given(storageService.getUrl("spots/1/image.jpg")).willReturn("https://cdn.example.com/image.jpg");
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/image.jpg");
 
             SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
 
@@ -339,7 +338,7 @@ class SavedSpotServiceTest {
             SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
 
             assertThat(response.spots().get(0).imageUrl()).isNull();
-            then(storageService).should(never()).getUrl(anyString());
+            then(spotThumbnailService).should(never()).getImageUrl(any());
         }
 
         @Test
