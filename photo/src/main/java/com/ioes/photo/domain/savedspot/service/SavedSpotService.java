@@ -13,13 +13,12 @@ import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
+import com.ioes.photo.domain.spot.service.SpotThumbnailService;
 import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.error.exception.BusinessException;
-import com.ioes.photo.global.storage.StorageService;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,7 +42,7 @@ public class SavedSpotService {
     private final SavedSpotArchiveRepository savedSpotArchiveRepository;
     private final SpotRepository spotRepository;
     private final SpotImageRepository spotImageRepository;
-    private final StorageService storageService;
+    private final SpotThumbnailService spotThumbnailService;
     private final SavedSpotMapper savedSpotMapper;
 
     @Transactional
@@ -130,17 +129,12 @@ public class SavedSpotService {
     // 비공개 전환된 스팟은 이미지를 내리지 않는다. 이름과 좌표는 어떤 스팟을 저장했는지 알 수 있게 남긴다.
     private SavedSpotItem toSavedSpotItem(SavedSpotRow row, Map<Long, SpotImage> imageMap) {
         boolean isPrivate = !SpotStatus.PUBLISHED.getCode().equals(row.status());
-        String imageUrl = isPrivate ? null : resolveImageUrl(imageMap.get(row.spotId()));
+        SpotImage spotImage = imageMap.get(row.spotId());
+        String imageUrl = (isPrivate || spotImage == null) ? null : spotThumbnailService.getImageUrl(spotImage);
         return new SavedSpotItem(
             row.spotId(), row.name(), row.theme(), imageUrl,
             row.latitude(), row.longitude(), row.distanceKm(), row.bookmarkCount(),
             row.savedAt(), row.deleted(), isPrivate
         );
-    }
-
-    private String resolveImageUrl(SpotImage spotImage) {
-        return Optional.ofNullable(spotImage)
-            .map(img -> storageService.getUrl(img.getImageKey()))
-            .orElse(null);
     }
 }

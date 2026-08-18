@@ -47,6 +47,10 @@ public class SpotImageAccessService {
 
     private void moveImages(Long spotId, AccessType target) {
         spotImageRepository.findById(spotId).ifPresent(image -> {
+            // 외부 호스팅 이미지는 PUBLIC/PRIVATE 경로 개념이 없어 이동하지 않는다.
+            if (image.isExternal()) {
+                return;
+            }
             image.updateImageKey(move(image.getImageKey(), target));
             if (NullUtils.isNotBlank(image.getThumbnailKey())) {
                 image.updateThumbnailKey(move(image.getThumbnailKey(), target));

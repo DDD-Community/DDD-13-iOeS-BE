@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.ImageSourceType;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.global.storage.StorageCleanupEvent;
 import com.ioes.photo.global.storage.StorageService;
@@ -20,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * {@link SpotImageAccessService} 단위 테스트.
@@ -108,6 +110,18 @@ class SpotImageAccessServiceTest {
 
             then(storageService).should(never()).copy(anyString(), anyString());
         }
+
+        @Test
+        @DisplayName("외부 호스팅 이미지는 PUBLIC/PRIVATE 개념이 없어 이동하지 않는다")
+        void skipsExternalImage() {
+            SpotImage image = buildExternalImage("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+            given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.of(image));
+
+            spotImageAccessService.publish(SPOT_ID);
+
+            then(storageService).should(never()).copy(anyString(), anyString());
+            assertThat(image.getImageKey()).isEqualTo("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+        }
     }
 
     @Nested
@@ -152,6 +166,18 @@ class SpotImageAccessServiceTest {
             then(storageService).should(never()).copy(anyString(), anyString());
             assertThat(image.getImageKey()).isEqualTo(PRIVATE_KEY);
         }
+
+        @Test
+        @DisplayName("외부 호스팅 이미지는 PUBLIC/PRIVATE 개념이 없어 이동하지 않는다")
+        void skipsExternalImage() {
+            SpotImage image = buildExternalImage("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+            given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.of(image));
+
+            spotImageAccessService.unpublish(SPOT_ID);
+
+            then(storageService).should(never()).copy(anyString(), anyString());
+            assertThat(image.getImageKey()).isEqualTo("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+        }
     }
 
     @Test
@@ -169,6 +195,14 @@ class SpotImageAccessServiceTest {
     private static SpotImage privateImageWithThumbnail() {
         SpotImage image = SpotImage.create(SPOT_ID, PRIVATE_KEY);
         image.updateThumbnailKey(PRIVATE_THUMB);
+        return image;
+    }
+
+    // EXTERNAL 행은 애플리케이션이 만들지 않고 데이터 적재용 SQL이 직접 세팅하므로,
+    // 여기서는 그 상태를 흉내내기 위해서만 리플렉션으로 필드를 강제 설정한다.
+    private static SpotImage buildExternalImage(String externalUrl) {
+        SpotImage image = SpotImage.create(SPOT_ID, externalUrl);
+        ReflectionTestUtils.setField(image, "imageSourceType", ImageSourceType.EXTERNAL);
         return image;
     }
 }
