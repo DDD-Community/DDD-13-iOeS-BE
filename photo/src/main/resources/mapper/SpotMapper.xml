@@ -29,8 +29,11 @@
         <where>
             s.status = #{status}
             AND s.deleted_at IS NULL
-            <if test="theme != null">
-                AND s.theme = #{theme}
+            <if test="themes != null and !themes.isEmpty()">
+                AND s.theme IN
+                <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
+                    #{themeCode}
+                </foreach>
             </if>
         </where>
         ORDER BY
@@ -55,8 +58,11 @@
         <where>
             s.status = #{status}
             AND s.deleted_at IS NULL
-            <if test="theme != null">
-                AND s.theme = #{theme}
+            <if test="themes != null and !themes.isEmpty()">
+                AND s.theme IN
+                <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
+                    #{themeCode}
+                </foreach>
             </if>
         </where>
     </select>
@@ -68,8 +74,11 @@
         WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
             AND s.status = #{status}
             AND s.deleted_at IS NULL
-            <if test="theme != null">
-                AND s.theme = #{theme}
+            <if test="themes != null and !themes.isEmpty()">
+                AND s.theme IN
+                <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
+                    #{themeCode}
+                </foreach>
             </if>
     </select>
 
