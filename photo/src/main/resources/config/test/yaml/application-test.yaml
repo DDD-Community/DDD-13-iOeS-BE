@@ -12,7 +12,9 @@ spring:
       # 같은 DB 를 쓰면 같은 유저의 리프레시 토큰이 서로 덮어써진다.
       database: 1
   datasource:
-    url: ${TEST_DB_URL:jdbc:postgresql://postgres:5432/photo}
+    # 기본값도 테스트 DB 를 가리켜야 한다. 운영 DB(photo)를 기본값으로 두면
+    # TEST_DB_URL 주입이 누락됐을 때 테스트 서버가 조용히 운영 DB 에 연결된다.
+    url: ${TEST_DB_URL:jdbc:postgresql://postgres:5432/photo_dev}
     username: ${TEST_DB_USERNAME}
     password: ${TEST_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -104,6 +106,9 @@ management:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+    # 미설정 시 springdoc 이 webjar 기본값(petstore 데모)을 그대로 두어 우리 API 가 표시되지 않는다.
+    # 컨텍스트 경로(/api)는 붙이지 않는다 — springdoc 이 swagger-config 생성 시 자동으로 붙인다.
+    url: /api-docs
     enabled: true
   api-docs:
     path: /api-docs
