@@ -70,7 +70,7 @@ public class SpotController {
         @Parameter(description = "좌하단 경도", example = "126.97") @RequestParam @NotNull @Longitude Double bottomLeftLng,
         @Parameter(description = "우하단 위도", example = "37.52") @RequestParam @NotNull @Latitude Double bottomRightLat,
         @Parameter(description = "우하단 경도", example = "127.05") @RequestParam @NotNull @Longitude Double bottomRightLng,
-        @Parameter(description = "테마 필터 (SUNSET=노을, YUNSEUL=윤슬, SUNLIGHT=햇살, NIGHT_VIEW=야경), "
+        @Parameter(description = "테마 필터. code(SS/YS/SL/NV) 또는 enum 이름(SUNSET/YUNSEUL/SUNLIGHT/NIGHT_VIEW) 모두 가능, "
             + "다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달. 미전달 시 전체")
         @RequestParam(required = false) List<SpotTheme> theme,
         @CurrentUserId Long userId
@@ -94,7 +94,7 @@ public class SpotController {
     @GetMapping
     public ApiResponse<SpotListResponse> getSpots(
         @Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") @Min(0) int page,
-        @Parameter(description = "테마 필터 (SUNSET=노을, YUNSEUL=윤슬, SUNLIGHT=햇살, NIGHT_VIEW=야경), "
+        @Parameter(description = "테마 필터. code(SS/YS/SL/NV) 또는 enum 이름(SUNSET/YUNSEUL/SUNLIGHT/NIGHT_VIEW) 모두 가능, "
             + "다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달. 미전달 시 전체")
         @RequestParam(required = false) List<SpotTheme> theme,
         @Parameter(description = "사용자 위도 (sort=DISTANCE 시 필수)", example = "37.55") @RequestParam(required = false) @Latitude Double latitude,

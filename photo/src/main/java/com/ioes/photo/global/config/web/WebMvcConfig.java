@@ -1,10 +1,13 @@
 package com.ioes.photo.global.config.web;
 
+import com.ioes.photo.PhotoApplication;
 import com.ioes.photo.global.auth.CurrentUserIdArgumentResolver;
+import com.ioes.photo.global.config.web.converter.CodedEnumConverterRegistrar;
 import com.ioes.photo.global.config.web.properties.CorsProperties;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -34,5 +37,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
             .allowedMethods(corsProperties.allowedMethods().toArray(String[]::new))
             .allowedHeaders("*")
             .maxAge(corsProperties.maxAge());
+    }
+
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        new CodedEnumConverterRegistrar().registerAll(registry, PhotoApplication.class.getPackageName());
     }
 }
