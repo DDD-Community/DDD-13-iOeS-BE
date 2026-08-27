@@ -28,6 +28,7 @@ import com.ioes.photo.domain.spotlike.repository.SpotLikeRepository;
 import com.ioes.photo.domain.spotinfo.entity.SpotInfo;
 import com.ioes.photo.domain.spotinfo.repository.SpotInfoRepository;
 import com.ioes.photo.domain.user.repository.UserRepository;
+import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.error.code.CommonErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 
@@ -104,13 +105,12 @@ public class SpotQueryService {
             .orElse(null);
     }
 
-    public SpotViewportResponse findSpotsInViewport(ViewportRequest request, SpotTheme theme, Long userId) {
-        String themeCode = theme != null ? theme.getCode() : null;
+    public SpotViewportResponse findSpotsInViewport(ViewportRequest request, List<SpotTheme> theme, Long userId) {
         List<SpotViewportRow> rows = spotMapper.findSpotsInViewport(
             request.minLat(), request.maxLat(),
             request.minLng(), request.maxLng(),
             SpotStatus.PUBLISHED.getCode(),
-            themeCode
+            toThemeCodes(theme)
         );
 
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotViewportRow::id).toList());
@@ -154,7 +154,7 @@ public class SpotQueryService {
         );
     }
 
-    public SpotListResponse findSpots(int page, SpotTheme theme, Double latitude, Double longitude, SortType sort, Long userId) {
+    public SpotListResponse findSpots(int page, List<SpotTheme> theme, Double latitude, Double longitude, SortType sort, Long userId) {
         if ((latitude == null) != (longitude == null)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "위도와 경도는 함께 입력해야 합니다.");
         }
@@ -163,10 +163,10 @@ public class SpotQueryService {
         }
 
         String status = SpotStatus.PUBLISHED.getCode();
-        String themeCode = theme != null ? theme.getCode() : null;
+        List<String> themeCodes = toThemeCodes(theme);
         String sortCode = sort != null ? sort.getCode() : SortType.RECOMMENDED.getCode();
 
-        List<SpotRow> rows = spotMapper.findSpots(status, themeCode, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
+        List<SpotRow> rows = spotMapper.findSpots(status, themeCodes, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotRow::id).toList());
 
         List<Long> spotIds = rows.stream().map(SpotRow::id).toList();
@@ -178,7 +178,14 @@ public class SpotQueryService {
                 bookmarkedIds.contains(row.id()), likedIds.contains(row.id())))
             .toList();
 
-        return new SpotListResponse(items, page, spotMapper.countSpots(status, themeCode) > (long) (page + 1) * LIST_PAGE_SIZE);
+        return new SpotListResponse(items, page, spotMapper.countSpots(status, themeCodes) > (long) (page + 1) * LIST_PAGE_SIZE);
+    }
+
+    private List<String> toThemeCodes(List<SpotTheme> themes) {
+        if (NullUtils.isEmpty(themes)) {
+            return null;
+        }
+        return themes.stream().map(SpotTheme::getCode).toList();
     }
 
     private Map<Long, SpotImage> loadImageMap(List<Long> spotIds) {

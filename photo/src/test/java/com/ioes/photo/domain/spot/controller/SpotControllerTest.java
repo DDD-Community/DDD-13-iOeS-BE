@@ -151,14 +151,28 @@ class SpotControllerTest {
         @Test
         @DisplayName("theme과 userId를 서비스에 전달한다")
         void passesThemeAndUserIdToService() {
-            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(SpotTheme.SUNSET), eq(42L)))
+            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(List.of(SpotTheme.SUNSET)), eq(42L)))
                 .willReturn(new SpotViewportResponse(List.of()));
 
             spotController.getSpotsInViewport(
-                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, SpotTheme.SUNSET, 42L
+                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, List.of(SpotTheme.SUNSET), 42L
             );
 
-            then(spotQueryService).should().findSpotsInViewport(any(ViewportRequest.class), eq(SpotTheme.SUNSET), eq(42L));
+            then(spotQueryService).should().findSpotsInViewport(any(ViewportRequest.class), eq(List.of(SpotTheme.SUNSET)), eq(42L));
+        }
+
+        @Test
+        @DisplayName("theme을 여러 개 선택하면 리스트 그대로 서비스에 전달한다")
+        void passesMultipleThemesToService() {
+            List<SpotTheme> themes = List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL);
+            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(themes), eq(42L)))
+                .willReturn(new SpotViewportResponse(List.of()));
+
+            spotController.getSpotsInViewport(
+                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, themes, 42L
+            );
+
+            then(spotQueryService).should().findSpotsInViewport(any(ViewportRequest.class), eq(themes), eq(42L));
         }
 
         @Test
@@ -235,12 +249,24 @@ class SpotControllerTest {
         @Test
         @DisplayName("모든 파라미터를 서비스에 그대로 전달한다")
         void passesAllParamsToService() {
-            given(spotQueryService.findSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE, null))
+            given(spotQueryService.findSpots(2, List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null))
                 .willReturn(new SpotListResponse(List.of(), 2, false));
 
-            spotController.getSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE, null);
+            spotController.getSpots(2, List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null);
 
-            then(spotQueryService).should().findSpots(2, SpotTheme.SUNSET, 37.5, 127.0, SortType.DISTANCE, null);
+            then(spotQueryService).should().findSpots(2, List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null);
+        }
+
+        @Test
+        @DisplayName("theme을 여러 개 선택하면 리스트 그대로 서비스에 전달한다")
+        void passesMultipleThemesToService() {
+            List<SpotTheme> themes = List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL);
+            given(spotQueryService.findSpots(2, themes, 37.5, 127.0, SortType.DISTANCE, null))
+                .willReturn(new SpotListResponse(List.of(), 2, false));
+
+            spotController.getSpots(2, themes, 37.5, 127.0, SortType.DISTANCE, null);
+
+            then(spotQueryService).should().findSpots(2, themes, 37.5, 127.0, SortType.DISTANCE, null);
         }
 
         @Test

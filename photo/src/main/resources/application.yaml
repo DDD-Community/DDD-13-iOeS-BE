@@ -171,6 +171,7 @@ app:
     allowed-origins:
       - http://localhost:3000
       - https://pickflow-admin.vercel.app
+      - https://pickflow-admin-demo.vercel.app
     allowed-methods:
       - GET
       - POST
