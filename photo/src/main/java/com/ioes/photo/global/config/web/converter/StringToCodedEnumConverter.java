@@ -1,5 +1,6 @@
 package com.ioes.photo.global.config.web.converter;
 
+import com.ioes.photo.global.common.util.NullUtils;
 import com.ioes.photo.global.persistence.enumeration.CodedEnum;
 import java.util.EnumSet;
 import java.util.Map;
@@ -12,6 +13,11 @@ import org.springframework.core.convert.converter.Converter;
  *
  * <p>DB 코드 값을 우선 매칭하고, 일치하는 code가 없으면 enum 이름({@link Enum#valueOf})으로 폴백한다.
  * 예를 들어 {@code SpotTheme}는 "SS"(code)와 "SUNSET"(name) 둘 다로 바인딩된다.</p>
+ *
+ * <p>빈 값이나 공백뿐인 값은 null로 변환한다. 이 클래스가 String → 구체 enum의 정확한 타입쌍으로 등록되어
+ * Spring 기본 {@code StringToEnumConverterFactory}보다 항상 먼저 매치되므로, 기본 컨버터가 제공하던
+ * "빈 값 → null" 동작(예: {@code ?theme=} 로 필터 미선택을 표현하는 쿼리 파라미터)을 그대로 이어받아야
+ * 기존 API 호출부의 동작이 깨지지 않는다.</p>
  *
  * <p>생성 시점에 어떤 상수의 이름이 다른 상수의 code와 겹치는 모호성이 있는지 검증해 즉시 실패한다.
  * 이런 모호성이 있으면 code 우선 매칭 규칙상 name으로는 절대 도달할 수 없는 상수가 생기기 때문이다.</p>
@@ -33,6 +39,9 @@ public class StringToCodedEnumConverter<E extends Enum<E> & CodedEnum> implement
 
     @Override
     public E convert(String source) {
+        if (NullUtils.isBlank(source)) {
+            return null;
+        }
         String trimmed = source.trim();
         E byCode = codeIndex.get(trimmed);
         if (byCode != null) {

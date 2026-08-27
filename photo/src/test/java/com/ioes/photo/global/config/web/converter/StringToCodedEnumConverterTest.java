@@ -56,6 +56,18 @@ class StringToCodedEnumConverterTest {
             assertThatThrownBy(() -> converter.convert("INVALID"))
                 .isInstanceOf(IllegalArgumentException.class);
         }
+
+        @Test
+        @DisplayName("빈 문자열은 null로 변환된다 (필터 미선택 쿼리 파라미터 호환)")
+        void convertsEmptyStringToNull() {
+            assertThat(converter.convert("")).isNull();
+        }
+
+        @Test
+        @DisplayName("공백뿐인 문자열도 null로 변환된다")
+        void convertsBlankStringToNull() {
+            assertThat(converter.convert("   ")).isNull();
+        }
     }
 
     @Nested
