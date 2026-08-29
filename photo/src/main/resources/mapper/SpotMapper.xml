@@ -9,6 +9,7 @@
             s.id,
             s.name,
             s.theme,
+            s.region_id,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
             COALESCE(s.like_count, 0) AS like_count,
             <choose>
@@ -29,6 +30,10 @@
         <where>
             s.status = #{status}
             AND s.deleted_at IS NULL
+            AND s.region_id IN
+            <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                #{regionId}
+            </foreach>
             <if test="themes != null and !themes.isEmpty()">
                 AND s.theme IN
                 <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
@@ -37,6 +42,11 @@
             </if>
         </where>
         ORDER BY
+        /* 1순위: 지역코드, 2순위: MY스팟 정보(내 스팟 우선), 3순위: 기존 정렬 기준 */
+        s.region_id ASC,
+        <if test="userId != null">
+            CASE WHEN s.user_id = #{userId} THEN 0 ELSE 1 END,
+        </if>
         <choose>
             <when test='sort != null and sort == "D"'>
                 ST_Distance(
@@ -58,6 +68,10 @@
         <where>
             s.status = #{status}
             AND s.deleted_at IS NULL
+            AND s.region_id IN
+            <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                #{regionId}
+            </foreach>
             <if test="themes != null and !themes.isEmpty()">
                 AND s.theme IN
                 <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
@@ -69,11 +83,15 @@
 
     <select id="findSpotsInViewport" resultType="SpotViewportRow">
     /* 뷰포트 조회 동적쿼리 */
-        SELECT s.id, s.latitude, s.longitude, s.user_id
+        SELECT s.id, s.latitude, s.longitude, s.user_id, s.region_id
         FROM spots s
         WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
             AND s.status = #{status}
             AND s.deleted_at IS NULL
+            AND s.region_id IN
+            <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                #{regionId}
+            </foreach>
             <if test="themes != null and !themes.isEmpty()">
                 AND s.theme IN
                 <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
