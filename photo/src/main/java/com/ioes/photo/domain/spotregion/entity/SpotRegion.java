@@ -19,8 +19,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
  * 지역 필터용 참조 데이터.
  *
  * 이후 지역 추가, 조회 API 성능, 어드민 페이지 활용을 고려해 enum 대신 테이블로 관리한다.
- * region_id 는 {@code spots.region_id} 에서 FK 로 참조하며, spots 는 주소(address) 접두어를
- * region_name 과 매칭해 지역을 배정한다({@link com.ioes.photo.domain.spotregion.service.SpotRegionResolver} 참고).
+ * region_id 는 {@code spots.region_id} 에서 참조한다
+ * spots 는 주소(address) 접두어를 region_name 과 매칭해 지역을 배정한다
+ * ({@link com.ioes.photo.domain.spotregion.service.SpotRegionResolver} 참고).
  *
  * @author 황제연
  */
