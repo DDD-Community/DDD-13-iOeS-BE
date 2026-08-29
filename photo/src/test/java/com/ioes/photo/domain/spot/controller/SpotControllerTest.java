@@ -132,15 +132,15 @@ class SpotControllerTest {
         @Test
         @DisplayName("8개 꼭짓점 좌표로 ViewportRequest를 구성하여 서비스에 전달한다")
         void buildsViewportRequestFromEightParams() {
-            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), isNull(), isNull()))
+            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(List.of(1L)), isNull(), isNull()))
                 .willReturn(new SpotViewportResponse(List.of()));
 
             spotController.getSpotsInViewport(
-                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, null, null
+                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, List.of(1L), null, null
             );
 
             ArgumentCaptor<ViewportRequest> captor = ArgumentCaptor.forClass(ViewportRequest.class);
-            then(spotQueryService).should().findSpotsInViewport(captor.capture(), isNull(), isNull());
+            then(spotQueryService).should().findSpotsInViewport(captor.capture(), eq(List.of(1L)), isNull(), isNull());
 
             ViewportRequest req = captor.getValue();
             assertThat(req.topLeftLat()).isEqualTo(37.6);
@@ -149,43 +149,44 @@ class SpotControllerTest {
         }
 
         @Test
-        @DisplayName("theme과 userId를 서비스에 전달한다")
-        void passesThemeAndUserIdToService() {
-            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(List.of(SpotTheme.SUNSET)), eq(42L)))
+        @DisplayName("regionId, theme, userId를 서비스에 전달한다")
+        void passesRegionThemeAndUserIdToService() {
+            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(List.of(1L)), eq(List.of(SpotTheme.SUNSET)), eq(42L)))
                 .willReturn(new SpotViewportResponse(List.of()));
 
             spotController.getSpotsInViewport(
-                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, List.of(SpotTheme.SUNSET), 42L
+                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, List.of(1L), List.of(SpotTheme.SUNSET), 42L
             );
 
-            then(spotQueryService).should().findSpotsInViewport(any(ViewportRequest.class), eq(List.of(SpotTheme.SUNSET)), eq(42L));
+            then(spotQueryService).should()
+                .findSpotsInViewport(any(ViewportRequest.class), eq(List.of(1L)), eq(List.of(SpotTheme.SUNSET)), eq(42L));
         }
 
         @Test
         @DisplayName("theme을 여러 개 선택하면 리스트 그대로 서비스에 전달한다")
         void passesMultipleThemesToService() {
             List<SpotTheme> themes = List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL);
-            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(themes), eq(42L)))
+            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(List.of(1L)), eq(themes), eq(42L)))
                 .willReturn(new SpotViewportResponse(List.of()));
 
             spotController.getSpotsInViewport(
-                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, themes, 42L
+                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, List.of(1L), themes, 42L
             );
 
-            then(spotQueryService).should().findSpotsInViewport(any(ViewportRequest.class), eq(themes), eq(42L));
+            then(spotQueryService).should().findSpotsInViewport(any(ViewportRequest.class), eq(List.of(1L)), eq(themes), eq(42L));
         }
 
         @Test
         @DisplayName("스팟 목록을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             List<SpotSummary> summaries = List.of(
-                new SpotSummary(1L, "https://cdn.example.com/thumb.jpg", 37.55, 127.05, false)
+                new SpotSummary(1L, 1L, "https://cdn.example.com/thumb.jpg", 37.55, 127.05, false)
             );
-            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), isNull(), isNull()))
+            given(spotQueryService.findSpotsInViewport(any(ViewportRequest.class), eq(List.of(1L)), isNull(), isNull()))
                 .willReturn(new SpotViewportResponse(summaries));
 
             ApiResponse<SpotViewportResponse> response = spotController.getSpotsInViewport(
-                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, null, null
+                37.6, 127.0, 37.6, 127.1, 37.5, 127.0, 37.5, 127.1, List.of(1L), null, null
             );
 
             assertThat(response.isSuccess()).isTrue();
@@ -235,12 +236,13 @@ class SpotControllerTest {
         @DisplayName("서비스 응답을 ApiResponse.success로 감싸서 반환한다")
         void wrapsServiceResponseInApiResponse() {
             List<SpotItem> items = List.of(
-                new SpotItem(1L, "한강공원", "SS", "https://cdn.example.com/thumb.jpg", 1.2, 7L, false, 3L, false)
+                new SpotItem(1L, "한강공원", "SS", 1L, "https://cdn.example.com/thumb.jpg", 1.2, 7L, false, 3L, false)
             );
-            given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null))
+            given(spotQueryService.findSpots(0, List.of(1L), null, null, null, SortType.RECOMMENDED, null))
                 .willReturn(new SpotListResponse(items, 0, false));
 
-            ApiResponse<SpotListResponse> response = spotController.getSpots(0, null, null, null, SortType.RECOMMENDED, null);
+            ApiResponse<SpotListResponse> response =
+                spotController.getSpots(0, List.of(1L), null, null, null, SortType.RECOMMENDED, null);
 
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spots().get(0).name()).isEqualTo("한강공원");
@@ -249,33 +251,35 @@ class SpotControllerTest {
         @Test
         @DisplayName("모든 파라미터를 서비스에 그대로 전달한다")
         void passesAllParamsToService() {
-            given(spotQueryService.findSpots(2, List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null))
+            given(spotQueryService.findSpots(2, List.of(1L), List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null))
                 .willReturn(new SpotListResponse(List.of(), 2, false));
 
-            spotController.getSpots(2, List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null);
+            spotController.getSpots(2, List.of(1L), List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null);
 
-            then(spotQueryService).should().findSpots(2, List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null);
+            then(spotQueryService).should()
+                .findSpots(2, List.of(1L), List.of(SpotTheme.SUNSET), 37.5, 127.0, SortType.DISTANCE, null);
         }
 
         @Test
         @DisplayName("theme을 여러 개 선택하면 리스트 그대로 서비스에 전달한다")
         void passesMultipleThemesToService() {
             List<SpotTheme> themes = List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL);
-            given(spotQueryService.findSpots(2, themes, 37.5, 127.0, SortType.DISTANCE, null))
+            given(spotQueryService.findSpots(2, List.of(1L), themes, 37.5, 127.0, SortType.DISTANCE, null))
                 .willReturn(new SpotListResponse(List.of(), 2, false));
 
-            spotController.getSpots(2, themes, 37.5, 127.0, SortType.DISTANCE, null);
+            spotController.getSpots(2, List.of(1L), themes, 37.5, 127.0, SortType.DISTANCE, null);
 
-            then(spotQueryService).should().findSpots(2, themes, 37.5, 127.0, SortType.DISTANCE, null);
+            then(spotQueryService).should().findSpots(2, List.of(1L), themes, 37.5, 127.0, SortType.DISTANCE, null);
         }
 
         @Test
         @DisplayName("hasNext가 true이면 응답에도 true가 포함된다")
         void reflectsHasNextFromService() {
-            given(spotQueryService.findSpots(0, null, null, null, SortType.RECOMMENDED, null))
+            given(spotQueryService.findSpots(0, List.of(1L), null, null, null, SortType.RECOMMENDED, null))
                 .willReturn(new SpotListResponse(List.of(), 0, true));
 
-            assertThat(spotController.getSpots(0, null, null, null, SortType.RECOMMENDED, null).getData().hasNext()).isTrue();
+            assertThat(spotController.getSpots(0, List.of(1L), null, null, null, SortType.RECOMMENDED, null)
+                .getData().hasNext()).isTrue();
         }
     }
 }
