@@ -12,6 +12,7 @@ import com.ioes.photo.domain.myspot.dto.UpdateMySpotResponse;
 import com.ioes.photo.domain.myspot.mapper.MySpotMapper;
 import com.ioes.photo.domain.myspot.mapper.MySpotRow;
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
+import com.ioes.photo.domain.spotregion.service.SpotRegionResolver;
 import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
@@ -86,6 +87,7 @@ public class MySpotService {
     private final SpotAlarmService spotAlarmService;
     private final ApplicationEventPublisher eventPublisher;
     private final CrowdAreaMapper crowdAreaMapper;
+    private final SpotRegionResolver spotRegionResolver;
 
     public MySpotListResponse findMySpots(Long userId, int page, Double latitude, Double longitude) {
         if ((latitude == null) != (longitude == null)) {
@@ -125,6 +127,7 @@ public class MySpotService {
             .gridNx(geo.grid().nx())
             .gridNy(geo.grid().ny())
             .crowdAreaName(geo.crowdAreaName())
+            .regionId(spotRegionResolver.resolve(address == null ? null : address.simpleAddress()))
             .userId(userId)
             .build());
         eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
@@ -185,6 +188,7 @@ public class MySpotService {
         );
         spot.assignGrid(geo.grid().nx(), geo.grid().ny());
         spot.assignCrowdAreaName(geo.crowdAreaName());
+        spot.assignRegion(spotRegionResolver.resolve(address == null ? null : address.simpleAddress()));
 
         // 좌표가 바뀌었으니 날씨/일몰/혼잡도를 새 위치 기준으로 다시 수집한다.
         eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));

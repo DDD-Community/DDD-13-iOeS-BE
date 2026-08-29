@@ -7,6 +7,7 @@ import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
+import com.ioes.photo.domain.spotregion.service.SpotRegionResolver;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.global.common.util.FileUtils;
@@ -71,6 +72,7 @@ public class SpotBatchUploadService {
     private final StorageProperties storageProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final CrowdAreaMapper crowdAreaMapper;
+    private final SpotRegionResolver spotRegionResolver;
 
     @Transactional
     public SpotBatchUploadResponse batchUpload(MultipartFile excelFile, MultipartFile imagesFile) {
@@ -105,6 +107,7 @@ public class SpotBatchUploadService {
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(row))
+            .regionId(spotRegionResolver.resolve(row.address()))
             .build());
         eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
 

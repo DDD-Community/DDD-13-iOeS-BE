@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.spot.service;
 
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
+import com.ioes.photo.domain.spotregion.service.SpotRegionResolver;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest.Item;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
@@ -32,6 +33,7 @@ public class SpotAdminService {
 
     private final SpotRepository spotRepository;
     private final CrowdAreaMapper crowdAreaMapper;
+    private final SpotRegionResolver spotRegionResolver;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -63,6 +65,7 @@ public class SpotAdminService {
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(item))
+            .regionId(spotRegionResolver.resolve(item.address()))
             .build();
     }
 
