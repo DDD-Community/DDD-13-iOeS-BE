@@ -39,4 +39,23 @@ public enum CongestionLevel implements CodedEnum {
         }
         return level;
     }
+
+    /**
+     * 관광지 집중률 예측 지수(0~100)를 혼잡도 단계로 변환한다.
+     *
+     * <p>구간 기준은 대전 관광지 115곳 × 30일 집중률 분포의 사분위를 기반으로
+     * 기획과 합의한 값이다: 여유 &lt;30 / 보통 30~45 / 약간 붐빔 45~70 / 붐빔 ≥70.</p>
+     */
+    public static CongestionLevel fromRate(double cnctrRate) {
+        if (cnctrRate >= 70) {
+            return CROWDED;
+        }
+        if (cnctrRate >= 45) {
+            return SLIGHTLY_CROWDED;
+        }
+        if (cnctrRate >= 30) {
+            return NORMAL;
+        }
+        return RELAXED;
+    }
 }

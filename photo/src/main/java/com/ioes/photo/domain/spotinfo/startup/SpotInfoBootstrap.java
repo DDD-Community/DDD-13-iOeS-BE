@@ -4,6 +4,7 @@ import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.collector.AstronomyCollector;
+import com.ioes.photo.domain.spotinfo.collector.DaejeonCrowdCollector;
 import com.ioes.photo.domain.spotinfo.collector.WeatherCollector;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.external.weather.util.LccGridConverter;
@@ -39,6 +40,7 @@ public class SpotInfoBootstrap {
     private final CrowdAreaMapper crowdAreaMapper;
     private final WeatherCollector weatherCollector;
     private final AstronomyCollector astronomyCollector;
+    private final DaejeonCrowdCollector daejeonCrowdCollector;
 
     @Async
     @EventListener(ApplicationReadyEvent.class)
@@ -78,6 +80,15 @@ public class SpotInfoBootstrap {
                 astronomy.success(), astronomy.fail());
         } catch (Exception e) {
             log.error("[SpotInfoBootstrap] 천문 초기 수집 실패", e);
+        }
+        // 대전 혼잡도는 일 1회 스케줄이라 배포 직후 공백이 길 수 있어 기동 시 1회 수집한다.
+        // (서울 혼잡도는 10분 주기 스케줄러가 1분 뒤 돌므로 여기서 수집하지 않는다)
+        try {
+            CollectResult daejeonCrowd = daejeonCrowdCollector.collect();
+            log.info("[SpotInfoBootstrap] 대전 혼잡도 초기 수집 success={} fail={}",
+                daejeonCrowd.success(), daejeonCrowd.fail());
+        } catch (Exception e) {
+            log.error("[SpotInfoBootstrap] 대전 혼잡도 초기 수집 실패", e);
         }
     }
 }

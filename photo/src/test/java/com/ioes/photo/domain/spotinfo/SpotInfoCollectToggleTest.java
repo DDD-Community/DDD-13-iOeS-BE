@@ -7,9 +7,11 @@ import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.collector.AstronomyCollector;
 import com.ioes.photo.domain.spotinfo.collector.CrowdCollector;
+import com.ioes.photo.domain.spotinfo.collector.DaejeonCrowdCollector;
 import com.ioes.photo.domain.spotinfo.collector.WeatherCollector;
 import com.ioes.photo.domain.spotinfo.scheduler.AstronomyScheduler;
 import com.ioes.photo.domain.spotinfo.scheduler.CrowdScheduler;
+import com.ioes.photo.domain.spotinfo.scheduler.DaejeonCrowdScheduler;
 import com.ioes.photo.domain.spotinfo.scheduler.WeatherScheduler;
 import com.ioes.photo.domain.spotinfo.startup.SpotInfoBootstrap;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +36,7 @@ class SpotInfoCollectToggleTest {
         .withBean(WeatherCollector.class, () -> mock(WeatherCollector.class))
         .withBean(AstronomyCollector.class, () -> mock(AstronomyCollector.class))
         .withBean(CrowdCollector.class, () -> mock(CrowdCollector.class))
+        .withBean(DaejeonCrowdCollector.class, () -> mock(DaejeonCrowdCollector.class))
         .withBean(SpotRepository.class, () -> mock(SpotRepository.class))
         .withBean(CrowdAreaMapper.class, () -> mock(CrowdAreaMapper.class))
         .withUserConfiguration(CollectComponents.class);
@@ -45,6 +48,7 @@ class SpotInfoCollectToggleTest {
             .hasSingleBean(WeatherScheduler.class)
             .hasSingleBean(AstronomyScheduler.class)
             .hasSingleBean(CrowdScheduler.class)
+            .hasSingleBean(DaejeonCrowdScheduler.class)
             .hasSingleBean(SpotInfoBootstrap.class));
     }
 
@@ -56,11 +60,13 @@ class SpotInfoCollectToggleTest {
                 .doesNotHaveBean(WeatherScheduler.class)
                 .doesNotHaveBean(AstronomyScheduler.class)
                 .doesNotHaveBean(CrowdScheduler.class)
+                .doesNotHaveBean(DaejeonCrowdScheduler.class)
                 .doesNotHaveBean(SpotInfoBootstrap.class));
     }
 
     @Configuration(proxyBeanMethods = false)
-    @Import({WeatherScheduler.class, AstronomyScheduler.class, CrowdScheduler.class, SpotInfoBootstrap.class})
+    @Import({WeatherScheduler.class, AstronomyScheduler.class, CrowdScheduler.class,
+        DaejeonCrowdScheduler.class, SpotInfoBootstrap.class})
     static class CollectComponents {
     }
 }
