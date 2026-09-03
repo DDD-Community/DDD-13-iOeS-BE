@@ -111,7 +111,8 @@ public class SpotQueryService {
             request.minLng(), request.maxLng(),
             SpotStatus.PUBLISHED.getCode(),
             toThemeCodes(theme),
-            regionId
+            regionId,
+            userId
         );
 
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotViewportRow::id).toList());
@@ -182,7 +183,7 @@ public class SpotQueryService {
             .toList();
 
         return new SpotListResponse(items, page,
-            spotMapper.countSpots(status, themeCodes, regionId) > (long) (page + 1) * LIST_PAGE_SIZE);
+            spotMapper.countSpots(status, themeCodes, regionId, userId) > (long) (page + 1) * LIST_PAGE_SIZE);
     }
 
     private List<String> toThemeCodes(List<SpotTheme> themes) {

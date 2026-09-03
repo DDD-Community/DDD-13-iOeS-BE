@@ -30,10 +30,16 @@
         <where>
             s.status = #{status}
             AND s.deleted_at IS NULL
-            AND s.region_id IN
-            <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
-                #{regionId}
-            </foreach>
+            AND (
+                s.region_id IN
+                <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                    #{regionId}
+                </foreach>
+                <!-- 지역코드가 아직 매핑되지 않은(NULL) 스팟도 내 스팟이면 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                </if>
+            )
             <if test="themes != null and !themes.isEmpty()">
                 AND s.theme IN
                 <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
@@ -68,10 +74,15 @@
         <where>
             s.status = #{status}
             AND s.deleted_at IS NULL
-            AND s.region_id IN
-            <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
-                #{regionId}
-            </foreach>
+            AND (
+                s.region_id IN
+                <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                    #{regionId}
+                </foreach>
+                <if test="userId != null">
+                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                </if>
+            )
             <if test="themes != null and !themes.isEmpty()">
                 AND s.theme IN
                 <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
@@ -88,10 +99,15 @@
         WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
             AND s.status = #{status}
             AND s.deleted_at IS NULL
-            AND s.region_id IN
-            <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
-                #{regionId}
-            </foreach>
+            AND (
+                s.region_id IN
+                <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                    #{regionId}
+                </foreach>
+                <if test="userId != null">
+                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                </if>
+            )
             <if test="themes != null and !themes.isEmpty()">
                 AND s.theme IN
                 <foreach item="themeCode" collection="themes" open="(" separator="," close=")">

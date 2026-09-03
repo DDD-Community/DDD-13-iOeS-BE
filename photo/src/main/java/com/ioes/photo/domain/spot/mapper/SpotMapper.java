@@ -28,7 +28,8 @@ public interface SpotMapper {
     long countSpots(
         @Param("status") String status,
         @Param("themes") List<String> themes,
-        @Param("regionIds") List<Long> regionIds
+        @Param("regionIds") List<Long> regionIds,
+        @Param("userId") Long userId
     );
 
     List<SpotViewportRow> findSpotsInViewport(
@@ -38,7 +39,8 @@ public interface SpotMapper {
         @Param("maxLng") double maxLng,
         @Param("status") String status,
         @Param("themes") List<String> themes,
-        @Param("regionIds") List<Long> regionIds
+        @Param("regionIds") List<Long> regionIds,
+        @Param("userId") Long userId
     );
 
     SpotPreviewRow findSpotPreview(
