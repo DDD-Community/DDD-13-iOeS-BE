@@ -27,6 +27,7 @@ public record SavedSpotListResponse(
         @Schema(description = "스팟 경도") Double longitude,
         @Schema(description = "사용자 위치 기준 거리 (km), 위치 미전달 시 null") @TruncateDecimal Double distanceKm,
         @Schema(description = "북마크 수") long bookmarkCount,
+        @Schema(description = "좋아요(추천) 수") long likeCount,
         @Schema(description = "북마크 저장 시각") LocalDateTime savedAt,
         @Schema(description = "스팟 삭제 여부") boolean deleted,
         @Schema(description = "비공개 여부 (등록자가 공개를 해제했거나 아직 승인되지 않은 상태)") boolean isPrivate

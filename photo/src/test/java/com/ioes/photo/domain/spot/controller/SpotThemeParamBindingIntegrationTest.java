@@ -85,49 +85,49 @@ class SpotThemeParamBindingIntegrationTest {
         @WithMockUser(username = CUSTOMER_ID, roles = "USER_CUSTOMER")
         @DisplayName("code(SS)로 조회하면 SpotTheme.SUNSET으로 바인딩된다")
         void bindsByCode() throws Exception {
-            given(spotQueryService.findSpots(anyInt(), any(), any(), any(), any(), any()))
+            given(spotQueryService.findSpots(anyInt(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new SpotListResponse(List.of(), 0, false));
 
-            mockMvc.perform(get(LIST_URI).param("theme", "SS"))
+            mockMvc.perform(get(LIST_URI).param("regionId", "1").param("theme", "SS"))
                 .andExpect(status().isOk());
 
             then(spotQueryService).should()
-                .findSpots(eq(0), eq(List.of(SpotTheme.SUNSET)), any(), any(), any(), any());
+                .findSpots(eq(0), eq(List.of(1L)), eq(List.of(SpotTheme.SUNSET)), any(), any(), any(), any());
         }
 
         @Test
         @WithMockUser(username = CUSTOMER_ID, roles = "USER_CUSTOMER")
         @DisplayName("enum 이름(SUNSET)으로도 조회할 수 있다")
         void bindsByName() throws Exception {
-            given(spotQueryService.findSpots(anyInt(), any(), any(), any(), any(), any()))
+            given(spotQueryService.findSpots(anyInt(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new SpotListResponse(List.of(), 0, false));
 
-            mockMvc.perform(get(LIST_URI).param("theme", "SUNSET"))
+            mockMvc.perform(get(LIST_URI).param("regionId", "1").param("theme", "SUNSET"))
                 .andExpect(status().isOk());
 
             then(spotQueryService).should()
-                .findSpots(eq(0), eq(List.of(SpotTheme.SUNSET)), any(), any(), any(), any());
+                .findSpots(eq(0), eq(List.of(1L)), eq(List.of(SpotTheme.SUNSET)), any(), any(), any(), any());
         }
 
         @Test
         @WithMockUser(username = CUSTOMER_ID, roles = "USER_CUSTOMER")
         @DisplayName("다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달된 값이 모두 바인딩된다")
         void bindsMultipleValues() throws Exception {
-            given(spotQueryService.findSpots(anyInt(), any(), any(), any(), any(), any()))
+            given(spotQueryService.findSpots(anyInt(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new SpotListResponse(List.of(), 0, false));
 
-            mockMvc.perform(get(LIST_URI).param("theme", "SS", "YS"))
+            mockMvc.perform(get(LIST_URI).param("regionId", "1").param("theme", "SS", "YS"))
                 .andExpect(status().isOk());
 
             then(spotQueryService).should()
-                .findSpots(eq(0), eq(List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL)), any(), any(), any(), any());
+                .findSpots(eq(0), eq(List.of(1L)), eq(List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL)), any(), any(), any(), any());
         }
 
         @Test
         @WithMockUser(username = CUSTOMER_ID, roles = "USER_CUSTOMER")
         @DisplayName("code도 이름도 아닌 값이면 400(C002)이다")
         void rejectsUnknownValue() throws Exception {
-            mockMvc.perform(get(LIST_URI).param("theme", "INVALID"))
+            mockMvc.perform(get(LIST_URI).param("regionId", "1").param("theme", "INVALID"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("C002"));
         }

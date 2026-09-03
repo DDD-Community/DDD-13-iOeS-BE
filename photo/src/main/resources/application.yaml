@@ -158,6 +158,8 @@ app:
     public-get-urls:
       - /v1/spots
       - /v1/spots/**
+      - /v1/regions
+      - /v1/regions/**
       - /v1/bbs/posts
       - /v1/bbs/posts/**
       - /v1/address/**

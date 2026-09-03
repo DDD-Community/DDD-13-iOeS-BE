@@ -35,6 +35,7 @@ import org.locationtech.jts.geom.PrecisionModel;
         @Index(name = "idx_spots_status", columnList = "status"),
         @Index(name = "idx_spots_crowd_area_name", columnList = "crowd_area_name"),
         @Index(name = "idx_spots_user_id", columnList = "user_id"),
+        @Index(name = "idx_spots_region_id", columnList = "region_id"),
     }
 )
 @SQLRestriction("deleted_at IS NULL")
@@ -82,6 +83,9 @@ public class Spot extends BaseEntity {
     @Column(name = "crowd_area_name", length = 50)
     private String crowdAreaName;
 
+    @Column(name = "region_id")
+    private Long regionId;
+
     @Column(name = "parking_info", length = 255)
     private String parkingInfo;
 
@@ -112,7 +116,8 @@ public class Spot extends BaseEntity {
     @Builder
     private Spot(String name, String comment, SpotTheme theme, Double latitude, Double longitude,
                  String address, String addressRoad, String addressJibun, SpotStatus status,
-                 Integer gridNx, Integer gridNy, String crowdAreaName, String parkingInfo, Long userId) {
+                 Integer gridNx, Integer gridNy, String crowdAreaName, Long regionId,
+                 String parkingInfo, Long userId) {
         this.name = name;
         this.comment = comment;
         this.theme = theme;
@@ -126,6 +131,7 @@ public class Spot extends BaseEntity {
         this.gridNx = gridNx;
         this.gridNy = gridNy;
         this.crowdAreaName = crowdAreaName;
+        this.regionId = regionId;
         this.parkingInfo = parkingInfo;
         this.userId = userId;
     }
@@ -137,6 +143,10 @@ public class Spot extends BaseEntity {
 
     public void assignCrowdAreaName(String crowdAreaName) {
         this.crowdAreaName = crowdAreaName;
+    }
+
+    public void assignRegion(Long regionId) {
+        this.regionId = regionId;
     }
 
     // userId 가 없는 건은 운영자가 등록한 큐레이션 스팟이다.
