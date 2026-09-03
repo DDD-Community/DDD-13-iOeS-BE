@@ -11,6 +11,7 @@ import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.entity.SpotReview;
 import com.ioes.photo.domain.spot.enums.RejectionReason;
+import com.ioes.photo.domain.spot.enums.RelYn;
 import com.ioes.photo.domain.spot.enums.ReviewDecision;
 import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
@@ -81,6 +82,7 @@ class SpotQueryServiceTest {
     @InjectMocks SpotQueryService spotQueryService;
 
     private static final String PUBLISHED_CODE = SpotStatus.PUBLISHED.getCode();
+    private static final String RELEASED_CODE = RelYn.Y.getCode();
 
     @BeforeEach
     void setUpUserRepository() {
@@ -103,7 +105,7 @@ class SpotQueryServiceTest {
             SpotViewportRow row = new SpotViewportRow(1L, 37.55, 127.05, null, 1L);
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/thumbnail/key.jpg");
 
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), null))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), null))
                 .willReturn(List.of(row));
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L)))
                 .willReturn(List.of(image));
@@ -127,7 +129,7 @@ class SpotQueryServiceTest {
         void isMySpotTrue_whenSpotBelongsToUser() {
             SpotViewportRow row = new SpotViewportRow(1L, 37.55, 127.05, 42L, 1L);
 
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), 42L))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L))
                 .willReturn(List.of(row));
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L)))
                 .willReturn(List.of());
@@ -142,7 +144,7 @@ class SpotQueryServiceTest {
         void isMySpotFalse_whenSpotBelongsToDifferentUser() {
             SpotViewportRow row = new SpotViewportRow(1L, 37.55, 127.05, 99L, 1L);
 
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), 42L))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L))
                 .willReturn(List.of(row));
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L)))
                 .willReturn(List.of());
@@ -157,7 +159,7 @@ class SpotQueryServiceTest {
         void returnsNullThumbnail_whenNoImage() {
             SpotViewportRow row = new SpotViewportRow(2L, 37.55, 127.05, null, 1L);
 
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), null))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), null))
                 .willReturn(List.of(row));
             given(spotImageRepository.findAllBySpotIdIn(List.of(2L)))
                 .willReturn(List.of());
@@ -171,7 +173,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("뷰포트 내 스팟이 없으면 빈 목록을 반환하고 이미지 조회는 수행하지 않는다")
         void returnsEmpty_whenNoSpotsFound() {
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), null))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), null))
                 .willReturn(List.of());
 
             SpotViewportResponse response = spotQueryService.findSpotsInViewport(viewport, List.of(1L), null, null);
@@ -183,59 +185,59 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("theme 필터를 mapper에 코드값 리스트로 전달한다")
         void passesThemeCodeToMapper() {
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), List.of(1L), null))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode()), List.of(1L), null))
                 .willReturn(List.of());
 
             spotQueryService.findSpotsInViewport(viewport, List.of(1L), List.of(SpotTheme.SUNSET), null);
 
             then(spotMapper).should()
-                .findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), List.of(1L), null);
+                .findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode()), List.of(1L), null);
         }
 
         @Test
         @DisplayName("theme을 여러 개 선택하면 mapper에 코드값 리스트가 순서대로 전달된다")
         void passesMultipleThemeCodesToMapper() {
             given(spotMapper.findSpotsInViewport(
-                37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode()), List.of(1L), null))
+                37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode()), List.of(1L), null))
                 .willReturn(List.of());
 
             spotQueryService.findSpotsInViewport(viewport, List.of(1L), List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL), null);
 
             then(spotMapper).should().findSpotsInViewport(
-                37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode()), List.of(1L), null);
+                37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode()), List.of(1L), null);
         }
 
         @Test
         @DisplayName("theme이 빈 리스트면 mapper에는 필터 없음(null)으로 전달된다")
         void passesNullToMapper_whenThemeListEmpty() {
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), null))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), null))
                 .willReturn(List.of());
 
             spotQueryService.findSpotsInViewport(viewport, List.of(1L), List.of(), null);
 
-            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), null);
+            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), null);
         }
 
         @Test
         @DisplayName("regionId를 mapper에 그대로 전달한다")
         void passesRegionIdToMapper() {
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L, 2L), null))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L, 2L), null))
                 .willReturn(List.of());
 
             spotQueryService.findSpotsInViewport(viewport, List.of(1L, 2L), null, null);
 
-            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L, 2L), null);
+            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L, 2L), null);
         }
 
         @Test
         @DisplayName("userId를 mapper에 그대로 전달한다 (지역코드 없는 내 스팟도 조회되도록)")
         void passesUserIdToMapper() {
-            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), 42L))
+            given(spotMapper.findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L))
                 .willReturn(List.of());
 
             spotQueryService.findSpotsInViewport(viewport, List.of(1L), null, 42L);
 
-            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, null, List.of(1L), 42L);
+            then(spotMapper).should().findSpotsInViewport(37.5, 37.6, 127.0, 127.1, PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L);
         }
     }
 
@@ -413,9 +415,9 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 모두 null이면 정상 처리된다")
         void successWhenBothCoordinatesNull() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(0L);
 
             SpotListResponse response = spotQueryService.findSpots(0, null, null, null, null, SortType.RECOMMENDED, null);
 
@@ -425,74 +427,74 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 모두 있고 DISTANCE 정렬이면 mapper에 전달한다")
         void passesLatLngToMapperWhenDistanceSort() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, null, 37.5, 127.0, SortType.DISTANCE, null);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, 37.5, 127.0, 0, 6, SortType.DISTANCE.getCode());
         }
 
         @Test
         @DisplayName("테마 필터가 있으면 mapper에 테마 코드 리스트를 전달한다")
         void passesThemeCodeToMapper() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, List.of(SpotTheme.SUNSET), null, null, SortType.RECOMMENDED, null);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, RELEASED_CODE, List.of(SpotTheme.SUNSET.getCode()), null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("테마를 여러 개 선택하면 mapper에 테마 코드 리스트가 순서대로 전달된다")
         void passesMultipleThemeCodesToMapper() {
             List<String> codes = List.of(SpotTheme.SUNSET.getCode(), SpotTheme.YUNSEUL.getCode());
-            given(spotMapper.findSpots(PUBLISHED_CODE, codes, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, codes, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, codes, null, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, codes, null, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, List.of(SpotTheme.SUNSET, SpotTheme.YUNSEUL), null, null, SortType.RECOMMENDED, null);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, codes, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, RELEASED_CODE, codes, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("테마가 빈 리스트면 mapper에는 필터 없음(null)으로 전달된다")
         void passesNullToMapper_whenThemeListEmpty() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, List.of(), null, null, SortType.RECOMMENDED, null);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("regionId와 userId를 mapper에 그대로 전달한다")
         void passesRegionIdAndUserIdToMapper() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, List.of(1L, 2L), 42L, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L, 2L), 42L, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, List.of(1L, 2L), 42L)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L, 2L), 42L)).willReturn(0L);
 
             spotQueryService.findSpots(0, List.of(1L, 2L), null, null, null, SortType.RECOMMENDED, 42L);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, List.of(1L, 2L), 42L, null, null, 0, 6, SortType.RECOMMENDED.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L, 2L), 42L, null, null, 0, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("userId를 countSpots에도 그대로 전달한다 (지역코드 없는 내 스팟도 페이징 카운트에 포함되도록)")
         void passesUserIdToCountSpots() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, List.of(1L), 42L, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L, null, null, 0, 6, SortType.RECOMMENDED.getCode()))
                 .willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, List.of(1L), 42L)).willReturn(0L);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L)).willReturn(0L);
 
             spotQueryService.findSpots(0, List.of(1L), null, null, null, SortType.RECOMMENDED, 42L);
 
-            then(spotMapper).should().countSpots(PUBLISHED_CODE, null, List.of(1L), 42L);
+            then(spotMapper).should().countSpots(PUBLISHED_CODE, RELEASED_CODE, null, List.of(1L), 42L);
         }
 
         @Test
@@ -506,8 +508,8 @@ class SpotQueryServiceTest {
                 new SpotRow(5L, "스팟E", "SS", null, 0L, 0L, null),
                 new SpotRow(6L, "스팟F", "SS", null, 0L, 0L, null)
             );
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(rows);
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(7L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(rows);
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(7L);
             given(spotImageRepository.findAllBySpotIdIn(any())).willReturn(List.of());
 
             SpotListResponse response = spotQueryService.findSpots(0, null, null, null, null, SortType.RECOMMENDED, null);
@@ -518,8 +520,8 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("전체 개수가 다음 페이지 기준 이하면 hasNext가 false다")
         void hasNextFalse_whenLastPage() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(6L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(6L);
 
             SpotListResponse response = spotQueryService.findSpots(0, null, null, null, null, SortType.RECOMMENDED, null);
 
@@ -529,19 +531,19 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("page=1이면 offset=6으로 mapper를 호출한다")
         void passesCorrectOffsetForPage1() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 6, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(0L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 6, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(0L);
 
             spotQueryService.findSpots(1, null, null, null, null, SortType.RECOMMENDED, null);
 
-            then(spotMapper).should().findSpots(PUBLISHED_CODE, null, null, null, null, null, 6, 6, SortType.RECOMMENDED.getCode());
+            then(spotMapper).should().findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 6, 6, SortType.RECOMMENDED.getCode());
         }
 
         @Test
         @DisplayName("응답에 요청한 page 번호가 그대로 포함된다")
         void responseContainsRequestedPage() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 12, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(0L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 12, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(0L);
 
             SpotListResponse response = spotQueryService.findSpots(2, null, null, null, null, SortType.RECOMMENDED, null);
 
@@ -553,8 +555,8 @@ class SpotQueryServiceTest {
         void mapsSpotRowToSpotItemCorrectly() {
             SpotImage image = SpotImage.create(1L, "key.jpg");
             SpotRow row = new SpotRow(1L, "한강공원", "SS", 1L, 12L, 4L, 1.5);
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of(row));
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(1L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of(row));
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(1L))).willReturn(List.of(image));
             given(spotThumbnailService.getThumbnailUrl(image)).willReturn("https://cdn.example.com/thumb.jpg");
 
@@ -574,8 +576,8 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("SpotRow 결과가 비어있으면 이미지 조회를 수행하지 않는다")
         void skipsImageQuery_whenNoRows() {
-            given(spotMapper.findSpots(PUBLISHED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
-            given(spotMapper.countSpots(PUBLISHED_CODE, null, null, null)).willReturn(0L);
+            given(spotMapper.findSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null, null, null, 0, 6, SortType.RECOMMENDED.getCode())).willReturn(List.of());
+            given(spotMapper.countSpots(PUBLISHED_CODE, RELEASED_CODE, null, null, null)).willReturn(0L);
 
             spotQueryService.findSpots(0, null, null, null, null, SortType.RECOMMENDED, null);
 

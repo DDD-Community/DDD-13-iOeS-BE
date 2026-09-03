@@ -1,5 +1,6 @@
 package com.ioes.photo.domain.spot.entity;
 
+import com.ioes.photo.domain.spot.enums.RelYn;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.global.entity.BaseEntity;
@@ -36,6 +37,7 @@ import org.locationtech.jts.geom.PrecisionModel;
         @Index(name = "idx_spots_crowd_area_name", columnList = "crowd_area_name"),
         @Index(name = "idx_spots_user_id", columnList = "user_id"),
         @Index(name = "idx_spots_region_id", columnList = "region_id"),
+        @Index(name = "idx_spots_rel_yn", columnList = "rel_yn"),
     }
 )
 @SQLRestriction("deleted_at IS NULL")
@@ -73,6 +75,10 @@ public class Spot extends BaseEntity {
 
     @Column(nullable = false, length = 4)
     private SpotStatus status;
+
+    // 검수 flow(status)와 별개로 지도뷰/리스트 노출만 껐다 켤 수 있는 독립 플래그.
+    @Column(name = "rel_yn", nullable = false, length = 1)
+    private RelYn relYn;
 
     @Column(name = "grid_nx")
     private Integer gridNx;
@@ -128,6 +134,8 @@ public class Spot extends BaseEntity {
         this.addressRoad = addressRoad;
         this.addressJibun = addressJibun;
         this.status = status == null ? SpotStatus.DRAFT : status;
+        // 검수 없이 곧바로 PUBLISHED 로 생성되는 어드민 큐레이션/배치 등록 스팟은 처음부터 노출 상태다.
+        this.relYn = this.status == SpotStatus.PUBLISHED ? RelYn.Y : RelYn.N;
         this.gridNx = gridNx;
         this.gridNy = gridNy;
         this.crowdAreaName = crowdAreaName;
@@ -191,14 +199,35 @@ public class Spot extends BaseEntity {
 
     public void applyReview(boolean approved, Long reviewerId, LocalDateTime reviewedAt) {
         this.status = approved ? SpotStatus.PUBLISHED : SpotStatus.REJECTED;
+        if (approved) {
+            this.relYn = RelYn.Y;
+        }
         this.reviewerId = reviewerId;
         this.reviewedAt = reviewedAt;
     }
 
     // appliedAt 은 검수 큐 정렬 기준이라 비우고, reviewedAt/reviewerId 는 마지막 검수 사실 기록이라 남긴다.
+    // relYn 도 함께 초기화한다. 그대로 두면 재승인 전까지 노출 여부를 알 수 없는 상태로 남는다.
     public void cancelPublication() {
         this.status = SpotStatus.DRAFT;
         this.appliedAt = null;
+        this.relYn = RelYn.N;
+    }
+
+    public boolean isReleased() {
+        return relYn == RelYn.Y;
+    }
+
+    public boolean isReleaseControllable() {
+        return status == SpotStatus.PUBLISHED;
+    }
+
+    public void release() {
+        this.relYn = RelYn.Y;
+    }
+
+    public void unrelease() {
+        this.relYn = RelYn.N;
     }
 
     // 검수 중 수정은 운영자가 확인한 것과 다른 내용을 승인하게 만들고, 공개 상태 수정은 재검수를 우회한다.

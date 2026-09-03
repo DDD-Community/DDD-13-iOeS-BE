@@ -109,6 +109,78 @@ class SpotTest {
         }
     }
 
+    @Nested
+    @DisplayName("relYn(노출) 플래그")
+    class ReleaseFlag {
+
+        @Test
+        @DisplayName("PUBLISHED 로 곧바로 생성되면(어드민 큐레이션/배치 등록) relYn 기본값은 Y 다")
+        void defaultsToReleased_whenCreatedAsPublished() {
+            Spot spot = buildSpot(SpotStatus.PUBLISHED);
+
+            assertThat(spot.isReleased()).isTrue();
+        }
+
+        @Test
+        @DisplayName("PUBLISHED 가 아닌 상태로 생성되면 relYn 기본값은 N 이다")
+        void defaultsToUnreleased_whenNotPublished() {
+            assertThat(buildSpot(SpotStatus.DRAFT).isReleased()).isFalse();
+            assertThat(buildSpot(SpotStatus.PENDING).isReleased()).isFalse();
+        }
+
+        @Test
+        @DisplayName("검수 승인 시 relYn 이 자동으로 Y 가 된다")
+        void applyReviewApproved_setsReleased() {
+            Spot spot = buildSpot(SpotStatus.PENDING);
+
+            spot.applyReview(true, REVIEWER_ID, LocalDateTime.now());
+
+            assertThat(spot.isReleased()).isTrue();
+        }
+
+        @Test
+        @DisplayName("검수 반려 시 relYn 은 그대로 N 이다")
+        void applyReviewRejected_keepsUnreleased() {
+            Spot spot = buildSpot(SpotStatus.PENDING);
+
+            spot.applyReview(false, REVIEWER_ID, LocalDateTime.now());
+
+            assertThat(spot.isReleased()).isFalse();
+        }
+
+        @Test
+        @DisplayName("공개 해제(cancelPublication) 시 relYn 이 N 으로 초기화된다")
+        void cancelPublication_resetsToUnreleased() {
+            Spot spot = buildSpot(SpotStatus.PUBLISHED);
+            assertThat(spot.isReleased()).isTrue();
+
+            spot.cancelPublication();
+
+            assertThat(spot.isReleased()).isFalse();
+        }
+
+        @Test
+        @DisplayName("release()/unrelease() 로 relYn 을 직접 켜고 끌 수 있다")
+        void releaseAndUnrelease() {
+            Spot spot = buildSpot(SpotStatus.PUBLISHED);
+
+            spot.unrelease();
+            assertThat(spot.isReleased()).isFalse();
+
+            spot.release();
+            assertThat(spot.isReleased()).isTrue();
+        }
+
+        @Test
+        @DisplayName("PUBLISHED 상태일 때만 노출을 껐다 켤 수 있다")
+        void isReleaseControllable() {
+            assertThat(buildSpot(SpotStatus.PUBLISHED).isReleaseControllable()).isTrue();
+            assertThat(buildSpot(SpotStatus.DRAFT).isReleaseControllable()).isFalse();
+            assertThat(buildSpot(SpotStatus.PENDING).isReleaseControllable()).isFalse();
+            assertThat(buildSpot(SpotStatus.REJECTED).isReleaseControllable()).isFalse();
+        }
+    }
+
     private static Spot buildSpot(SpotStatus status) {
         Spot spot = Spot.builder()
             .name("테스트스팟")
