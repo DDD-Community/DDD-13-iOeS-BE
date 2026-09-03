@@ -7,6 +7,7 @@ import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse.MySpotItem;
 import com.ioes.photo.domain.myspot.dto.OpenMySpotResponse;
+import com.ioes.photo.domain.myspot.dto.ReleaseMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.UpdateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.UpdateMySpotResponse;
 import com.ioes.photo.domain.myspot.mapper.MySpotMapper;
@@ -307,6 +308,30 @@ public class MySpotService {
         }
 
         return new CancelPublicationResponse(spotId, previous.name(), spot.getStatus().name());
+    }
+
+    // 검수 flow(status)는 그대로 두고 지도뷰/리스트 노출 여부만 켠다.
+    @Transactional
+    public ReleaseMySpotResponse releaseSpot(Long userId, Long spotId) {
+        Spot spot = findOwnedSpotWithLock(userId, spotId);
+        if (!spot.isReleaseControllable()) {
+            throw new BusinessException(SpotErrorCode.SPOT_NOT_RELEASABLE);
+        }
+
+        spot.release();
+        return new ReleaseMySpotResponse(spot.getId(), spot.isReleased());
+    }
+
+    // 검수 flow(status)는 그대로 두고 지도뷰/리스트 노출 여부만 끈다.
+    @Transactional
+    public ReleaseMySpotResponse unreleaseSpot(Long userId, Long spotId) {
+        Spot spot = findOwnedSpotWithLock(userId, spotId);
+        if (!spot.isReleaseControllable()) {
+            throw new BusinessException(SpotErrorCode.SPOT_NOT_RELEASABLE);
+        }
+
+        spot.unrelease();
+        return new ReleaseMySpotResponse(spot.getId(), spot.isReleased());
     }
 
     private Spot findOwnedSpotWithLock(Long userId, Long spotId) {

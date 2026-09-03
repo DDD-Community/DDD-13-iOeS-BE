@@ -11,6 +11,7 @@ import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.RelYn;
 import com.ioes.photo.domain.spot.enums.ReviewDecision;
 import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
@@ -110,6 +111,7 @@ public class SpotQueryService {
             request.minLat(), request.maxLat(),
             request.minLng(), request.maxLng(),
             SpotStatus.PUBLISHED.getCode(),
+            RelYn.Y.getCode(),
             toThemeCodes(theme),
             regionId,
             userId
@@ -166,11 +168,12 @@ public class SpotQueryService {
         }
 
         String status = SpotStatus.PUBLISHED.getCode();
+        String relYn = RelYn.Y.getCode();
         List<String> themeCodes = toThemeCodes(theme);
         String sortCode = sort != null ? sort.getCode() : SortType.RECOMMENDED.getCode();
 
         List<SpotRow> rows = spotMapper.findSpots(
-            status, themeCodes, regionId, userId, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
+            status, relYn, themeCodes, regionId, userId, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotRow::id).toList());
 
         List<Long> spotIds = rows.stream().map(SpotRow::id).toList();
@@ -183,7 +186,7 @@ public class SpotQueryService {
             .toList();
 
         return new SpotListResponse(items, page,
-            spotMapper.countSpots(status, themeCodes, regionId, userId) > (long) (page + 1) * LIST_PAGE_SIZE);
+            spotMapper.countSpots(status, relYn, themeCodes, regionId, userId) > (long) (page + 1) * LIST_PAGE_SIZE);
     }
 
     private List<String> toThemeCodes(List<SpotTheme> themes) {

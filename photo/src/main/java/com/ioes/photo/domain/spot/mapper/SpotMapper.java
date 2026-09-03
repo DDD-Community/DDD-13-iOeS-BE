@@ -15,6 +15,7 @@ public interface SpotMapper {
 
     List<SpotRow> findSpots(
         @Param("status") String status,
+        @Param("relYn") String relYn,
         @Param("themes") List<String> themes,
         @Param("regionIds") List<Long> regionIds,
         @Param("userId") Long userId,
@@ -27,6 +28,7 @@ public interface SpotMapper {
 
     long countSpots(
         @Param("status") String status,
+        @Param("relYn") String relYn,
         @Param("themes") List<String> themes,
         @Param("regionIds") List<Long> regionIds,
         @Param("userId") Long userId
@@ -38,6 +40,7 @@ public interface SpotMapper {
         @Param("minLng") double minLng,
         @Param("maxLng") double maxLng,
         @Param("status") String status,
+        @Param("relYn") String relYn,
         @Param("themes") List<String> themes,
         @Param("regionIds") List<Long> regionIds,
         @Param("userId") Long userId

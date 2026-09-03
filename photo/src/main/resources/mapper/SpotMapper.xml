@@ -29,6 +29,7 @@
         FROM spots s
         <where>
             s.status = #{status}
+            AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
             AND (
                 s.region_id IN
@@ -73,6 +74,7 @@
         FROM spots s
         <where>
             s.status = #{status}
+            AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
             AND (
                 s.region_id IN
@@ -98,6 +100,7 @@
         FROM spots s
         WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
             AND s.status = #{status}
+            AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
             AND (
                 s.region_id IN
