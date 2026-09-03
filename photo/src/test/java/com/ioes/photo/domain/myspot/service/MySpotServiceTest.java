@@ -501,6 +501,97 @@ class MySpotServiceTest {
     }
 
     @Nested
+    @DisplayName("releaseSpot() / unreleaseSpot()")
+    class ReleaseSpot {
+
+        @Test
+        @DisplayName("공개(PUBLISHED) 스팟의 노출을 켤 수 있다")
+        void releasesPublishedSpot() {
+            Spot spot = ownedSpot(SpotStatus.PUBLISHED);
+            spot.unrelease();
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            var response = mySpotService.releaseSpot(USER_ID, SPOT_ID);
+
+            assertThat(response.spotId()).isEqualTo(SPOT_ID);
+            assertThat(response.released()).isTrue();
+            assertThat(spot.isReleased()).isTrue();
+            assertThat(spot.getStatus()).isEqualTo(SpotStatus.PUBLISHED);
+        }
+
+        @Test
+        @DisplayName("공개(PUBLISHED) 스팟의 노출을 끌 수 있다")
+        void unreleasesPublishedSpot() {
+            Spot spot = ownedSpot(SpotStatus.PUBLISHED);
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            var response = mySpotService.unreleaseSpot(USER_ID, SPOT_ID);
+
+            assertThat(response.spotId()).isEqualTo(SPOT_ID);
+            assertThat(response.released()).isFalse();
+            assertThat(spot.isReleased()).isFalse();
+            assertThat(spot.getStatus()).isEqualTo(SpotStatus.PUBLISHED);
+        }
+
+        @Test
+        @DisplayName("PUBLISHED 가 아니면 노출 켜기 시 SPOT_NOT_RELEASABLE 예외를 던진다")
+        void throwsWhenReleasingNotPublished() {
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(ownedSpot(SpotStatus.DRAFT)));
+
+            assertThatThrownBy(() -> mySpotService.releaseSpot(USER_ID, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_RELEASABLE);
+        }
+
+        @Test
+        @DisplayName("PUBLISHED 가 아니면 노출 끄기 시 SPOT_NOT_RELEASABLE 예외를 던진다")
+        void throwsWhenUnreleasingNotPublished() {
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(ownedSpot(SpotStatus.PENDING)));
+
+            assertThatThrownBy(() -> mySpotService.unreleaseSpot(USER_ID, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_RELEASABLE);
+        }
+
+        @Test
+        @DisplayName("본인 스팟이 아니면 SPOT_ACCESS_DENIED 예외를 던진다")
+        void throwsWhenNotOwner() {
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(ownedSpot(SpotStatus.PUBLISHED)));
+
+            assertThatThrownBy(() -> mySpotService.releaseSpot(999L, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 스팟이면 SPOT_NOT_FOUND 예외를 던진다")
+        void throwsWhenNotFound() {
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> mySpotService.releaseSpot(USER_ID, SPOT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        private Spot ownedSpot(SpotStatus status) {
+            Spot spot = Spot.builder()
+                .name("테스트스팟")
+                .theme(SpotTheme.SUNSET)
+                .latitude(37.5)
+                .longitude(127.0)
+                .status(status)
+                .userId(USER_ID)
+                .build();
+            ReflectionTestUtils.setField(spot, "id", SPOT_ID);
+            return spot;
+        }
+    }
+
+    @Nested
     @DisplayName("createMySpot()")
     class CreateMySpot {
 
