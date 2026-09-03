@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.spot.service;
 
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.ImageSourceType;
 import com.ioes.photo.global.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -66,6 +68,45 @@ class SpotThumbnailServiceTest {
 
             assertThat(result).isEqualTo("https://cdn.example.com/abc.jpg");
         }
+
+        @Test
+        @DisplayName("외부 호스팅 이미지는 thumbnailKey가 없어도 원본 URL을 그대로 반환한다")
+        void returnsOriginalUrl_whenExternal() {
+            SpotImage image = buildExternalImage("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+
+            String result = spotThumbnailService.getThumbnailUrl(image);
+
+            assertThat(result).isEqualTo("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+            then(storageService).should(never()).getUrl(anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("getImageUrl()")
+    class GetImageUrl {
+
+        @Test
+        @DisplayName("외부 호스팅 이미지는 storageService를 거치지 않고 저장된 URL을 그대로 반환한다")
+        void returnsExternalUrlDirectly() {
+            SpotImage image = buildExternalImage("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+
+            String result = spotThumbnailService.getImageUrl(image);
+
+            assertThat(result).isEqualTo("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
+            then(storageService).should(never()).getUrl(anyString());
+        }
+
+        @Test
+        @DisplayName("자사 스토리지 이미지는 storageService.getUrl()로 URL을 조합한다")
+        void returnsStorageUrl_whenInternal() {
+            SpotImage image = SpotImage.create(1L, "prod/public/spots/1/original/202504/abc.jpg");
+            given(storageService.getUrl("prod/public/spots/1/original/202504/abc.jpg"))
+                .willReturn("https://cdn.example.com/abc.jpg");
+
+            String result = spotThumbnailService.getImageUrl(image);
+
+            assertThat(result).isEqualTo("https://cdn.example.com/abc.jpg");
+        }
     }
 
     // ── helper ──────────────────────────────────────────────────────────────
@@ -78,5 +119,11 @@ class SpotThumbnailServiceTest {
         return image;
     }
 
-
+    // EXTERNAL 행은 애플리케이션이 만들지 않고 데이터 적재용 SQL이 직접 세팅하므로,
+    // 여기서는 그 상태를 흉내내기 위해서만 리플렉션으로 필드를 강제 설정한다.
+    private static SpotImage buildExternalImage(String externalUrl) {
+        SpotImage image = SpotImage.create(1L, externalUrl);
+        ReflectionTestUtils.setField(image, "imageSourceType", ImageSourceType.EXTERNAL);
+        return image;
+    }
 }

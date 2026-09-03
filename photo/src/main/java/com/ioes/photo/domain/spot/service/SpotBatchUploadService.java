@@ -7,6 +7,7 @@ import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.event.SpotCreatedEvent;
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
+import com.ioes.photo.domain.spotregion.service.SpotRegionResolver;
 import com.ioes.photo.domain.spot.repository.SpotImageRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.global.common.util.FileUtils;
@@ -71,6 +72,7 @@ public class SpotBatchUploadService {
     private final StorageProperties storageProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final CrowdAreaMapper crowdAreaMapper;
+    private final SpotRegionResolver spotRegionResolver;
 
     @Transactional
     public SpotBatchUploadResponse batchUpload(MultipartFile excelFile, MultipartFile imagesFile) {
@@ -105,6 +107,7 @@ public class SpotBatchUploadService {
             .gridNx(grid.nx())
             .gridNy(grid.ny())
             .crowdAreaName(resolveCrowdAreaName(row))
+            .regionId(spotRegionResolver.resolve(row.address()))
             .build());
         eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
 
@@ -214,11 +217,11 @@ public class SpotBatchUploadService {
         if (themeKr == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "테마 값이 없습니다.");
         }
-        return switch (themeKr.trim()) {
-            case "노을" -> SpotTheme.SUNSET;
-            case "윤슬" -> SpotTheme.YUNSEUL;
-            default -> throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "알 수 없는 테마: " + themeKr);
-        };
+        try {
+            return SpotTheme.fromLabel(themeKr.trim());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "알 수 없는 테마: " + themeKr);
+        }
     }
 
     private String getStringValue(Cell cell) {

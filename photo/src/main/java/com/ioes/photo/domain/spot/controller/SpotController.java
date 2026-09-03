@@ -17,7 +17,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,7 +42,14 @@ public class SpotController {
 
     private final SpotQueryService spotQueryService;
 
-    @Operation(summary = "스팟 상세 조회", description = "스팟 ID로 상세 정보(이미지, 한 줄 코멘트, 기록일자/시간, 날씨, 혼잡도, 일몰시간, 북마크 여부 등)를 반환합니다. 비로그인 시 isBookmarked/isMySpot은 항상 false입니다.")
+    @Operation(
+        summary = "스팟 상세 조회",
+        description = "스팟 ID로 상세 정보(이미지, 한 줄 코멘트, 기록일자/시간, 날씨, 혼잡도, 일몰시간, 북마크/좋아요 여부 등)를 반환합니다. "
+            + "공개되지 않은 스팟은 등록한 본인에게만 보이며, 그 외에는 404로 응답합니다. "
+            + "반려된 내 스팟이면 rejection에 반려 사유가 함께 내려갑니다(타인에게는 노출되지 않습니다). "
+            + "조회수는 공개 상태의 스팟을 등록자 외의 사용자가 볼 때만 증가합니다. "
+            + "비로그인 시 isBookmarked/isLiked/isMySpot은 항상 false입니다."
+    )
     @SecurityRequirements
     @GetMapping("/{spotId}")
     public ApiResponse<SpotDetailResponse> getSpotDetail(
@@ -50,7 +59,11 @@ public class SpotController {
         return ApiResponse.success(spotQueryService.findSpotDetail(spotId, userId));
     }
 
-    @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다. 비로그인 시 isMySpot은 항상 false입니다.")
+    @Operation(
+        summary = "뷰포트 내 스팟 목록 조회",
+        description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다. "
+            + "지역코드(regionId)는 필수이며, bbox 범위와 AND 조건으로 결합됩니다. 비로그인 시 isMySpot은 항상 false입니다."
+    )
     @SecurityRequirements
     @GetMapping("/viewport")
     public ApiResponse<SpotViewportResponse> getSpotsInViewport(
@@ -62,12 +75,17 @@ public class SpotController {
         @Parameter(description = "좌하단 경도", example = "126.97") @RequestParam @NotNull @Longitude Double bottomLeftLng,
         @Parameter(description = "우하단 위도", example = "37.52") @RequestParam @NotNull @Latitude Double bottomRightLat,
         @Parameter(description = "우하단 경도", example = "127.05") @RequestParam @NotNull @Longitude Double bottomRightLng,
-        @Parameter(description = "테마 필터 (SUNSET/YUNSEUL), 미전달 시 전체") @RequestParam(required = false) SpotTheme theme,
+        @Parameter(description = "지역 코드 (필수). 다중 선택 시 ?regionId=1&regionId=2 형식으로 반복 전달")
+        @RequestParam @NotEmpty List<Long> regionId,
+        @Parameter(description = "테마 필터. code(SS/YS/SL/NV) 또는 enum 이름(SUNSET/YUNSEUL/SUNLIGHT/NIGHT_VIEW) 모두 가능, "
+            + "다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달. 미전달 시 전체")
+        @RequestParam(required = false) List<SpotTheme> theme,
         @CurrentUserId Long userId
     ) {
         return ApiResponse.success(spotQueryService.findSpotsInViewport(
             new ViewportRequest(topLeftLat, topLeftLng, topRightLat, topRightLng,
                                 bottomLeftLat, bottomLeftLng, bottomRightLat, bottomRightLng),
+            regionId,
             theme,
             userId
         ));
@@ -75,24 +93,34 @@ public class SpotController {
 
     @Operation(
         summary = "스팟 리스트 조회",
-        description = "스팟 목록을 6개 단위로 페이징 조회합니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. sort=RECOMMENDED(기본값) 시 북마크 많은 순으로 정렬됩니다. 비로그인 시 isBookmarked는 항상 false입니다."
+        description = "공개(PUBLISHED)된 스팟 목록을 6개 단위로 페이징 조회합니다. "
+            + "지역코드(regionId)는 필수입니다. 정렬은 1순위 지역코드, 2순위 내 스팟 여부이며, "
+            + "그 다음으로 sort 기준이 적용됩니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. "
+            + "sort=RECOMMENDED(기본값) 시 좋아요 많은 순으로 정렬되며, 동률은 북마크 수로 가릅니다. "
+            + "비로그인 시 isBookmarked/isLiked는 항상 false입니다."
     )
     @SecurityRequirements
     @GetMapping
     public ApiResponse<SpotListResponse> getSpots(
         @Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") @Min(0) int page,
-        @Parameter(description = "테마 필터 (SUNSET/YUNSEUL), 미전달 시 전체") @RequestParam(required = false) SpotTheme theme,
+        @Parameter(description = "지역 코드 (필수). 다중 선택 시 ?regionId=1&regionId=2 형식으로 반복 전달")
+        @RequestParam @NotEmpty List<Long> regionId,
+        @Parameter(description = "테마 필터. code(SS/YS/SL/NV) 또는 enum 이름(SUNSET/YUNSEUL/SUNLIGHT/NIGHT_VIEW) 모두 가능, "
+            + "다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달. 미전달 시 전체")
+        @RequestParam(required = false) List<SpotTheme> theme,
         @Parameter(description = "사용자 위도 (sort=DISTANCE 시 필수)", example = "37.55") @RequestParam(required = false) @Latitude Double latitude,
         @Parameter(description = "사용자 경도 (sort=DISTANCE 시 필수)", example = "126.99") @RequestParam(required = false) @Longitude Double longitude,
-        @Parameter(description = "정렬 기준 (RECOMMENDED=북마크순 기본값, DISTANCE=거리순)") @RequestParam(required = false, defaultValue = "RECOMMENDED") SortType sort,
+        @Parameter(description = "정렬 기준 (RECOMMENDED=좋아요순 기본값, DISTANCE=거리순)") @RequestParam(required = false, defaultValue = "RECOMMENDED") SortType sort,
         @CurrentUserId Long userId
     ) {
-        return ApiResponse.success(spotQueryService.findSpots(page, theme, latitude, longitude, sort, userId));
+        return ApiResponse.success(spotQueryService.findSpots(page, regionId, theme, latitude, longitude, sort, userId));
     }
 
     @Operation(
         summary = "스팟 미리보기 조회",
-        description = "스팟 ID와 사용자 위치를 기반으로 간략 정보(스팟명, 내 스팟 여부, 테마, 북마크 수, 거리, 주소)를 반환합니다. 위도/경도 미전달 시 거리 정보는 null입니다. 비로그인 시 isMySpot은 항상 false입니다."
+        description = "스팟 ID와 사용자 위치를 기반으로 간략 정보(스팟명, 내 스팟 여부, 테마, 북마크/좋아요 수, 거리, 주소)를 반환합니다. "
+            + "공개되지 않은 스팟은 등록한 본인에게만 보이며, 그 외에는 404로 응답합니다. "
+            + "위도/경도 미전달 시 거리 정보는 null입니다. 비로그인 시 isMySpot은 항상 false입니다."
     )
     @SecurityRequirements
     @GetMapping("/{spotId}/preview")

@@ -15,4 +15,6 @@ public interface SpotAlarmSubscriptionRepository extends JpaRepository<SpotAlarm
     Optional<SpotAlarmSubscription> findByUserIdAndSpotId(Long userId, Long spotId);
 
     List<SpotAlarmSubscription> findAllByUserIdAndEnabledTrue(Long userId);
+
+    List<SpotAlarmSubscription> findAllBySpotIdAndEnabledTrue(Long spotId);
 }

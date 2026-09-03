@@ -9,7 +9,9 @@
             s.id,
             s.name,
             s.theme,
+            s.region_id,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
+            COALESCE(s.like_count, 0) AS like_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
@@ -27,12 +29,31 @@
         FROM spots s
         <where>
             s.status = #{status}
+            AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
-            <if test="theme != null">
-                AND s.theme = #{theme}
+            AND (
+                s.region_id IN
+                <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                    #{regionId}
+                </foreach>
+                <!-- 지역코드가 아직 매핑되지 않은(NULL) 스팟도 내 스팟이면 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                </if>
+            )
+            <if test="themes != null and !themes.isEmpty()">
+                AND s.theme IN
+                <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
+                    #{themeCode}
+                </foreach>
             </if>
         </where>
         ORDER BY
+        /* 1순위: 지역코드, 2순위: MY스팟 정보(내 스팟 우선), 3순위: 기존 정렬 기준 */
+        s.region_id ASC,
+        <if test="userId != null">
+            CASE WHEN s.user_id = #{userId} THEN 0 ELSE 1 END,
+        </if>
         <choose>
             <when test='sort != null and sort == "D"'>
                 ST_Distance(
@@ -41,7 +62,8 @@
                 )
             </when>
             <otherwise>
-                s.bookmark_count DESC
+                /* 추천순 = 좋아요 많은 순. 동률은 북마크 수, 그다음 최신 등록 순으로 가른다 */
+                s.like_count DESC, s.bookmark_count DESC, s.id DESC
             </otherwise>
         </choose>
         LIMIT #{size} OFFSET #{offset}
@@ -52,22 +74,48 @@
         FROM spots s
         <where>
             s.status = #{status}
+            AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
-            <if test="theme != null">
-                AND s.theme = #{theme}
+            AND (
+                s.region_id IN
+                <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                    #{regionId}
+                </foreach>
+                <if test="userId != null">
+                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                </if>
+            )
+            <if test="themes != null and !themes.isEmpty()">
+                AND s.theme IN
+                <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
+                    #{themeCode}
+                </foreach>
             </if>
         </where>
     </select>
 
     <select id="findSpotsInViewport" resultType="SpotViewportRow">
     /* 뷰포트 조회 동적쿼리 */
-        SELECT s.id, s.latitude, s.longitude, s.user_id
+        SELECT s.id, s.latitude, s.longitude, s.user_id, s.region_id
         FROM spots s
         WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
             AND s.status = #{status}
+            AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
-            <if test="theme != null">
-                AND s.theme = #{theme}
+            AND (
+                s.region_id IN
+                <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+                    #{regionId}
+                </foreach>
+                <if test="userId != null">
+                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                </if>
+            )
+            <if test="themes != null and !themes.isEmpty()">
+                AND s.theme IN
+                <foreach item="themeCode" collection="themes" open="(" separator="," close=")">
+                    #{themeCode}
+                </foreach>
             </if>
     </select>
 
@@ -78,7 +126,9 @@
             s.name,
             s.theme,
             s.user_id,
+            s.status,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
+            COALESCE(s.like_count, 0) AS like_count,
             <choose>
                 <when test="lat != null">
                     ROUND(CAST(
