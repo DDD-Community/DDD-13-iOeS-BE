@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.crowdarea.repository;
 
 import com.ioes.photo.domain.crowdarea.entity.CrowdArea;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -9,4 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @author 김성민
  */
 public interface CrowdAreaRepository extends JpaRepository<CrowdArea, String> {
+
+    List<CrowdArea> findAllByCategory(String category);
 }

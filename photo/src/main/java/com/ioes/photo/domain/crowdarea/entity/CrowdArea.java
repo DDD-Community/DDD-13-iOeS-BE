@@ -22,6 +22,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CrowdArea {
 
+    /** 대전 관광지(V21 시드) 구분값. 수집기가 서울 실시간/대전 예측 API 를 이 값으로 분기한다. */
+    public static final String CATEGORY_DAEJEON_TOUR = "대전관광지";
+
     @Id
     @Column(name = "area_code", length = 20)
     private String areaCode;
