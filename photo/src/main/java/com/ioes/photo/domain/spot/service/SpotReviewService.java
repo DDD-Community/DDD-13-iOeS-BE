@@ -7,6 +7,7 @@ import com.ioes.photo.domain.spot.entity.SpotReview;
 import com.ioes.photo.domain.spot.enums.RejectionReason;
 import com.ioes.photo.domain.spot.enums.SpotOpenRequestStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
+import com.ioes.photo.domain.spot.event.SpotOpenReviewCompletedEvent;
 import com.ioes.photo.domain.spot.repository.SpotOpenRequestRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
@@ -15,6 +16,7 @@ import com.ioes.photo.global.error.exception.BusinessException;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class SpotReviewService {
     private final SpotReviewRepository spotReviewRepository;
     private final SpotOpenRequestRepository spotOpenRequestRepository;
     private final SpotImageAccessService spotImageAccessService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public SpotReviewResultResponse review(Long spotId, SpotReviewRequest request, Long reviewerId) {
@@ -46,11 +49,11 @@ public class SpotReviewService {
             throw new BusinessException(SpotErrorCode.SPOT_ALREADY_REVIEWED);
         }
 
-        SpotReview review = request.decision().isApproved()
-            ? approve(spot, reviewerId)
-            : reject(spot, request, reviewerId);
+        boolean approved = request.decision().isApproved();
+        SpotReview review = approved ? approve(spot, reviewerId) : reject(spot, request, reviewerId);
 
-        resolveOpenRequest(spotId, request.decision().isApproved(), review.getId(), spot.getReviewedAt());
+        resolveOpenRequest(spotId, approved, review.getId(), spot.getReviewedAt());
+        publishReviewCompletedEvent(spot, approved, request);
 
         return new SpotReviewResultResponse(spot.getId(), spot.getStatus().name());
     }
@@ -84,5 +87,17 @@ public class SpotReviewService {
         spotOpenRequestRepository
             .findFirstBySpotIdAndStatusOrderByRequestedAtDesc(spotId, SpotOpenRequestStatus.REQUESTED)
             .ifPresent(openRequest -> openRequest.resolveByReview(approved, reviewId, reviewedAt));
+    }
+
+    // 커밋 이후 사용자 알림 히스토리 적재를 트리거한다. 승인 시 반려 사유는 항상 null로 발행한다.
+    private void publishReviewCompletedEvent(Spot spot, boolean approved, SpotReviewRequest request) {
+        SpotOpenRequestStatus status = approved ? SpotOpenRequestStatus.APPROVED : SpotOpenRequestStatus.REJECTED;
+        applicationEventPublisher.publishEvent(new SpotOpenReviewCompletedEvent(
+            spot.getId(),
+            spot.getUserId(),
+            status,
+            approved ? null : request.reason(),
+            approved ? null : request.detail()
+        ));
     }
 }
