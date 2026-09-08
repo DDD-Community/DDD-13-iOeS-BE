@@ -19,6 +19,7 @@ import com.ioes.photo.domain.spot.enums.SpotOpenRequestStatus;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.enums.SpotTheme;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
+import com.ioes.photo.domain.spot.event.SpotOpenReviewCompletedEvent;
 import com.ioes.photo.domain.spot.repository.SpotOpenRequestRepository;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spot.repository.SpotReviewRepository;
@@ -33,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -51,6 +53,7 @@ class SpotReviewServiceTest {
     @Mock SpotReviewRepository      spotReviewRepository;
     @Mock SpotOpenRequestRepository spotOpenRequestRepository;
     @Mock SpotImageAccessService    spotImageAccessService;
+    @Mock ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks SpotReviewService spotReviewService;
 
@@ -94,6 +97,25 @@ class SpotReviewServiceTest {
         }
 
         @Test
+        @DisplayName("승인 시 검수완료 이벤트를 APPROVED 상태로, 반려 사유 없이 발행한다")
+        void publishesApprovedEvent() {
+            Spot spot = buildSpot(SpotStatus.PENDING);
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            spotReviewService.review(SPOT_ID, approveRequest(), REVIEWER_ID);
+
+            ArgumentCaptor<SpotOpenReviewCompletedEvent> captor =
+                ArgumentCaptor.forClass(SpotOpenReviewCompletedEvent.class);
+            then(applicationEventPublisher).should().publishEvent(captor.capture());
+            SpotOpenReviewCompletedEvent event = captor.getValue();
+            assertThat(event.spotId()).isEqualTo(SPOT_ID);
+            assertThat(event.userId()).isEqualTo(USER_ID);
+            assertThat(event.status()).isEqualTo(SpotOpenRequestStatus.APPROVED);
+            assertThat(event.rejectReason()).isNull();
+            assertThat(event.rejectDetail()).isNull();
+        }
+
+        @Test
         @DisplayName("진행 중이던 오픈 신청 이력을 승인으로 마감하고 검수 건과 연결한다")
         void resolvesOpenRequestAsApproved() {
             Spot spot = buildSpot(SpotStatus.PENDING);
@@ -132,6 +154,24 @@ class SpotReviewServiceTest {
             then(spotReviewRepository).should().saveAndFlush(captor.capture());
             assertThat(captor.getValue().getReason()).isEqualTo(RejectionReason.LOW_QUALITY);
             then(spotImageAccessService).should(never()).publish(anyLong());
+        }
+
+        @Test
+        @DisplayName("반려 시 검수완료 이벤트를 REJECTED 상태로, 반려 사유와 함께 발행한다")
+        void publishesRejectedEvent() {
+            Spot spot = buildSpot(SpotStatus.PENDING);
+            given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(spot));
+
+            spotReviewService.review(SPOT_ID,
+                new SpotReviewRequest(ReviewDecision.REJECTED, RejectionReason.LOW_QUALITY, "상세"), REVIEWER_ID);
+
+            ArgumentCaptor<SpotOpenReviewCompletedEvent> captor =
+                ArgumentCaptor.forClass(SpotOpenReviewCompletedEvent.class);
+            then(applicationEventPublisher).should().publishEvent(captor.capture());
+            SpotOpenReviewCompletedEvent event = captor.getValue();
+            assertThat(event.status()).isEqualTo(SpotOpenRequestStatus.REJECTED);
+            assertThat(event.rejectReason()).isEqualTo(RejectionReason.LOW_QUALITY);
+            assertThat(event.rejectDetail()).isEqualTo("상세");
         }
 
         @Test
