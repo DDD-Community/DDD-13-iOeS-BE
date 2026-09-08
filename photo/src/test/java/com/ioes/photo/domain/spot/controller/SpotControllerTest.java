@@ -67,7 +67,7 @@ class SpotControllerTest {
                 SkyStatus.CLEAR, PrecipitationType.NONE, 20,
                 CongestionLevel.NORMAL, LocalTime.of(18, 55),
                 null, null, null,
-                "정보 없음", 0L, false, false, "PUBLISHED", true, true, 0L, false, true, null
+                "정보 없음", 0L, false, false, "PUBLISHED", true, true, "한국관광공사 제공", 0L, false, true, null
             );
             given(spotQueryService.findSpotDetail(1L, null)).willReturn(detail);
 
@@ -76,6 +76,7 @@ class SpotControllerTest {
             assertThat(response.isSuccess()).isTrue();
             assertThat(response.getData().spotId()).isEqualTo(1L);
             assertThat(response.getData().sunsetTime()).isEqualTo(LocalTime.of(18, 55));
+            assertThat(response.getData().imageCredit()).isEqualTo("한국관광공사 제공");
         }
 
         @Test
@@ -86,7 +87,7 @@ class SpotControllerTest {
                     1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
                     null, null,
                     null, null, null, null, null, null, null, null, null, null, null,
-                    "정보 없음", 0L, true, true, "PUBLISHED", true, false, 0L, true, true, null
+                    "정보 없음", 0L, true, true, "PUBLISHED", true, false, "유저 등록", 0L, true, true, null
                 ));
 
             spotController.getSpotDetail(1L, 42L);
@@ -102,7 +103,7 @@ class SpotControllerTest {
                     1L, "스팟", null, SpotTheme.YUNSEUL, 37.5, 127.0, null,
                     null, null,
                     null, null, null, null, null, null, null, null, null, null, null,
-                    "정보 없음", 0L, false, false, "PUBLISHED", true, true, 0L, false, true, null
+                    "정보 없음", 0L, false, false, "PUBLISHED", true, true, "유저 등록", 0L, false, true, null
                 ));
 
             spotController.getSpotDetail(1L, null);

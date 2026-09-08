@@ -930,6 +930,54 @@ class SpotQueryServiceTest {
         }
 
         @Test
+        @DisplayName("유저 등록 스팟은 spot_images에 credit이 적재돼 있어도 imageCredit이 \"유저 등록\"으로 고정 응답된다")
+        void imageCreditIsFixedLabel_whenUserRegisteredSpot() {
+            Spot spot = buildOwnedSpot(SpotStatus.PUBLISHED, 42L);
+            SpotImage image = SpotImage.create(7L, "spots/7/original.jpg");
+            image.updateCredit("잘못 적재된 출처");
+            given(spotRepository.findById(7L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.of(image));
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
+
+            assertThat(response.isCurated()).isFalse();
+            assertThat(response.imageCredit()).isEqualTo("유저 등록");
+        }
+
+        @Test
+        @DisplayName("관리자 큐레이션 스팟은 spot_images에 적재된 credit 값을 그대로 imageCredit으로 응답한다")
+        void imageCreditReflectsStoredValue_whenCuratedSpot() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            SpotImage image = SpotImage.create(1L, "spots/1/original.jpg");
+            image.updateCredit("ⓒ 한국관광공사");
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.isCurated()).isTrue();
+            assertThat(response.imageCredit()).isEqualTo("ⓒ 한국관광공사");
+        }
+
+        @Test
+        @DisplayName("관리자 큐레이션 스팟이라도 SpotImage가 없으면 imageCredit은 null이다")
+        void imageCreditIsNull_whenCuratedSpotHasNoImage() {
+            Spot spot = buildSpot(1L, 37.55, 127.05);
+            given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
+
+            assertThat(response.isCurated()).isTrue();
+            assertThat(response.imageCredit()).isNull();
+        }
+
+        @Test
         @DisplayName("좋아요한 스팟이면 isLiked가 true다")
         void isLikedTrue_whenLikeExists() {
             given(spotRepository.findById(1L)).willReturn(Optional.of(buildSpot(1L, 37.55, 127.05)));
