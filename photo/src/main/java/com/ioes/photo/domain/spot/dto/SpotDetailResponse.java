@@ -51,6 +51,7 @@ public record SpotDetailResponse(
     @Schema(description = "스팟 공개 상태 (DRAFT/PENDING/RE_REVIEW_PENDING/PUBLISHED/REJECTED)") String status,
     @Schema(description = "노출 여부 (검수완료 후 지도뷰/리스트 노출 on/off, 비공개 시 false)") boolean isReleased,
     @Schema(description = "관리자 큐레이션 스팟 여부 (사용자 등록 스팟이면 false)") boolean isCurated,
+    @Schema(description = "이미지 출처 표기 (사용자 등록 스팟이면 \"유저 등록\", 관리자 큐레이션 스팟이면 spot_images.credit 저장값)") String imageCredit,
     @Schema(description = "좋아요(추천) 수") long likeCount,
     @Schema(description = "좋아요 여부 (비로그인 시 false)") boolean isLiked,
     @Schema(description = "좋아요 가능 여부 (비공개 상태의 유저 스팟이면 false)") boolean isLikeable,
@@ -58,6 +59,7 @@ public record SpotDetailResponse(
 ) {
 
     private static final String PARKING_INFO_DEFAULT = "-";
+    private static final String USER_REGISTERED_CREDIT = "유저 등록";
 
     @Schema(description = "스팟 반려 정보")
     public record RejectionInfo(
@@ -124,10 +126,19 @@ public record SpotDetailResponse(
             spot.getStatus().name(),
             spot.isReleased(),
             spot.isCurated(),
+            resolveImageCredit(spot.isCurated(), spotImage),
             spot.getLikeCount(),
             flags.liked(),
             spot.isLikeable(),
             flags.rejection()
         );
+    }
+
+    // 유저 등록 스팟은 출처 표기 대상이 아니므로 고정 문구로 응답하며, 큐레이션 스팟만 DB에 적재된 값을 그대로 노출한다.
+    private static String resolveImageCredit(boolean isCurated, SpotImage spotImage) {
+        if (!isCurated) {
+            return USER_REGISTERED_CREDIT;
+        }
+        return Optional.ofNullable(spotImage).map(SpotImage::getCredit).orElse(null);
     }
 }

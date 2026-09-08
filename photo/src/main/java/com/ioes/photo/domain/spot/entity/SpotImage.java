@@ -23,6 +23,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
  * imageSourceType이 INTERNAL이면 image_key는 자사 S3/MinIO 객체 키이며 URL은 조회 시점에 동적 생성한다.
  * EXTERNAL이면 image_key에 외부 호스팅 URL을 그대로 저장하며 조회 시에도 그 URL을 그대로 반환한다(hotlink).
  * EXTERNAL 행은 이 엔티티가 만들지 않으며, 데이터 적재용 SQL이 직접 세팅한 값을 읽기만 한다.
+ * credit은 이미지 출처 표기이며, 관리자 큐레이션 스팟(spots.user_id IS NULL)에만 값이 채워진다.
  *
  * @author 황제연
  */
@@ -57,6 +58,9 @@ public class SpotImage {
 
     @Column(name = "recorded_time")
     private LocalTime recordedTime;
+
+    @Column(name = "credit")
+    private String credit;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -108,5 +112,9 @@ public class SpotImage {
 
     public void updateRecordedDate(LocalDate recordedDate) {
         this.recordedDate = recordedDate;
+    }
+
+    public void updateCredit(String credit) {
+        this.credit = credit;
     }
 }
