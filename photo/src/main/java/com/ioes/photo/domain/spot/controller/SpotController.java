@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -58,7 +59,11 @@ public class SpotController {
         return ApiResponse.success(spotQueryService.findSpotDetail(spotId, userId));
     }
 
-    @Operation(summary = "뷰포트 내 스팟 목록 조회", description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다. 비로그인 시 isMySpot은 항상 false입니다.")
+    @Operation(
+        summary = "뷰포트 내 스팟 목록 조회",
+        description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다. "
+            + "지역코드(regionId)는 필수이며, bbox 범위와 AND 조건으로 결합됩니다. 비로그인 시 isMySpot은 항상 false입니다."
+    )
     @SecurityRequirements
     @GetMapping("/viewport")
     public ApiResponse<SpotViewportResponse> getSpotsInViewport(
@@ -70,6 +75,8 @@ public class SpotController {
         @Parameter(description = "좌하단 경도", example = "126.97") @RequestParam @NotNull @Longitude Double bottomLeftLng,
         @Parameter(description = "우하단 위도", example = "37.52") @RequestParam @NotNull @Latitude Double bottomRightLat,
         @Parameter(description = "우하단 경도", example = "127.05") @RequestParam @NotNull @Longitude Double bottomRightLng,
+        @Parameter(description = "지역 코드 (필수). 다중 선택 시 ?regionId=1&regionId=2 형식으로 반복 전달")
+        @RequestParam @NotEmpty List<Long> regionId,
         @Parameter(description = "테마 필터. code(SS/YS/SL/NV) 또는 enum 이름(SUNSET/YUNSEUL/SUNLIGHT/NIGHT_VIEW) 모두 가능, "
             + "다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달. 미전달 시 전체")
         @RequestParam(required = false) List<SpotTheme> theme,
@@ -78,6 +85,7 @@ public class SpotController {
         return ApiResponse.success(spotQueryService.findSpotsInViewport(
             new ViewportRequest(topLeftLat, topLeftLng, topRightLat, topRightLng,
                                 bottomLeftLat, bottomLeftLng, bottomRightLat, bottomRightLng),
+            regionId,
             theme,
             userId
         ));
@@ -86,7 +94,8 @@ public class SpotController {
     @Operation(
         summary = "스팟 리스트 조회",
         description = "공개(PUBLISHED)된 스팟 목록을 6개 단위로 페이징 조회합니다. "
-            + "sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. "
+            + "지역코드(regionId)는 필수입니다. 정렬은 1순위 지역코드, 2순위 내 스팟 여부이며, "
+            + "그 다음으로 sort 기준이 적용됩니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. "
             + "sort=RECOMMENDED(기본값) 시 좋아요 많은 순으로 정렬되며, 동률은 북마크 수로 가릅니다. "
             + "비로그인 시 isBookmarked/isLiked는 항상 false입니다."
     )
@@ -94,6 +103,8 @@ public class SpotController {
     @GetMapping
     public ApiResponse<SpotListResponse> getSpots(
         @Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") @Min(0) int page,
+        @Parameter(description = "지역 코드 (필수). 다중 선택 시 ?regionId=1&regionId=2 형식으로 반복 전달")
+        @RequestParam @NotEmpty List<Long> regionId,
         @Parameter(description = "테마 필터. code(SS/YS/SL/NV) 또는 enum 이름(SUNSET/YUNSEUL/SUNLIGHT/NIGHT_VIEW) 모두 가능, "
             + "다중 선택 시 ?theme=SS&theme=YS 형식으로 반복 전달. 미전달 시 전체")
         @RequestParam(required = false) List<SpotTheme> theme,
@@ -102,7 +113,7 @@ public class SpotController {
         @Parameter(description = "정렬 기준 (RECOMMENDED=좋아요순 기본값, DISTANCE=거리순)") @RequestParam(required = false, defaultValue = "RECOMMENDED") SortType sort,
         @CurrentUserId Long userId
     ) {
-        return ApiResponse.success(spotQueryService.findSpots(page, theme, latitude, longitude, sort, userId));
+        return ApiResponse.success(spotQueryService.findSpots(page, regionId, theme, latitude, longitude, sort, userId));
     }
 
     @Operation(

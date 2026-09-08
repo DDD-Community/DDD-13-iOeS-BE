@@ -75,6 +75,7 @@ class SpotReviewServiceTest {
             assertThat(spot.getStatus()).isEqualTo(SpotStatus.PUBLISHED);
             assertThat(spot.getReviewerId()).isEqualTo(REVIEWER_ID);
             assertThat(spot.getReviewedAt()).isNotNull();
+            assertThat(spot.isReleased()).isTrue();
 
             ArgumentCaptor<SpotReview> captor = ArgumentCaptor.forClass(SpotReview.class);
             then(spotReviewRepository).should().saveAndFlush(captor.capture());

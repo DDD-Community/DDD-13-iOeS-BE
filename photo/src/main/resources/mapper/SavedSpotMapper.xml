@@ -25,6 +25,7 @@
             </choose>
                 AS distance_km,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
+            COALESCE(s.like_count, 0) AS like_count,
             s.status,
             sa.created_at               AS saved_at,
             s.deleted_at IS NOT NULL    AS deleted

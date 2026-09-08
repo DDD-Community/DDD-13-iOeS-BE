@@ -133,7 +133,7 @@ public class SavedSpotService {
         String imageUrl = (isPrivate || spotImage == null) ? null : spotThumbnailService.getImageUrl(spotImage);
         return new SavedSpotItem(
             row.spotId(), row.name(), row.theme(), imageUrl,
-            row.latitude(), row.longitude(), row.distanceKm(), row.bookmarkCount(),
+            row.latitude(), row.longitude(), row.distanceKm(), row.bookmarkCount(), row.likeCount(),
             row.savedAt(), row.deleted(), isPrivate
         );
     }

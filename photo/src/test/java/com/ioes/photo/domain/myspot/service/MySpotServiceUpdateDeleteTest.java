@@ -12,6 +12,7 @@ import static org.mockito.Mockito.never;
 
 import com.ioes.photo.domain.alarm.service.SpotAlarmService;
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
+import com.ioes.photo.domain.spotregion.service.SpotRegionResolver;
 import com.ioes.photo.domain.myspot.dto.UpdateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.UpdateMySpotResponse;
 import com.ioes.photo.domain.myspot.mapper.MySpotMapper;
@@ -74,6 +75,7 @@ class MySpotServiceUpdateDeleteTest {
     @Mock SpotAlarmService spotAlarmService;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock CrowdAreaMapper crowdAreaMapper;
+    @Mock SpotRegionResolver spotRegionResolver;
 
     @InjectMocks MySpotService mySpotService;
 

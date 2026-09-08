@@ -24,7 +24,8 @@ public enum SpotErrorCode implements ErrorCode {
     SPOT_ACCESS_DENIED("SP008", "본인이 등록한 스팟만 처리할 수 있습니다.", HttpStatus.FORBIDDEN),
     SPOT_NOT_CANCELABLE("SP009", "공개 상태를 해제할 수 없는 스팟이에요.", HttpStatus.BAD_REQUEST),
     SPOT_NOT_EDITABLE("SP010", "검수 중이거나 공개된 스팟은 수정할 수 없어요. 오픈을 취소한 뒤 수정해주세요.", HttpStatus.BAD_REQUEST),
-    SPOT_NOT_DELETABLE("SP011", "검수 중인 스팟은 삭제할 수 없어요. 오픈 신청을 먼저 취소해주세요.", HttpStatus.CONFLICT);
+    SPOT_NOT_DELETABLE("SP011", "검수 중인 스팟은 삭제할 수 없어요. 오픈 신청을 먼저 취소해주세요.", HttpStatus.CONFLICT),
+    SPOT_NOT_RELEASABLE("SP012", "공개(PUBLISHED) 상태의 스팟만 노출을 켜고 끌 수 있어요.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

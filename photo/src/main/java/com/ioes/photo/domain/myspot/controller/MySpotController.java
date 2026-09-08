@@ -5,6 +5,7 @@ import com.ioes.photo.domain.myspot.dto.CreateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.CreateMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.MySpotListResponse;
 import com.ioes.photo.domain.myspot.dto.OpenMySpotResponse;
+import com.ioes.photo.domain.myspot.dto.ReleaseMySpotResponse;
 import com.ioes.photo.domain.myspot.dto.UpdateMySpotRequest;
 import com.ioes.photo.domain.myspot.dto.UpdateMySpotResponse;
 import com.ioes.photo.domain.myspot.service.MySpotService;
@@ -180,5 +181,37 @@ public class MySpotController {
         @PathVariable Long spotId
     ) {
         return ApiResponse.success(mySpotService.cancelPublication(userId, spotId));
+    }
+
+    @Operation(
+        summary = "나만의 스팟 노출 켜기",
+        description = "공개(PUBLISHED) 상태인 스팟의 지도뷰/리스트 노출을 켭니다. "
+            + "검수 flow(status)와는 독립적인 별도 플래그라 상태는 그대로 PUBLISHED로 유지됩니다. "
+            + "PUBLISHED가 아니면 SP012로 응답하며, 이미 켜져 있어도 그대로 성공 응답합니다. "
+            + "본인이 등록한 스팟만 처리할 수 있습니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping("/users/me/my-spots/{spotId}/releases")
+    public ApiResponse<ReleaseMySpotResponse> releaseSpot(
+        @CurrentUserId Long userId,
+        @PathVariable Long spotId
+    ) {
+        return ApiResponse.success(mySpotService.releaseSpot(userId, spotId));
+    }
+
+    @Operation(
+        summary = "나만의 스팟 노출 끄기",
+        description = "공개(PUBLISHED) 상태인 스팟의 지도뷰/리스트 노출을 끕니다. "
+            + "검수 flow(status)와는 독립적인 별도 플래그라 상태는 그대로 PUBLISHED로 유지되며, 재검수 없이 다시 켤 수 있습니다. "
+            + "PUBLISHED가 아니면 SP012로 응답하며, 이미 꺼져 있어도 그대로 성공 응답합니다. "
+            + "본인이 등록한 스팟만 처리할 수 있습니다."
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @DeleteMapping("/users/me/my-spots/{spotId}/releases")
+    public ApiResponse<ReleaseMySpotResponse> unreleaseSpot(
+        @CurrentUserId Long userId,
+        @PathVariable Long spotId
+    ) {
+        return ApiResponse.success(mySpotService.unreleaseSpot(userId, spotId));
     }
 }

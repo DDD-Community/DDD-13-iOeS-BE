@@ -11,6 +11,7 @@ import com.ioes.photo.domain.spot.dto.SpotViewportResponse.SpotSummary;
 import com.ioes.photo.domain.spot.dto.ViewportRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
+import com.ioes.photo.domain.spot.enums.RelYn;
 import com.ioes.photo.domain.spot.enums.ReviewDecision;
 import com.ioes.photo.domain.spot.enums.SortType;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
@@ -105,12 +106,15 @@ public class SpotQueryService {
             .orElse(null);
     }
 
-    public SpotViewportResponse findSpotsInViewport(ViewportRequest request, List<SpotTheme> theme, Long userId) {
+    public SpotViewportResponse findSpotsInViewport(ViewportRequest request, List<Long> regionId, List<SpotTheme> theme, Long userId) {
         List<SpotViewportRow> rows = spotMapper.findSpotsInViewport(
             request.minLat(), request.maxLat(),
             request.minLng(), request.maxLng(),
             SpotStatus.PUBLISHED.getCode(),
-            toThemeCodes(theme)
+            RelYn.Y.getCode(),
+            toThemeCodes(theme),
+            regionId,
+            userId
         );
 
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotViewportRow::id).toList());
@@ -154,7 +158,8 @@ public class SpotQueryService {
         );
     }
 
-    public SpotListResponse findSpots(int page, List<SpotTheme> theme, Double latitude, Double longitude, SortType sort, Long userId) {
+    public SpotListResponse findSpots(int page, List<Long> regionId, List<SpotTheme> theme,
+                                       Double latitude, Double longitude, SortType sort, Long userId) {
         if ((latitude == null) != (longitude == null)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "위도와 경도는 함께 입력해야 합니다.");
         }
@@ -163,10 +168,12 @@ public class SpotQueryService {
         }
 
         String status = SpotStatus.PUBLISHED.getCode();
+        String relYn = RelYn.Y.getCode();
         List<String> themeCodes = toThemeCodes(theme);
         String sortCode = sort != null ? sort.getCode() : SortType.RECOMMENDED.getCode();
 
-        List<SpotRow> rows = spotMapper.findSpots(status, themeCodes, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
+        List<SpotRow> rows = spotMapper.findSpots(
+            status, relYn, themeCodes, regionId, userId, latitude, longitude, page * LIST_PAGE_SIZE, LIST_PAGE_SIZE, sortCode);
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(SpotRow::id).toList());
 
         List<Long> spotIds = rows.stream().map(SpotRow::id).toList();
@@ -178,7 +185,8 @@ public class SpotQueryService {
                 bookmarkedIds.contains(row.id()), likedIds.contains(row.id())))
             .toList();
 
-        return new SpotListResponse(items, page, spotMapper.countSpots(status, themeCodes) > (long) (page + 1) * LIST_PAGE_SIZE);
+        return new SpotListResponse(items, page,
+            spotMapper.countSpots(status, relYn, themeCodes, regionId, userId) > (long) (page + 1) * LIST_PAGE_SIZE);
     }
 
     private List<String> toThemeCodes(List<SpotTheme> themes) {
@@ -201,7 +209,7 @@ public class SpotQueryService {
         String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
         boolean isMySpot = userId != null
                 && activeUploaderIds.contains(row.userId()) && userId.equals(row.userId());
-        return new SpotSummary(row.id(), thumbnailUrl, row.latitude(), row.longitude(), isMySpot);
+        return new SpotSummary(row.id(), row.regionId(), thumbnailUrl, row.latitude(), row.longitude(), isMySpot);
     }
 
     private Long resolveActiveUploaderId(Long uploaderUserId) {
@@ -242,7 +250,7 @@ public class SpotQueryService {
     private SpotItem toSpotItem(SpotRow row, Map<Long, SpotImage> imageMap,
                                 boolean isBookmarked, boolean isLiked) {
         String thumbnailUrl = thumbnailUrl(imageMap.get(row.id()));
-        return new SpotItem(row.id(), row.name(), row.theme(), thumbnailUrl, row.distanceKm(),
+        return new SpotItem(row.id(), row.name(), row.theme(), row.regionId(), thumbnailUrl, row.distanceKm(),
             row.bookmarkCount(), isBookmarked, row.likeCount(), isLiked);
     }
 
