@@ -10,6 +10,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.ioes.photo.domain.crowdarea.entity.CrowdArea;
+import com.ioes.photo.domain.crowdarea.repository.CrowdAreaRepository;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
@@ -33,6 +35,9 @@ class CrowdCollectorTest {
 
     @Mock
     private SpotRepository spotRepository;
+
+    @Mock
+    private CrowdAreaRepository crowdAreaRepository;
 
     @Mock
     private SpotInfoUpdateService spotInfoUpdateService;
@@ -96,6 +101,27 @@ class CrowdCollectorTest {
         verify(seoulCrowdApiClient, never()).getCrowdStatus(anyString());
         verify(spotInfoUpdateService, never())
             .upsertCrowd(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("대전 관광지에 매핑된 스팟은 서울 수집 대상에서 제외된다")
+    void excludesDaejeonSpots() {
+        CrowdArea daejeonArea = mock(CrowdArea.class);
+        given(daejeonArea.getAreaName()).willReturn("유성온천지구");
+        given(crowdAreaRepository.findAllByCategory(CrowdArea.CATEGORY_DAEJEON_TOUR))
+            .willReturn(List.of(daejeonArea));
+        Spot seoul = mockSpot(1L, "광화문·덕수궁");
+        Spot daejeon = mock(Spot.class);
+        given(daejeon.getCrowdAreaName()).willReturn("유성온천지구");
+        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+            .willReturn(List.of(seoul, daejeon));
+        given(seoulCrowdApiClient.getCrowdStatus("광화문·덕수궁"))
+            .willReturn(crowdResponse("보통"));
+
+        CollectResult result = crowdCollector.collect();
+
+        assertThat(result.total()).isEqualTo(1);
+        verify(seoulCrowdApiClient, never()).getCrowdStatus("유성온천지구");
     }
 
     private Spot mockSpot(long id, String areaName) {
