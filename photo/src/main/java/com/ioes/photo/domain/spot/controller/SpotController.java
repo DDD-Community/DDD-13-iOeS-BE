@@ -62,7 +62,8 @@ public class SpotController {
     @Operation(
         summary = "뷰포트 내 스팟 목록 조회",
         description = "지도 뷰포트의 4개 꼭짓점 좌표 범위 내 스팟 목록을 반환합니다. "
-            + "지역코드(regionId)는 필수이며, bbox 범위와 AND 조건으로 결합됩니다. 비로그인 시 isMySpot은 항상 false입니다."
+            + "지역코드(regionId)는 필수이며, bbox 범위와 AND 조건으로 결합됩니다. 비로그인 시 isMySpot은 항상 false입니다. "
+            + "내 스팟(user_id 일치)은 status와 무관하게 조회되며, 그 외 스팟은 공개(PUBLISHED) 상태만 조회됩니다."
     )
     @SecurityRequirements
     @GetMapping("/viewport")
@@ -94,6 +95,7 @@ public class SpotController {
     @Operation(
         summary = "스팟 리스트 조회",
         description = "공개(PUBLISHED)된 스팟 목록을 6개 단위로 페이징 조회합니다. "
+            + "내 스팟(user_id 일치)은 status와 무관하게 조회되며, 그 외 스팟은 공개(PUBLISHED) 상태만 조회됩니다. "
             + "지역코드(regionId)는 필수입니다. 정렬은 1순위 지역코드, 2순위 내 스팟 여부이며, "
             + "그 다음으로 sort 기준이 적용됩니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. "
             + "sort=RECOMMENDED(기본값) 시 좋아요 많은 순으로 정렬되며, 동률은 북마크 수로 가릅니다. "
