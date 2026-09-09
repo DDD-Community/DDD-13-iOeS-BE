@@ -28,7 +28,13 @@
                 AS distance_km
         FROM spots s
         <where>
-            s.status = #{status}
+            (
+                s.status = #{status}
+                <!-- 내 스팟은 status 상관없이 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR s.user_id = #{userId}
+                </if>
+            )
             AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
             AND (
@@ -73,7 +79,13 @@
         SELECT COUNT(*)
         FROM spots s
         <where>
-            s.status = #{status}
+            (
+                s.status = #{status}
+                <!-- 내 스팟은 status 상관없이 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR s.user_id = #{userId}
+                </if>
+            )
             AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
             AND (
@@ -99,7 +111,13 @@
         SELECT s.id, s.latitude, s.longitude, s.user_id, s.region_id
         FROM spots s
         WHERE s.location &amp;&amp; ST_MakeEnvelope(#{minLng}, #{minLat}, #{maxLng}, #{maxLat}, 4326)
-            AND s.status = #{status}
+            AND (
+                s.status = #{status}
+                <!-- 내 스팟은 status 상관없이 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR s.user_id = #{userId}
+                </if>
+            )
             AND s.rel_yn = #{relYn}
             AND s.deleted_at IS NULL
             AND (
