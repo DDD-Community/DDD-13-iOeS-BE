@@ -87,6 +87,22 @@ class DaejeonCrowdCollectorTest {
     }
 
     @Test
+    @DisplayName("'(대전)' 접미사가 붙은 장소는 접미사 없는 API 관광지명으로도 매칭된다")
+    void matchesRateBySuffixStrippedName() {
+        givenDaejeonAreas("보라매공원(대전)");
+        Spot daejeon = mockSpot(1L, "보라매공원(대전)");
+        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+            .willReturn(List.of(daejeon));
+        givenRates(item("보라매공원", "20260902", "35.00"));
+
+        CollectResult result = collector.collect();
+
+        assertThat(result.success()).isEqualTo(1);
+        verify(spotInfoUpdateService).upsertCrowd(
+            eq(1L), eq(CongestionLevel.NORMAL), anyString(), isNull(), isNull(), any());
+    }
+
+    @Test
     @DisplayName("응답에 관광지명이 없으면 fail로 집계한다")
     void countsFailWhenRateMissing() {
         givenDaejeonAreas("유성온천지구", "노고산");

@@ -37,6 +37,8 @@ public class DaejeonCrowdCollector {
 
     // 대전은 실시간이 아닌 예측 지수 기반이라 출처를 문구로 남긴다.
     private static final String PREDICTION_MESSAGE = "관광지 방문자 추이 예측 기반";
+    // 서울 시드와 동명인 장소는 area_name 유니크 제약 때문에 이 접미사로 구분해 시드한다(V24 보라매공원).
+    private static final String DAEJEON_NAME_SUFFIX = "(대전)";
 
     private final SpotRepository spotRepository;
     private final CrowdAreaRepository crowdAreaRepository;
@@ -58,7 +60,7 @@ public class DaejeonCrowdCollector {
         int success = 0;
         int fail = 0;
         for (Spot spot : targets) {
-            Double rate = ratesByAreaName.get(spot.getCrowdAreaName());
+            Double rate = findRate(ratesByAreaName, spot.getCrowdAreaName());
             if (rate == null) {
                 log.warn("[DaejeonCrowdCollector] 집중률 없음 spotId={} areaName={}",
                     spot.getId(), spot.getCrowdAreaName());
@@ -82,6 +84,18 @@ public class DaejeonCrowdCollector {
             }
         }
         return new CollectResult(success, fail);
+    }
+
+    /**
+     * 관광지명으로 집중률을 찾는다. 시드에서만 '(대전)' 접미사가 붙은 이름(서울 동명 장소 구분용)은
+     * API 응답(tAtsNm)에 접미사가 없으므로, 매칭 실패 시 접미사를 제거하고 재조회한다.
+     */
+    private Double findRate(Map<String, Double> ratesByAreaName, String areaName) {
+        Double rate = ratesByAreaName.get(areaName);
+        if (rate == null && areaName.endsWith(DAEJEON_NAME_SUFFIX)) {
+            rate = ratesByAreaName.get(areaName.substring(0, areaName.length() - DAEJEON_NAME_SUFFIX.length()));
+        }
+        return rate;
     }
 
     private Set<String> daejeonAreaNames() {
