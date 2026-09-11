@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ioes.photo.domain.statistics.mapper.StatisticsMapper">
+
+    <!--
+      날짜 그룹핑을 DB 날짜 함수(DATE()/AT TIME ZONE) 없이 [start, end) 범위 조건으로 처리한다.
+      H2(테스트)/PostgreSQL(운영) 동작이 동일하고 created_at 인덱스도 탈 수 있다.
+      가입 집계는 MyBatis raw SQL이라 @SQLRestriction(deleted_at IS NULL) 영향을 받지 않아 탈퇴 유저를 포함한다.
+    -->
+
+    <select id="countSignups" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        WHERE created_at &gt;= #{start} AND created_at &lt; #{end}
+    </select>
+
+    <select id="countSignupsByProvider" resultType="ProviderCountRow">
+        SELECT provider    AS provider,
+               COUNT(*)    AS signup_count
+        FROM users
+        WHERE created_at &gt;= #{start} AND created_at &lt; #{end}
+        GROUP BY provider
+    </select>
+
+    <select id="countCumulativeSignups" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        WHERE created_at &lt; #{end}
+    </select>
+
+    <!-- 활성 저장을 보유한 활성 유저 수. 비율 분자/분모를 모두 활성 유저 기준으로 맞춘다. -->
+    <select id="countActiveSavers" resultType="long">
+        SELECT COUNT(DISTINCT ssa.user_id)
+        FROM saved_spot_archives ssa
+        JOIN users u ON u.id = ssa.user_id
+        WHERE ssa.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+    </select>
+
+    <select id="countActiveUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        WHERE deleted_at IS NULL
+    </select>
+
+    <!-- 스팟 인기도(활성 저장 수) 기준 상위 N. 저장 유저의 탈퇴 여부와 무관하게 저장 건수로 집계한다. -->
+    <select id="findTopSavedSpots" resultType="TopSpotRow">
+        SELECT s.name    AS spot_name,
+               COUNT(*)  AS save_count
+        FROM saved_spot_archives ssa
+        JOIN spots s ON s.id = ssa.spot_id
+        WHERE ssa.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+        GROUP BY s.id, s.name
+        ORDER BY COUNT(*) DESC, s.id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

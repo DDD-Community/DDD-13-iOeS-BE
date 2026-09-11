@@ -62,6 +62,16 @@ public class SpotAlarmService {
             .orElseGet(() -> SpotAlarmResponse.disabled(spotId));
     }
 
+    /**
+     * 스팟이 삭제될 때 해당 스팟을 구독한 모든 알림을 끈다.
+     * 구독 행 자체는 남겨 이후 알림 기능에서 사용자의 과거 설정을 참고할 수 있게 한다.
+     */
+    @Transactional
+    public void disableBySpotId(Long spotId) {
+        subscriptionRepository.findAllBySpotIdAndEnabledTrue(spotId)
+            .forEach(subscription -> subscription.updateEnabled(false));
+    }
+
     private void verifyOwnership(Long userId, Long spotId) {
         Spot spot = spotRepository.findById(spotId)
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));

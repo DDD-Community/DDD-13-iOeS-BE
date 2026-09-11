@@ -1,7 +1,7 @@
-# 실제 환경변수 파일은 커밋 금지
-.env
-.env.local
-.env.*.local
+# 실제 환경변수 파일은 커밋 금지 (.env.example 만 추적)
+# 테스트 서버용 .env.dev 등 변형까지 한 번에 막기 위해 와일드카드로 둔다.
+.env*
+!.env.example
 
 # TLS 인증서
 nginx/certs/
@@ -10,3 +10,5 @@ nginx/ssl/
 # 컨테이너에서 bind mount 로 쌓이는 로그 파일 (디렉토리 자체는 .gitkeep 으로 추적)
 logs/*
 !logs/.gitkeep
+logs-dev/*
+!logs-dev/.gitkeep

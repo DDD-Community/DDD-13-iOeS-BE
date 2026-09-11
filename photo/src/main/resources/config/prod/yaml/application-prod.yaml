@@ -7,6 +7,8 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
+      # 기본값과 같지만, 테스트 서버(db 1)와의 분리를 명시적으로 남긴다.
+      database: 0
   datasource:
     url: ${PROD_DB_URL:jdbc:postgresql://postgres:5432/photo}
     username: ${PROD_DB_USERNAME}

@@ -20,6 +20,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -129,6 +130,25 @@ public class S3StorageService implements StorageService {
         } catch (SdkException e) {
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
                 "S3 파일 읽기에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void copy(String sourceKey, String destinationKey) {
+        if (NullUtils.isBlank(sourceKey) || NullUtils.isBlank(destinationKey)) {
+            return;
+        }
+        try {
+            s3Client.copyObject(CopyObjectRequest.builder()
+                .sourceBucket(s3Properties.bucket())
+                .sourceKey(sourceKey)
+                .destinationBucket(s3Properties.bucket())
+                .destinationKey(destinationKey)
+                .build());
+        } catch (SdkException e) {
+            log.error("S3 객체 복사 실패: source={}, dest={}", sourceKey, destinationKey, e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR,
+                "이미지 이동에 실패했습니다.");
         }
     }
 
