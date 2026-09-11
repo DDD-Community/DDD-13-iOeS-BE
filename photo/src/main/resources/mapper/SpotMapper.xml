@@ -48,9 +48,9 @@
                 <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
                     #{regionId}
                 </foreach>
-                <!-- 지역코드가 아직 매핑되지 않은(NULL) 스팟도 내 스팟이면 조회되어야 한다 -->
+                <!-- 내 스팟은 지역코드(NULL 포함)와 무관하게 조회되어야 한다 -->
                 <if test="userId != null">
-                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                    OR s.user_id = #{userId}
                 </if>
             )
             <if test="themes != null and !themes.isEmpty()">
@@ -61,8 +61,14 @@
             </if>
         </where>
         ORDER BY
-        /* 1순위: 지역코드, 2순위: 내 스팟 여부(내 스팟은 뒤로 - 추천/거리순 노출을 방해하지 않도록), 3순위: 기존 정렬 기준 */
-        s.region_id ASC,
+        /* 1순위: 조회조건 지역 매칭 여부(다른 지역인 내 스팟은 뒤로), 2순위: 내 스팟 여부(내 스팟은 뒤로 -
+           추천/거리순 노출을 방해하지 않도록), 3순위: 기존 정렬 기준. region_id 원값(ASC)으로 1순위를 대신하면
+           조회조건 밖의 다른 지역 내 스팟이 region_id 숫자값에 따라 임의의 위치에 끼어든다 */
+        CASE WHEN s.region_id IN
+        <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
+            #{regionId}
+        </foreach>
+            THEN 0 ELSE 1 END,
         <if test="userId != null">
             CASE WHEN s.user_id = #{userId} THEN 1 ELSE 0 END,
         </if>
@@ -105,8 +111,9 @@
                 <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
                     #{regionId}
                 </foreach>
+                <!-- 내 스팟은 지역코드(NULL 포함)와 무관하게 조회되어야 한다 -->
                 <if test="userId != null">
-                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                    OR s.user_id = #{userId}
                 </if>
             )
             <if test="themes != null and !themes.isEmpty()">
@@ -143,8 +150,9 @@
                 <foreach item="regionId" collection="regionIds" open="(" separator="," close=")">
                     #{regionId}
                 </foreach>
+                <!-- 내 스팟은 지역코드(NULL 포함)와 무관하게 조회되어야 한다 -->
                 <if test="userId != null">
-                    OR (s.region_id IS NULL AND s.user_id = #{userId})
+                    OR s.user_id = #{userId}
                 </if>
             )
             <if test="themes != null and !themes.isEmpty()">
