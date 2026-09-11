@@ -18,6 +18,7 @@ import com.ioes.photo.domain.spot.dto.SpotImageSyncRequest;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.entity.SpotImage;
 import com.ioes.photo.domain.spot.entity.SpotOpenRequest;
+import com.ioes.photo.domain.spot.enums.RelYn;
 import com.ioes.photo.domain.spot.enums.SpotOpenRequestStatus;
 import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.error.SpotErrorCode;
@@ -367,7 +368,8 @@ public class MySpotService {
         return new MySpotItem(
             row.spotId(), row.name(), row.theme(), imageUrl,
             row.latitude(), row.longitude(), row.distanceKm(), row.createdAt(),
-            SpotStatus.fromCode(row.status()).name(), row.bookmarkCount()
+            SpotStatus.fromCode(row.status()).name(), RelYn.fromCode(row.relYn()) == RelYn.Y,
+            row.bookmarkCount(), row.likeCount()
         );
     }
 

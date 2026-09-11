@@ -11,6 +11,7 @@ public record SpotPreviewRow(
     String theme,
     Long userId,
     String status,
+    String relYn,
     long bookmarkCount,
     long likeCount,
     Double distanceKm,

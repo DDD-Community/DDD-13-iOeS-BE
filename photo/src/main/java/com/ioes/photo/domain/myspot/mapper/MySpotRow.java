@@ -16,5 +16,7 @@ public record MySpotRow(
     Double distanceKm,
     LocalDateTime createdAt,
     String status,
-    long bookmarkCount
+    String relYn,
+    long bookmarkCount,
+    long likeCount
 ) {}

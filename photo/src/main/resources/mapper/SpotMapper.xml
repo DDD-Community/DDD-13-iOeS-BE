@@ -35,7 +35,13 @@
                     OR s.user_id = #{userId}
                 </if>
             )
-            AND s.rel_yn = #{relYn}
+            AND (
+                s.rel_yn = #{relYn}
+                <!-- 내 스팟은 검수 전(rel_yn=N)이라도 status와 마찬가지로 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR s.user_id = #{userId}
+                </if>
+            )
             AND s.deleted_at IS NULL
             AND (
                 s.region_id IN
@@ -55,10 +61,10 @@
             </if>
         </where>
         ORDER BY
-        /* 1순위: 지역코드, 2순위: MY스팟 정보(내 스팟 우선), 3순위: 기존 정렬 기준 */
+        /* 1순위: 지역코드, 2순위: 내 스팟 여부(내 스팟은 뒤로 - 추천/거리순 노출을 방해하지 않도록), 3순위: 기존 정렬 기준 */
         s.region_id ASC,
         <if test="userId != null">
-            CASE WHEN s.user_id = #{userId} THEN 0 ELSE 1 END,
+            CASE WHEN s.user_id = #{userId} THEN 1 ELSE 0 END,
         </if>
         <choose>
             <when test='sort != null and sort == "D"'>
@@ -86,7 +92,13 @@
                     OR s.user_id = #{userId}
                 </if>
             )
-            AND s.rel_yn = #{relYn}
+            AND (
+                s.rel_yn = #{relYn}
+                <!-- 내 스팟은 검수 전(rel_yn=N)이라도 status와 마찬가지로 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR s.user_id = #{userId}
+                </if>
+            )
             AND s.deleted_at IS NULL
             AND (
                 s.region_id IN
@@ -118,7 +130,13 @@
                     OR s.user_id = #{userId}
                 </if>
             )
-            AND s.rel_yn = #{relYn}
+            AND (
+                s.rel_yn = #{relYn}
+                <!-- 내 스팟은 검수 전(rel_yn=N)이라도 status와 마찬가지로 조회되어야 한다 -->
+                <if test="userId != null">
+                    OR s.user_id = #{userId}
+                </if>
+            )
             AND s.deleted_at IS NULL
             AND (
                 s.region_id IN
@@ -145,6 +163,7 @@
             s.theme,
             s.user_id,
             s.status,
+            s.rel_yn,
             COALESCE(s.bookmark_count, 0) AS bookmark_count,
             COALESCE(s.like_count, 0) AS like_count,
             <choose>
