@@ -170,6 +170,12 @@ public class Spot extends BaseEntity {
         return status == SpotStatus.PUBLISHED;
     }
 
+    // 소유자는 검수 상태(status)·노출 여부(relYn)와 무관하게 항상 조회할 수 있다.
+    // 소유자가 아니면 공개(PUBLISHED)이면서 노출(relYn=Y) 상태여야만 조회할 수 있다.
+    public boolean isVisibleTo(Long candidateUserId) {
+        return isOwnedBy(candidateUserId) || (isPublished() && isReleased());
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }

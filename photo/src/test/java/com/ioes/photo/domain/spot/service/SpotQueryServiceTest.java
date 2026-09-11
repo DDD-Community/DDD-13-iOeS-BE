@@ -250,7 +250,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("스팟이 존재하면 미리보기 응답을 반환한다")
         void returnsPreview_whenSpotExists() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, 5L, 3L, 1.2,
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, "Y", 5L, 3L, 1.2,
                 "서울시 마포구", "서울시 마포구 월드컵로 21", "서울시 마포구 망원동 1");
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/original/key.jpg");
             given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
@@ -274,7 +274,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("이미지가 없는 스팟의 imageUrl은 null이다")
         void imageUrlNull_whenNoImage() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, "Y", 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -297,7 +297,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("로그인 사용자가 스팟 등록자면 isMySpot이 true다")
         void isMySpotTrue_whenUserIsOwner() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, PUBLISHED_CODE, "Y", 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -309,7 +309,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("다른 사용자면 isMySpot이 false다")
         void isMySpotFalse_whenDifferentUser() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 99L, PUBLISHED_CODE, "Y", 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -321,7 +321,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("위도/경도 미제공 시 distanceKm는 null이다")
         void distanceKmNull_whenNoCoordinates() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, 5L, 3L, null, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", null, PUBLISHED_CODE, "Y", 5L, 3L, null, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -333,7 +333,7 @@ class SpotQueryServiceTest {
         @Test
         @DisplayName("userId가 null이면 isMySpot은 false다")
         void isMySpotFalse_whenUserIdNull() {
-            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, PUBLISHED_CODE, 5L, 3L, 1.2, "서울시 마포구", null, null);
+            SpotPreviewRow row = new SpotPreviewRow(1L, "한강공원", "SS", 42L, PUBLISHED_CODE, "Y", 5L, 3L, 1.2, "서울시 마포구", null, null);
             given(spotMapper.findSpotPreview(1L, null, null)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
 
@@ -379,8 +379,36 @@ class SpotQueryServiceTest {
             assertThat(response.likeCount()).isEqualTo(3L);
         }
 
+        @Test
+        @DisplayName("공개(PUBLISHED) 상태여도 rel_yn=N(비노출)이면 남에게는 SPOT_NOT_FOUND를 던진다")
+        void throwsNotFound_whenPublishedButUnreleased_andNotOwner() {
+            given(spotMapper.findSpotPreview(1L, null, null))
+                .willReturn(previewRow(42L, SpotStatus.PUBLISHED, "N"));
+
+            assertThatThrownBy(() -> spotQueryService.findSpotPreview(1L, null, null, 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("공개(PUBLISHED) 상태에 rel_yn=N(비노출)이라도 등록한 본인은 미리보기를 볼 수 있다")
+        void returnsPreview_toOwnerOfUnreleasedSpot() {
+            given(spotMapper.findSpotPreview(1L, null, null))
+                .willReturn(previewRow(42L, SpotStatus.PUBLISHED, "N"));
+            given(spotImageRepository.findById(1L)).willReturn(Optional.empty());
+
+            SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, null, null, 42L);
+
+            assertThat(response.isMySpot()).isTrue();
+        }
+
         private SpotPreviewRow previewRow(Long ownerId, SpotStatus status) {
-            return new SpotPreviewRow(1L, "한강공원", "SS", ownerId, status.getCode(), 5L, 3L,
+            return previewRow(ownerId, status, status == SpotStatus.PUBLISHED ? "Y" : "N");
+        }
+
+        private SpotPreviewRow previewRow(Long ownerId, SpotStatus status, String relYn) {
+            return new SpotPreviewRow(1L, "한강공원", "SS", ownerId, status.getCode(), relYn, 5L, 3L,
                 null, "서울시 마포구", null, null);
         }
     }
@@ -811,6 +839,35 @@ class SpotQueryServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("공개(PUBLISHED) 상태여도 rel_yn=N(비노출)이면 남에게는 SPOT_NOT_FOUND를 던진다")
+        void throwsNotFound_whenPublishedButUnreleased_andNotOwner() {
+            Spot spot = buildOwnedSpot(SpotStatus.PUBLISHED, 42L);
+            spot.unrelease();
+            given(spotRepository.findById(7L)).willReturn(Optional.of(spot));
+
+            assertThatThrownBy(() -> spotQueryService.findSpotDetail(7L, 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(SpotErrorCode.SPOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("공개(PUBLISHED) 상태에 rel_yn=N(비노출)이라도 등록한 본인은 조회할 수 있다")
+        void returnsUnreleasedSpot_toOwner() {
+            Spot spot = buildOwnedSpot(SpotStatus.PUBLISHED, 42L);
+            spot.unrelease();
+            given(spotRepository.findById(7L)).willReturn(Optional.of(spot));
+            given(spotImageRepository.findById(7L)).willReturn(Optional.empty());
+            given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
+            given(savedSpotArchiveRepository.findByUserIdAndSpotId(42L, 7L)).willReturn(Optional.empty());
+            given(spotLikeRepository.findByUserIdAndSpotId(42L, 7L)).willReturn(Optional.empty());
+
+            SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
+
+            assertThat(response.isMySpot()).isTrue();
         }
 
         @Test

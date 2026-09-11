@@ -45,7 +45,7 @@ public class SpotController {
     @Operation(
         summary = "스팟 상세 조회",
         description = "스팟 ID로 상세 정보(이미지, 한 줄 코멘트, 기록일자/시간, 날씨, 혼잡도, 일몰시간, 북마크/좋아요 여부 등)를 반환합니다. "
-            + "공개되지 않은 스팟은 등록한 본인에게만 보이며, 그 외에는 404로 응답합니다. "
+            + "비공개(PUBLISHED가 아니거나 rel_yn=N으로 비노출) 스팟은 등록한 본인에게만 보이며, 그 외에는 404로 응답합니다. "
             + "반려된 내 스팟이면 rejection에 반려 사유가 함께 내려갑니다(타인에게는 노출되지 않습니다). "
             + "조회수는 공개 상태의 스팟을 등록자 외의 사용자가 볼 때만 증가합니다. "
             + "비로그인 시 isBookmarked/isLiked/isMySpot은 항상 false입니다."
@@ -96,8 +96,8 @@ public class SpotController {
         summary = "스팟 리스트 조회",
         description = "공개(PUBLISHED)된 스팟 목록을 6개 단위로 페이징 조회합니다. "
             + "내 스팟(user_id 일치)은 status와 무관하게 조회되며, 그 외 스팟은 공개(PUBLISHED) 상태만 조회됩니다. "
-            + "지역코드(regionId)는 필수입니다. 정렬은 1순위 지역코드, 2순위 내 스팟 여부이며, "
-            + "그 다음으로 sort 기준이 적용됩니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. "
+            + "지역코드(regionId)는 필수입니다. 정렬은 1순위 지역코드, 2순위 sort 기준이며, "
+            + "내 스팟은 sort 기준이 동일할 때만 뒤로 밀리는 3순위 타이브레이커입니다. sort=DISTANCE 시 위도/경도 필수이며 가까운 순으로 정렬됩니다. "
             + "sort=RECOMMENDED(기본값) 시 좋아요 많은 순으로 정렬되며, 동률은 북마크 수로 가릅니다. "
             + "비로그인 시 isBookmarked/isLiked는 항상 false입니다."
     )
@@ -121,7 +121,7 @@ public class SpotController {
     @Operation(
         summary = "스팟 미리보기 조회",
         description = "스팟 ID와 사용자 위치를 기반으로 간략 정보(스팟명, 내 스팟 여부, 테마, 북마크/좋아요 수, 거리, 주소)를 반환합니다. "
-            + "공개되지 않은 스팟은 등록한 본인에게만 보이며, 그 외에는 404로 응답합니다. "
+            + "비공개(PUBLISHED가 아니거나 rel_yn=N으로 비노출) 스팟은 등록한 본인에게만 보이며, 그 외에는 404로 응답합니다. "
             + "위도/경도 미전달 시 거리 정보는 null입니다. 비로그인 시 isMySpot은 항상 false입니다."
     )
     @SecurityRequirements

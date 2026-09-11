@@ -140,6 +140,33 @@ class MySpotServiceTest {
         }
 
         @Test
+        @DisplayName("rel_yn=Y인 스팟은 isReleased가 true이고 likeCount가 그대로 반환된다")
+        void isReleasedTrue_andLikeCountPropagates_whenRelYnY() {
+            MySpotRow row = buildRow(SPOT_ID, SpotStatus.PUBLISHED.getCode(), "Y", 5L, 7L);
+            given(mySpotMapper.findMySpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(mySpotMapper.countMySpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).isReleased()).isTrue();
+            assertThat(response.spots().get(0).likeCount()).isEqualTo(7L);
+        }
+
+        @Test
+        @DisplayName("rel_yn=N인 스팟은 isReleased가 false다")
+        void isReleasedFalse_whenRelYnN() {
+            MySpotRow row = buildRow(SPOT_ID, SpotStatus.PENDING.getCode(), "N", 0L, 0L);
+            given(mySpotMapper.findMySpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(mySpotMapper.countMySpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).isReleased()).isFalse();
+        }
+
+        @Test
         @DisplayName("이미지가 없는 스팟의 imageUrl은 null이다")
         void imageUrlIsNullWhenNoImage() {
             MySpotRow row = buildRow(SPOT_ID, SpotStatus.PUBLISHED.getCode());
@@ -226,7 +253,12 @@ class MySpotServiceTest {
     }
 
     private MySpotRow buildRow(Long spotId, String statusCode) {
-        return new MySpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, LocalDateTime.now(), statusCode, 5L);
+        return buildRow(spotId, statusCode, "Y", 5L, 3L);
+    }
+
+    private MySpotRow buildRow(Long spotId, String statusCode, String relYn, long bookmarkCount, long likeCount) {
+        return new MySpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, LocalDateTime.now(),
+            statusCode, relYn, bookmarkCount, likeCount);
     }
 
     @Nested

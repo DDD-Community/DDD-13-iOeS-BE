@@ -26,7 +26,9 @@
                 AS distance_km,
             s.created_at                AS created_at,
             s.status                    AS status,
-            s.bookmark_count            AS bookmark_count
+            s.rel_yn                    AS rel_yn,
+            s.bookmark_count            AS bookmark_count,
+            s.like_count                AS like_count
         FROM spots s
         WHERE s.user_id    = #{userId}
           AND s.deleted_at IS NULL

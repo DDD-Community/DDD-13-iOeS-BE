@@ -67,7 +67,7 @@ public class SpotQueryService {
             .orElseThrow(() -> new BusinessException(SpotErrorCode.SPOT_NOT_FOUND));
 
         boolean owner = spot.isOwnedBy(userId);
-        if (!spot.isPublished() && !owner) {
+        if (!spot.isVisibleTo(userId)) {
             throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
         }
 
@@ -136,7 +136,9 @@ public class SpotQueryService {
 
         boolean owner = userId != null && userId.equals(row.userId());
         boolean published = SpotStatus.PUBLISHED.getCode().equals(row.status());
-        if (!published && !owner) {
+        boolean released = RelYn.Y.getCode().equals(row.relYn());
+        // 소유자는 검수 상태·노출 여부와 무관하게 조회할 수 있고, 그 외에는 공개+노출 상태여야 한다.
+        if (!(published && released) && !owner) {
             throw new BusinessException(SpotErrorCode.SPOT_NOT_FOUND);
         }
 
