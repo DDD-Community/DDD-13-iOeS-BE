@@ -193,9 +193,10 @@ public class Spot extends BaseEntity {
         return status == SpotStatus.PENDING || status == SpotStatus.RE_REVIEW_PENDING;
     }
 
-    // 검수 대기 중이면 '오픈 신청 철회', 공개 상태면 '비공개 전환'에 해당한다.
+    // 검수 대기 중이면 '오픈 신청 철회', 공개 상태면 '비공개 전환', 반려 상태면 '반려 철회(DRAFT로 초기화)'에 해당한다.
+    // DRAFT만 제외한 나머지 전 상태가 대상이다.
     public boolean isPublicationCancelable() {
-        return isReviewable() || isPublished();
+        return isReviewable() || isPublished() || status == SpotStatus.REJECTED;
     }
 
     public void requestOpen(LocalDateTime requestedAt) {

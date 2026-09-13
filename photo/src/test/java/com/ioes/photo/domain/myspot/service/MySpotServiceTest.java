@@ -483,16 +483,26 @@ class MySpotServiceTest {
         }
 
         @Test
-        @DisplayName("철회 직전 운영자가 반려를 확정했다면 SPOT_ALREADY_REVIEWED(409)로 안내한다")
-        void throwsAlreadyReviewedWhenRejectedFirst() {
+        @DisplayName("반려(REJECTED) 스팟도 철회하면 DRAFT로 되돌아간다")
+        void rejectedIsWithdrawnToDraft() {
             given(spotRepository.findWithLockById(SPOT_ID))
                 .willReturn(Optional.of(ownedSpot(SpotStatus.REJECTED)));
 
-            assertThatThrownBy(() -> mySpotService.cancelPublication(USER_ID, SPOT_ID))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("이미 처리된 신청이에요.")
-                .extracting("errorCode")
-                .isEqualTo(SpotErrorCode.SPOT_ALREADY_REVIEWED);
+            var response = mySpotService.cancelPublication(USER_ID, SPOT_ID);
+
+            assertThat(response.previousStatus()).isEqualTo(SpotStatus.REJECTED.name());
+            assertThat(response.status()).isEqualTo(SpotStatus.DRAFT.name());
+        }
+
+        @Test
+        @DisplayName("반려(REJECTED) 스팟 철회는 아직 공개된 적이 없으므로 이미지 경로를 건드리지 않는다")
+        void rejectedWithdrawDoesNotTouchImages() {
+            given(spotRepository.findWithLockById(SPOT_ID))
+                .willReturn(Optional.of(ownedSpot(SpotStatus.REJECTED)));
+
+            mySpotService.cancelPublication(USER_ID, SPOT_ID);
+
+            then(spotImageAccessService).should(never()).unpublish(SPOT_ID);
         }
 
         @Test

@@ -17,6 +17,7 @@ public record SavedSpotRow(
     long bookmarkCount,
     long likeCount,
     String status,
+    String relYn,
     LocalDateTime savedAt,
     boolean deleted
 ) {}

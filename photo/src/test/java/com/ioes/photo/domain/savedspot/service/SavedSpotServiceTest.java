@@ -327,6 +327,32 @@ class SavedSpotServiceTest {
         }
 
         @Test
+        @DisplayName("rel_yn=Y인 스팟은 isReleased가 true다")
+        void isReleasedTrue_whenRelYnY() {
+            SavedSpotRow row = buildRow(SPOT_ID, false, SpotStatus.PUBLISHED, "Y");
+            given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).isReleased()).isTrue();
+        }
+
+        @Test
+        @DisplayName("공개(PUBLISHED) 상태여도 등록자가 노출을 꺼두면(rel_yn=N) isReleased가 false다")
+        void isReleasedFalse_whenPublishedButUnreleased() {
+            SavedSpotRow row = buildRow(SPOT_ID, false, SpotStatus.PUBLISHED, "N");
+            given(savedSpotMapper.findSavedSpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
+            given(savedSpotMapper.countSavedSpots(USER_ID)).willReturn(1L);
+            given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of());
+
+            SavedSpotListResponse response = savedSpotService.findSavedSpots(USER_ID, 0, null, null);
+
+            assertThat(response.spots().get(0).isReleased()).isFalse();
+        }
+
+        @Test
         @DisplayName("비공개로 전환된 스팟의 이미지는 내려주지 않는다")
         void imageUrlIsMasked_whenPrivate() {
             SavedSpotRow row = buildRow(SPOT_ID, false, SpotStatus.DRAFT);
@@ -395,7 +421,12 @@ class SavedSpotServiceTest {
     }
 
     private SavedSpotRow buildRow(Long spotId, boolean deleted, SpotStatus status) {
+        String relYn = status == SpotStatus.PUBLISHED ? "Y" : "N";
+        return buildRow(spotId, deleted, status, relYn);
+    }
+
+    private SavedSpotRow buildRow(Long spotId, boolean deleted, SpotStatus status, String relYn) {
         return new SavedSpotRow(spotId, "테스트스팟", "SS", 37.5, 127.0, null, 0L, 0L,
-            status.getCode(), LocalDateTime.now(), deleted);
+            status.getCode(), relYn, LocalDateTime.now(), deleted);
     }
 }

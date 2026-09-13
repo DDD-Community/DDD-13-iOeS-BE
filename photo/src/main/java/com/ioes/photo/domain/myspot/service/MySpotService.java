@@ -75,7 +75,6 @@ public class MySpotService {
     private static final int PAGE_SIZE = 6;
     private static final String IMAGE_ENTITY = "spots";
     private static final String IMAGE_TYPE_ORIGINAL = "original";
-    private static final String ALREADY_RESOLVED_MESSAGE = "이미 처리된 신청이에요.";
 
     private final MySpotMapper mySpotMapper;
     private final SpotImageRepository spotImageRepository;
@@ -289,15 +288,10 @@ public class MySpotService {
     @Transactional
     public CancelPublicationResponse cancelPublication(Long userId, Long spotId) {
         Spot spot = findOwnedSpotWithLock(userId, spotId);
-        SpotStatus previous = spot.getStatus();
-
-        if (previous == SpotStatus.DRAFT) {
+        if (!spot.isPublicationCancelable()) {
             throw new BusinessException(SpotErrorCode.SPOT_NOT_CANCELABLE);
         }
-        if (!spot.isPublicationCancelable()) {
-            // 철회를 누르기 직전에 운영자 검수가 먼저 확정된 경우다.
-            throw new BusinessException(SpotErrorCode.SPOT_ALREADY_REVIEWED, ALREADY_RESOLVED_MESSAGE);
-        }
+        SpotStatus previous = spot.getStatus();
 
         spot.cancelPublication();
         spotOpenRequestRepository
