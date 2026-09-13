@@ -206,6 +206,76 @@ class SpotReviewAdminIntegrationTest {
         assertThat(detail.userTrust().totalRejected()).isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("반려된 스팟을 철회(DRAFT로 초기화)해도 totalRejected 이력은 줄지 않는다")
+    void totalRejectedSurvivesWithdrawalToDraft() {
+        Long owner = saveUser("등록유저");
+        Long spotId = saveSpot("검수대상", SpotStatus.PENDING, owner, daysAgo(1), null);
+
+        spotReviewService.review(spotId,
+            new SpotReviewRequest(ReviewDecision.REJECTED, RejectionReason.LOW_QUALITY, null), REVIEWER_ID);
+
+        Spot spot = spotRepository.findById(spotId).orElseThrow();
+        spot.cancelPublication();
+        spotRepository.saveAndFlush(spot);
+        assertThat(spot.getStatus()).isEqualTo(SpotStatus.DRAFT);
+
+        AdminSpotDetailResponse detail = spotReviewQueryService.getReviewSpotDetail(spotId);
+        assertThat(detail.userTrust().totalRejected()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("반려된 스팟을 삭제해도 totalRejected 이력은 줄지 않는다")
+    void totalRejectedSurvivesSpotDeletion() {
+        Long owner = saveUser("등록유저");
+        Long spotId = saveSpot("검수대상", SpotStatus.PENDING, owner, daysAgo(1), null);
+
+        spotReviewService.review(spotId,
+            new SpotReviewRequest(ReviewDecision.REJECTED, RejectionReason.LOW_QUALITY, null), REVIEWER_ID);
+
+        Spot spot = spotRepository.findById(spotId).orElseThrow();
+        spot.softDelete(LocalDateTime.now());
+        spotRepository.saveAndFlush(spot);
+
+        Long anotherSpotId = saveSpot("다른 스팟", SpotStatus.PENDING, owner, daysAgo(1), null);
+        AdminSpotDetailResponse detail = spotReviewQueryService.getReviewSpotDetail(anotherSpotId);
+        assertThat(detail.userTrust().totalRejected()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("승인된 스팟을 비공개 전환해도 totalApproved 이력은 줄지 않는다")
+    void totalApprovedSurvivesUnpublish() {
+        Long owner = saveUser("등록유저");
+        Long spotId = saveSpot("검수대상", SpotStatus.PENDING, owner, daysAgo(1), null);
+
+        spotReviewService.review(spotId, new SpotReviewRequest(ReviewDecision.APPROVED, null, null), REVIEWER_ID);
+
+        Spot spot = spotRepository.findById(spotId).orElseThrow();
+        spot.cancelPublication();
+        spotRepository.saveAndFlush(spot);
+        assertThat(spot.getStatus()).isEqualTo(SpotStatus.DRAFT);
+
+        AdminSpotDetailResponse detail = spotReviewQueryService.getReviewSpotDetail(spotId);
+        assertThat(detail.userTrust().totalApproved()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("승인된 스팟을 삭제해도 totalApproved 이력은 줄지 않는다")
+    void totalApprovedSurvivesSpotDeletion() {
+        Long owner = saveUser("등록유저");
+        Long spotId = saveSpot("검수대상", SpotStatus.PENDING, owner, daysAgo(1), null);
+
+        spotReviewService.review(spotId, new SpotReviewRequest(ReviewDecision.APPROVED, null, null), REVIEWER_ID);
+
+        Spot spot = spotRepository.findById(spotId).orElseThrow();
+        spot.softDelete(LocalDateTime.now());
+        spotRepository.saveAndFlush(spot);
+
+        Long anotherSpotId = saveSpot("다른 스팟", SpotStatus.PENDING, owner, daysAgo(1), null);
+        AdminSpotDetailResponse detail = spotReviewQueryService.getReviewSpotDetail(anotherSpotId);
+        assertThat(detail.userTrust().totalApproved()).isEqualTo(1L);
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────
 
     private LocalDateTime daysAgo(int days) {

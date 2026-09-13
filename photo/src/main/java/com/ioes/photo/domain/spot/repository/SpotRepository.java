@@ -70,6 +70,4 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
     Optional<Spot> findWithLockById(@Param("spotId") Long spotId);
 
     long countByUserId(Long userId);
-
-    long countByUserIdAndStatus(Long userId, SpotStatus status);
 }

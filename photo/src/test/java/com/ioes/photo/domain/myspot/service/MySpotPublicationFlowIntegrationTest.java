@@ -128,18 +128,21 @@ class MySpotPublicationFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("검수가 먼저 확정되면 뒤늦은 철회는 이미 처리된 신청으로 안내한다")
-    void cancelAfterReviewIsRejected() {
+    @DisplayName("반려가 확정된 뒤에도 철회하면 DRAFT로 초기화된다")
+    void cancelAfterRejectionResetsToDraft() {
         Long spotId = saveSpot(SpotStatus.DRAFT).getId();
         mySpotService.requestOpen(USER_ID, spotId);
         spotReviewService.review(spotId,
             new SpotReviewRequest(ReviewDecision.REJECTED, RejectionReason.DUPLICATE, null), REVIEWER_ID);
 
-        assertThatThrownBy(() -> mySpotService.cancelPublication(USER_ID, spotId))
-            .isInstanceOf(BusinessException.class)
-            .hasMessage("이미 처리된 신청이에요.")
-            .extracting("errorCode")
-            .isEqualTo(SpotErrorCode.SPOT_ALREADY_REVIEWED);
+        mySpotService.cancelPublication(USER_ID, spotId);
+
+        assertThat(reload(spotId).getStatus()).isEqualTo(SpotStatus.DRAFT);
+        assertThat(reload(spotId).getAppliedAt()).isNull();
+        // 반려 시점에 이미 REQUESTED→REJECTED로 마감된 이력이라, 철회가 그 행을 다시 건드리지 않는다.
+        assertThat(historyOf(spotId)).singleElement()
+            .extracting(SpotOpenRequest::getStatus)
+            .isEqualTo(SpotOpenRequestStatus.REJECTED);
     }
 
     @Test

@@ -167,11 +167,10 @@ public class MySpotController {
     @Operation(
         summary = "나만의 스팟 공개 해제(오픈 신청 철회 / 비공개 전환)",
         description = "스팟의 공개 상태를 해제해 나만보기(DRAFT)로 되돌립니다. "
-            + "검수중(PENDING)/재검토대기(RE_REVIEW_PENDING)이면 오픈 신청 철회로, 공개(PUBLISHED)면 비공개 전환으로 처리되며 "
-            + "응답의 previousStatus 로 어느 쪽이었는지 구분할 수 있습니다. "
+            + "검수중(PENDING)/재검토대기(RE_REVIEW_PENDING)이면 오픈 신청 철회로, 공개(PUBLISHED)면 비공개 전환으로, "
+            + "반려(REJECTED)면 반려 상태 초기화로 처리되며 응답의 previousStatus 로 어느 쪽이었는지 구분할 수 있습니다. "
             + "이미 쌓인 좋아요/북마크는 그대로 유지됩니다. "
-            + "나만보기(DRAFT) 상태는 해제할 대상이 없어 SP009, "
-            + "철회 직전에 운영자 검수가 확정된 경우에는 SP009 대신 SP004(이미 처리된 신청이에요)로 응답합니다. "
+            + "나만보기(DRAFT) 상태는 해제할 대상이 없어 SP009로 응답합니다. "
             + "본인이 등록한 스팟만 해제할 수 있습니다."
     )
     @SecurityRequirement(name = "Bearer Authentication")

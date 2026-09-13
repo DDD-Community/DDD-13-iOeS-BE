@@ -121,12 +121,16 @@ public class SpotReviewQueryService {
             .toList();
     }
 
+    // totalApproved/totalRejected는 현재 status가 아니라 spot_reviews 누적 이력(검수 결정 건수) 기준이다.
+    // 유저가 승인된 스팟을 나중에 비공개 전환하거나, 반려된 스팟을 철회(DRAFT)/삭제해도 이력 자체는
+    // 줄지 않아야 신뢰도 지표로 의미가 있다. 재검토로 같은 스팟이 여러 번 승인/반려될 수도 있는데,
+    // 그때마다 이력이 1건씩 쌓이는 것도 의도한 동작이다(반복 패턴을 그대로 드러내야 하므로).
     private UserTrust resolveUserTrust(Long userId, User owner) {
         return new UserTrust(
             owner == null ? null : owner.getCreatedAt(),
             spotRepository.countByUserId(userId),
-            spotRepository.countByUserIdAndStatus(userId, SpotStatus.PUBLISHED),
-            spotRepository.countByUserIdAndStatus(userId, SpotStatus.REJECTED)
+            spotReviewRepository.countByUserIdAndDecisionCode(userId, ReviewDecision.APPROVED.getCode()),
+            spotReviewRepository.countByUserIdAndDecisionCode(userId, ReviewDecision.REJECTED.getCode())
         );
     }
 
