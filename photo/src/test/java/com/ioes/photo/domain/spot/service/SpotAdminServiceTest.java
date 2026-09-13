@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.spot.service;
 
 import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
+import com.ioes.photo.domain.spotregion.service.SpotRegionResolver;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateRequest.Item;
 import com.ioes.photo.domain.spot.dto.SpotAdminCreateResponse;
@@ -45,6 +46,7 @@ class SpotAdminServiceTest {
 
     @Mock SpotRepository spotRepository;
     @Mock CrowdAreaMapper crowdAreaMapper;
+    @Mock SpotRegionResolver spotRegionResolver;
     @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks SpotAdminService spotAdminService;

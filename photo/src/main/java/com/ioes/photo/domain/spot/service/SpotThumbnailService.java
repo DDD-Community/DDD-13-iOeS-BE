@@ -21,6 +21,10 @@ public class SpotThumbnailService {
     private final StorageService storageService;
 
     public String getThumbnailUrl(SpotImage spotImage) {
+        // 외부 호스팅 이미지는 별도 썸네일을 생성하지 않으므로 원본 URL을 그대로 내려준다.
+        if (spotImage.isExternal()) {
+            return getImageUrl(spotImage);
+        }
         if (NullUtils.isBlank(spotImage.getThumbnailKey())) {
             return null;
         }
@@ -30,6 +34,10 @@ public class SpotThumbnailService {
     public String getImageUrl(SpotImage spotImage) {
         if (NullUtils.isBlank(spotImage.getImageKey())) {
             return null;
+        }
+        // 외부 호스팅 이미지는 image_key에 완전한 URL이 저장되어 있으므로 그대로 반환한다(hotlink).
+        if (spotImage.isExternal()) {
+            return spotImage.getImageKey();
         }
         return storageService.getUrl(spotImage.getImageKey());
     }

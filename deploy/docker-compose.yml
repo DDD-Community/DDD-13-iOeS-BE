@@ -60,6 +60,11 @@ services:
       # 로그는 호스트에서 직접 접근 가능하도록 bind mount
       # (logrotate / scp 백업 / Promtail 연계 용이)
       - ./logs:/app/logs
+    # 상한이 없으면 JVM 이 호스트 전체 메모리(약 3.8GB)를 기준으로 힙을 산정한다
+    # (Dockerfile 의 MaxRAMPercentage=75 → 최대 약 2.8GB). 테스트 서버 컨테이너와
+    # 같은 호스트를 쓰므로 상한을 명시해 양쪽이 서로를 굶기지 않게 한다.
+    # 실측 사용량 약 610MB 기준으로 여유를 둔 값이다.
+    mem_limit: 1300m
     depends_on:
       postgres:
         condition: service_healthy
@@ -184,11 +189,14 @@ services:
     volumes:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
       - ./logs:/var/log/app:ro
+      # 테스트 서버 로그. 컨테이너가 없으면 빈 디렉토리라 수집 대상이 없을 뿐 문제되지 않는다.
+      - ./logs-dev:/var/log/app-dev:ro
       - nginx_logs:/var/log/nginx:ro
       - ${BACKUP_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs}:/var/log/backup:ro
       - ${MAINTENANCE_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/maintenance/logs}:/var/log/maintenance:ro
     command: -config.file=/etc/promtail/promtail-config.yml
-    mem_limit: 128m
+    # 128m 에서 실측 113MB(88%)로 이미 한계였고, 테스트 서버 로그 스트림이 추가되어 상향한다.
+    mem_limit: 192m
     networks:
       - backend
     depends_on:

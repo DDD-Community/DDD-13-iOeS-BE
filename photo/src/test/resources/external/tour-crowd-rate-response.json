@@ -1,0 +1,35 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "0000",
+      "resultMsg": "OK"
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "baseYmd": "20260902",
+            "areaCd": "30",
+            "areaNm": "대전광역시",
+            "signguCd": "30170",
+            "signguNm": "서구",
+            "tAtsNm": "구봉산(대전)",
+            "cnctrRate": "26.62"
+          },
+          {
+            "baseYmd": "20260903",
+            "areaCd": "30",
+            "areaNm": "대전광역시",
+            "signguCd": "30170",
+            "signguNm": "서구",
+            "tAtsNm": "구봉산(대전)",
+            "cnctrRate": "96.84"
+          }
+        ]
+      },
+      "numOfRows": 3000,
+      "pageNo": 1,
+      "totalCount": 2
+    }
+  }
+}

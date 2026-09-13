@@ -1,0 +1,55 @@
+# dev 브랜치 테스트 서버 오버레이.
+#
+# 운영 스택과 같은 compose 프로젝트(photo)로 병합해 postgres/redis/nginx/모니터링을 공유한다.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d app-dev
+#
+# t3.medium(약 3.8GB)에 두 번째 postgres/redis/nginx 를 올릴 여유가 없어, 격리는 컨테이너가
+# 아니라 DB명(photo_dev) · Redis 논리 DB(1) · S3 prefix(test/) · 모니터링 라벨로 확보한다.
+#
+# 사전 준비(서버 수작업):
+#   - postgres 에 photo_dev DB 생성 + postgis extension
+#   - deploy/.env.dev 작성 (운영 .env 와 분리. JWT_SECRET 은 반드시 다른 값)
+#   - mkdir -p logs-dev && sudo chown -R 1000:1000 logs-dev
+#   - Cloudflare 에 dev-api A 레코드 추가 (프록시 ON)
+
+services:
+  app-dev:
+    image: ghcr.io/ddd-community/ddd-13-ioes-be:${DEV_IMAGE_TAG:-dev-latest}
+    container_name: photo-app-dev
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # 운영 .env 와 분리한다. 이 파일이 컨테이너 런타임 환경변수가 된다.
+    env_file:
+      - .env.dev
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      # 컨테이너 상한(900m) 대비 힙 55%. Dockerfile 기본값(75%)을 그대로 쓰면
+      # 힙 675MB + 비힙(메타스페이스/스레드/다이렉트 버퍼) 약 250MB 가 상한을 넘겨 OOMKilled 된다.
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55.0 -XX:InitialRAMPercentage=25.0 -Djava.security.egd=file:/dev/./urandom"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # 아래 ${...} 는 compose 가 deploy/.env 에서 치환한다(컨테이너 환경변수가 아니다).
+      # postgres 인스턴스는 공유하고 데이터베이스만 분리한다.
+      TEST_DB_URL: jdbc:postgresql://postgres:5432/${DEV_POSTGRES_DB:-photo_dev}
+      TEST_DB_USERNAME: ${POSTGRES_USER}
+      TEST_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./logs-dev:/app/logs
+    mem_limit: 900m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
