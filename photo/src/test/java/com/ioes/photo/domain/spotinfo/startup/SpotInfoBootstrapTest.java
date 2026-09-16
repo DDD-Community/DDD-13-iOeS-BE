@@ -48,7 +48,7 @@ class SpotInfoBootstrapTest {
     @DisplayName("격자 좌표 없는 스팟에 위경도 기반 격자와 혼잡도 지역을 백필한다")
     void backfillsGridAndCrowdArea() {
         Spot spot = spotWithoutGrid(37.5326, 126.9905);
-        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNull()).willReturn(List.of(spot));
+        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull()).willReturn(List.of(spot));
         given(crowdAreaMapper.findNearestAreaName(37.5326, 126.9905))
             .willReturn(Optional.of("여의도한강공원"));
         givenCollectorsSucceed();
@@ -65,7 +65,7 @@ class SpotInfoBootstrapTest {
     @Test
     @DisplayName("백필 대상이 없으면 저장 없이 수집만 수행한다")
     void skipsSaveWhenNothingToBackfill() {
-        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNull()).willReturn(List.of());
+        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull()).willReturn(List.of());
         givenCollectorsSucceed();
 
         spotInfoBootstrap.run();
@@ -78,7 +78,7 @@ class SpotInfoBootstrapTest {
     @Test
     @DisplayName("날씨 수집 실패가 천문 수집을 막지 않는다")
     void astronomyStillCollectedWhenWeatherFails() {
-        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNull()).willReturn(List.of());
+        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull()).willReturn(List.of());
         given(weatherCollector.collect()).willThrow(new RuntimeException("api down"));
         given(astronomyCollector.collect()).willReturn(new CollectResult(1, 0));
 
@@ -97,7 +97,7 @@ class SpotInfoBootstrapTest {
             .longitude(126.9905)
             .crowdAreaName("기존지역")
             .build();
-        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNull()).willReturn(List.of(spot));
+        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull()).willReturn(List.of(spot));
         givenCollectorsSucceed();
 
         spotInfoBootstrap.run();
@@ -105,6 +105,31 @@ class SpotInfoBootstrapTest {
         assertThat(spot.getGridNx()).isNotNull();
         assertThat(spot.getCrowdAreaName()).isEqualTo("기존지역");
         then(crowdAreaMapper).should(never()).findNearestAreaName(anyDouble(), anyDouble());
+    }
+
+    @Test
+    @DisplayName("격자는 있고 혼잡도 지역만 없는 스팟도 백필한다 (등록 이후 시드된 장소 반영)")
+    void backfillsCrowdAreaWhenGridAlreadyAssigned() {
+        Spot spot = Spot.builder()
+            .name("대전 스팟")
+            .theme(SpotTheme.SUNSET)
+            .latitude(36.3520)
+            .longitude(127.3850)
+            .gridNx(67)
+            .gridNy(100)
+            .build();
+        given(spotRepository.findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull())
+            .willReturn(List.of(spot));
+        given(crowdAreaMapper.findNearestAreaName(36.3520, 127.3850))
+            .willReturn(Optional.of("대전 중앙시장"));
+        givenCollectorsSucceed();
+
+        spotInfoBootstrap.run();
+
+        assertThat(spot.getCrowdAreaName()).isEqualTo("대전 중앙시장");
+        assertThat(spot.getGridNx()).isEqualTo(67);
+        assertThat(spot.getGridNy()).isEqualTo(100);
+        then(spotRepository).should().saveAll(List.of(spot));
     }
 
     private void givenCollectorsSucceed() {

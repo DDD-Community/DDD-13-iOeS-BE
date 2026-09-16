@@ -27,7 +27,13 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
 
     List<Spot> findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus status);
 
-    List<Spot> findAllByGridNxIsNullOrGridNyIsNull();
+    /**
+     * 수집 메타데이터가 비어 있는 스팟. 기동 시 백필 대상이다.
+     *
+     * <p>혼잡도 장소는 스팟 등록 시점에 매핑되므로, 등록 이후 시드된 장소(예: 대전 관광지)는
+     * 기존 스팟에 반영되지 않는다. 격자와 함께 이 컬럼도 대상 조건에 둔다.</p>
+     */
+    List<Spot> findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull();
 
     @Modifying
     @Query("UPDATE Spot s SET s.bookmarkCount = s.bookmarkCount + 1 WHERE s.id = :spotId")
