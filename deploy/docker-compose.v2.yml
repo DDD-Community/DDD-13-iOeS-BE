@@ -1,0 +1,61 @@
+# 신버전(v2) 서버 오버레이.
+#
+# 앱 심사 기간 동안 구버전 앱은 기존 운영 컨테이너(app)를, 심사에 제출한 신버전 앱은
+# 이 컨테이너를 바라본다. 출시 후 구버전 컨테이너를 내린다.
+#   docker compose -f docker-compose.yml -f docker-compose.v2.yml up -d app-v2
+#
+# 운영 스택과 같은 compose 프로젝트(photo)로 병합해 postgres/redis/nginx/모니터링을 공유한다.
+# 격리는 DB명(photo_v2) · Redis 논리 DB(2) · 로그 디렉토리(logs-v2) · 모니터링 라벨로 확보한다.
+# S3 는 분리하지 않는다(프로필 prod → 키 prefix 가 prod/ 로 유지되어 기존 이미지가 그대로 보인다).
+#
+# 사전 준비(서버 수작업):
+#   - postgres 에 photo_v2 DB 준비(운영 DB 복제) + 시퀀스 오프셋 적용
+#   - deploy/.env.v2 작성 (운영 .env 복사 후 DB/Redis 관련 값만 교체)
+#   - mkdir -p logs-v2 && sudo chown -R 1000:1000 logs-v2
+#   - Cloudflare 에 신버전 도메인 A 레코드 추가 (프록시 ON)
+
+services:
+  app-v2:
+    image: ghcr.io/ddd-community/ddd-13-ioes-be:${V2_IMAGE_TAG:-prod-latest}
+    container_name: photo-app-v2
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # 운영 .env 와 분리한다. 이 파일이 컨테이너 런타임 환경변수가 된다.
+    env_file:
+      - .env.v2
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # 컨테이너 상한(900m) 대비 힙 55%. Dockerfile 기본값(75%)을 그대로 쓰면
+      # 힙 675MB + 비힙 약 250MB 가 상한을 넘겨 OOMKilled 된다.
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55.0 -XX:InitialRAMPercentage=25.0 -Djava.security.egd=file:/dev/./urandom"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # 구버전(0)·테스트 서버(1)와 논리 DB 를 분리한다. 두 DB 가 갈라진 상태라
+      # 같은 논리 DB 를 쓰면 캐시/토큰 키가 서로 다른 데이터를 가리키게 된다.
+      REDIS_DATABASE: 2
+      # 아래 ${...} 는 compose 가 deploy/.env 에서 치환한다(컨테이너 환경변수가 아니다).
+      # postgres 인스턴스는 공유하고 데이터베이스만 분리한다.
+      PROD_DB_URL: jdbc:postgresql://postgres:5432/${V2_POSTGRES_DB:-photo_v2}
+      PROD_DB_USERNAME: ${POSTGRES_USER}
+      PROD_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - app_uploads:/app/uploads
+      - ./logs-v2:/app/logs
+    mem_limit: 900m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
