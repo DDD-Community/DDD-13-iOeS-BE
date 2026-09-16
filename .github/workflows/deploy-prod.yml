@@ -1,5 +1,10 @@
 name: Deploy (prod)
 
+# ⚠️ 앱 심사 기간 한정 구성: 배포 대상은 신버전 컨테이너(app-v2)다.
+# 구버전 앱 사용자가 쓰는 app 컨테이너는 기존 이미지로 동결하며 이 워크플로가 건드리지 않는다.
+# 심사 통과·출시 후 구버전 컨테이너를 내리고 나면, 배포 대상을 다시 app 으로 되돌리거나
+# app-v2 를 운영 컨테이너로 승격하는 정리 작업이 필요하다.
+
 on:
   push:
     branches: [main]
@@ -64,12 +69,14 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
-          APP_IMAGE_TAG: prod-${{ github.sha }}
+          # 심사 기간 동안 배포 대상은 신버전 컨테이너(app-v2)다.
+          # 구버전 컨테이너(app)는 기존 이미지로 계속 떠 있어야 하므로 태그를 주지 않는다.
+          V2_IMAGE_TAG: prod-${{ github.sha }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: GHCR_PAT,APP_IMAGE_TAG
+          envs: GHCR_PAT,V2_IMAGE_TAG
           script: |
             set -e
             cd ${{ secrets.EC2_DEPLOY_PATH }}/..
@@ -80,8 +87,8 @@ jobs:
 
             # 롤백 대비: 현재 떠있는 컨테이너의 이미지 태그 캡쳐
             PREV_TAG=""
-            if docker inspect photo-app >/dev/null 2>&1; then
-              PREV_TAG=$(docker inspect photo-app --format '{{.Config.Image}}' | awk -F: '{print $NF}')
+            if docker inspect photo-app-v2 >/dev/null 2>&1; then
+              PREV_TAG=$(docker inspect photo-app-v2 --format '{{.Config.Image}}' | awk -F: '{print $NF}')
               echo "Previous image tag: $PREV_TAG"
             else
               echo "No previous container (first deploy)"
@@ -89,7 +96,7 @@ jobs:
 
             health_check() {
               for i in $(seq 1 30); do
-                if curl -fsSk https://localhost/healthz > /dev/null 2>&1; then
+                if curl -fsSk -H 'Host: api.pickflow-api.us' https://localhost/healthz > /dev/null 2>&1; then
                   echo "Health check passed (attempt $i)"
                   return 0
                 fi
@@ -101,8 +108,8 @@ jobs:
 
             # 새 이미지 배포
             echo "$GHCR_PAT" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-            docker compose pull app
-            docker compose up -d app nginx
+            docker compose -f docker-compose.yml -f docker-compose.v2.yml pull app-v2
+            docker compose -f docker-compose.yml -f docker-compose.v2.yml up -d app-v2 nginx
 
             if health_check; then
               # nginx 재시작 (git reset으로 inode가 교체된 conf 파일 반영)
@@ -120,8 +127,8 @@ jobs:
             fi
 
             echo "Rolling back to: $PREV_TAG"
-            export APP_IMAGE_TAG="$PREV_TAG"
-            docker compose up -d app
+            export V2_IMAGE_TAG="$PREV_TAG"
+            docker compose -f docker-compose.yml -f docker-compose.v2.yml up -d app-v2
             if health_check; then
               echo "Rollback successful — pipeline will still fail to flag the bad deploy"
             else
