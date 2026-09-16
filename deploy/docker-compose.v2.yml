@@ -10,7 +10,6 @@
 #
 # 사전 준비(서버 수작업):
 #   - postgres 에 photo_v2 DB 준비(운영 DB 복제) + 시퀀스 오프셋 적용
-#   - deploy/.env.v2 작성 (운영 .env 복사 후 DB/Redis 관련 값만 교체)
 #   - mkdir -p logs-v2 && sudo chown -R 1000:1000 logs-v2
 #   - Cloudflare 에 신버전 도메인 A 레코드 추가 (프록시 ON)
 
@@ -24,9 +23,10 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    # 운영 .env 와 분리한다. 이 파일이 컨테이너 런타임 환경변수가 된다.
+    # 시크릿·외부 연동 값은 운영과 동일하므로 운영 .env 를 그대로 재사용한다.
+    # 달라야 하는 값(DB/Redis/공유 도메인)은 아래 environment 가 덮어쓴다(environment > env_file).
     env_file:
-      - .env.v2
+      - .env
     environment:
       SPRING_PROFILES_ACTIVE: prod
       # 컨테이너 상한(900m) 대비 힙 55%. Dockerfile 기본값(75%)을 그대로 쓰면
@@ -42,6 +42,10 @@ services:
       PROD_DB_URL: jdbc:postgresql://postgres:5432/${V2_POSTGRES_DB:-photo_v2}
       PROD_DB_USERNAME: ${POSTGRES_USER}
       PROD_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # 신버전이 발급하는 공유 링크는 신버전 도메인을 가리켜야 심사 기간에도 미리보기가 동작한다.
+      # 기존 도메인으로 이미 배포된 링크는 컷오버 때 pickflow-api.us 블록의 upstream 을
+      # app-v2 로 돌려 살린다(구버전 컨테이너를 내리면 그대로 두면 502 가 된다).
+      SHARE_BASE_URL: https://api.pickflow-api.us
     volumes:
       - app_uploads:/app/uploads
       - ./logs-v2:/app/logs
