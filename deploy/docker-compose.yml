@@ -191,6 +191,8 @@ services:
       - ./logs:/var/log/app:ro
       # 테스트 서버 로그. 컨테이너가 없으면 빈 디렉토리라 수집 대상이 없을 뿐 문제되지 않는다.
       - ./logs-dev:/var/log/app-dev:ro
+      # 신버전(v2) 서버 로그. 위와 같이 컨테이너가 없어도 문제되지 않는다.
+      - ./logs-v2:/var/log/app-v2:ro
       - nginx_logs:/var/log/nginx:ro
       - ${BACKUP_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs}:/var/log/backup:ro
       - ${MAINTENANCE_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/maintenance/logs}:/var/log/maintenance:ro
