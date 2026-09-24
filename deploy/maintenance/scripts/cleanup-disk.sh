@@ -18,7 +18,8 @@ DISK_THRESHOLD_PERCENT="${DISK_THRESHOLD_PERCENT:-80}"
 APP_IMAGE_KEEP_COUNT="${APP_IMAGE_KEEP_COUNT:-3}"
 APP_IMAGE_REPO="${APP_IMAGE_REPO:-ghcr.io/ddd-community/ddd-13-ioes-be}"
 TARGET_MOUNT="${TARGET_MOUNT:-/}"
-LATEST_TAG="${APP_IMAGE_LATEST_TAG:-prod-latest}"
+# 삭제하지 않는 이동식 포인터 태그. 운영과 테스트 서버가 같은 레포지토리를 공유한다.
+LATEST_TAGS="${APP_IMAGE_LATEST_TAGS:-prod-latest dev-latest}"
 LOCK_FILE="${CLEANUP_LOCK_FILE:-/tmp/cleanup-disk.lock}"
 # 반드시 running 상태여야 하는 운영 컨테이너 (하나라도 죽어있으면 정리 중단)
 PROTECTED_CONTAINERS="${PROTECTED_CONTAINERS:-photo-app photo-postgres photo-redis}"
@@ -85,25 +86,38 @@ fi
 
 log "INFO" "임계치 초과 — 안전 정리를 시작합니다"
 
-# ─── 삭제 대상 앱 이미지 산출 (현재 실행 이미지 + prod-latest + 최신 N개 보존) ─
+# ─── 삭제 대상 앱 이미지 산출 (현재 실행 이미지 + latest 포인터 + prefix별 최신 N개 보존) ─
 # docker images 는 생성일 내림차순 기본 정렬. ID/참조를 함께 뽑아 보호 대상 제외.
 select_removable_app_images() {
-  local kept=0
+  local kept_prod=0 kept_dev=0
   docker images "$APP_IMAGE_REPO" --format '{{.ID}}|{{.Repository}}:{{.Tag}}' \
     | while IFS='|' read -r id ref; do
         # dangling(<none>) 은 image prune 이 처리하므로 스킵
         [[ "$ref" == *":<none>"* ]] && continue
-        # prod-latest 포인터 보존
-        [[ "$ref" == *":${LATEST_TAG}" ]] && continue
+        tag="${ref##*:}"
+        # prod-latest/dev-latest 포인터 보존
+        case " $LATEST_TAGS " in *" $tag "*) continue ;; esac
         # 현재 실행 중인 이미지 ID 보존
         if grep -q "$id" <<<"$PROTECTED_IMAGE_IDS"; then
           continue
         fi
-        # 최신 N개 롤백용 보존
-        if [[ "$kept" -lt "$APP_IMAGE_KEEP_COUNT" ]]; then
-          kept=$((kept + 1))
-          continue
-        fi
+        # 최신 N개 롤백용 보존 — prod/dev 를 각각 센다.
+        # 하나의 카운터로 세면 배포가 잦은 dev 이미지가 보존 슬롯을 모두 차지해
+        # 운영 롤백용 prod 이미지가 삭제된다.
+        case "$tag" in
+          prod-*)
+            if [[ "$kept_prod" -lt "$APP_IMAGE_KEEP_COUNT" ]]; then
+              kept_prod=$((kept_prod + 1))
+              continue
+            fi
+            ;;
+          dev-*)
+            if [[ "$kept_dev" -lt "$APP_IMAGE_KEEP_COUNT" ]]; then
+              kept_dev=$((kept_dev + 1))
+              continue
+            fi
+            ;;
+        esac
         echo "$ref"
       done
 }
@@ -115,7 +129,7 @@ if [[ -n "$REMOVABLE_IMAGES" ]]; then
 fi
 
 if [[ "$REMOVABLE_COUNT" -eq 0 ]]; then
-  log "INFO" "삭제 대상 오래된 앱 이미지 없음 (보존: 실행중 + ${LATEST_TAG} + 최신 ${APP_IMAGE_KEEP_COUNT}개)"
+  log "INFO" "삭제 대상 오래된 앱 이미지 없음 (보존: 실행중 + ${LATEST_TAGS} + prefix별 최신 ${APP_IMAGE_KEEP_COUNT}개)"
 else
   log "INFO" "삭제 대상 오래된 앱 이미지 ${REMOVABLE_COUNT}개: $(echo "$REMOVABLE_IMAGES" | tr '\n' ' ')"
   while IFS= read -r ref; do

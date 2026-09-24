@@ -4,6 +4,7 @@ import com.ioes.photo.domain.crowdarea.service.CrowdAreaMapper;
 import com.ioes.photo.domain.spot.entity.Spot;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.collector.AstronomyCollector;
+import com.ioes.photo.domain.spotinfo.collector.DaejeonCrowdCollector;
 import com.ioes.photo.domain.spotinfo.collector.WeatherCollector;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.external.weather.util.LccGridConverter;
@@ -11,6 +12,7 @@ import com.ioes.photo.external.weather.util.LccGridConverter.GridPoint;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -19,14 +21,22 @@ import org.springframework.stereotype.Component;
 /**
  * 기동 시 스팟 수집 메타데이터 백필 및 초기 수집.
  *
- * 격자 좌표 없이 등록된 기존 스팟에 위경도 기반 격자/혼잡도 지역을 채우고,
+ * 격자 좌표나 혼잡도 장소가 비어 있는 스팟에 위경도 기반으로 값을 채우고,
  * 다음 스케줄 주기를 기다리지 않도록 날씨/천문 수집을 1회 수행한다.
  * 배포 직후 정보 공백이 즉시 복구되며, 모든 단계는 멱등하다.
+ *
+ * 혼잡도 장소는 스팟 등록 시점에 매핑되므로, 장소 시드가 나중에 추가되면(예: 대전 관광지)
+ * 기존 스팟은 매핑이 비어 있는 채로 남는다. 매 기동마다 재평가해 이 공백을 메운다.
+ * 임계 거리 밖이라 매핑되지 않는 스팟은 계속 대상으로 남지만, 대상 규모가 작아 부담이 없다.
+ *
+ * {@code app.spotinfo.collect.enabled=false} 인 환경에서는 빈이 생성되지 않아 격자 백필도 함께 생략된다.
+ * 백필은 수집 대상 산출용이므로 수집을 끈 환경에서는 필요하지 않다.
  *
  * @author 김성민
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "app.spotinfo.collect.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class SpotInfoBootstrap {
 
@@ -34,6 +44,7 @@ public class SpotInfoBootstrap {
     private final CrowdAreaMapper crowdAreaMapper;
     private final WeatherCollector weatherCollector;
     private final AstronomyCollector astronomyCollector;
+    private final DaejeonCrowdCollector daejeonCrowdCollector;
 
     @Async
     @EventListener(ApplicationReadyEvent.class)
@@ -43,20 +54,22 @@ public class SpotInfoBootstrap {
     }
 
     private void backfillCollectTargets() {
-        List<Spot> targets = spotRepository.findAllByGridNxIsNullOrGridNyIsNull();
+        List<Spot> targets = spotRepository.findAllByGridNxIsNullOrGridNyIsNullOrCrowdAreaNameIsNull();
         if (targets.isEmpty()) {
             return;
         }
         for (Spot spot : targets) {
-            GridPoint grid = LccGridConverter.toGrid(spot.getLatitude(), spot.getLongitude());
-            spot.assignGrid(grid.nx(), grid.ny());
+            if (spot.getGridNx() == null || spot.getGridNy() == null) {
+                GridPoint grid = LccGridConverter.toGrid(spot.getLatitude(), spot.getLongitude());
+                spot.assignGrid(grid.nx(), grid.ny());
+            }
             if (spot.getCrowdAreaName() == null) {
                 crowdAreaMapper.findNearestAreaName(spot.getLatitude(), spot.getLongitude())
                     .ifPresent(spot::assignCrowdAreaName);
             }
         }
         spotRepository.saveAll(targets);
-        log.info("[SpotInfoBootstrap] 격자 좌표 백필 완료 count={}", targets.size());
+        log.info("[SpotInfoBootstrap] 수집 메타데이터 백필 완료 count={}", targets.size());
     }
 
     private void collectOnce() {
@@ -73,6 +86,15 @@ public class SpotInfoBootstrap {
                 astronomy.success(), astronomy.fail());
         } catch (Exception e) {
             log.error("[SpotInfoBootstrap] 천문 초기 수집 실패", e);
+        }
+        // 대전 혼잡도는 일 1회 스케줄이라 배포 직후 공백이 길 수 있어 기동 시 1회 수집한다.
+        // (서울 혼잡도는 10분 주기 스케줄러가 1분 뒤 돌므로 여기서 수집하지 않는다)
+        try {
+            CollectResult daejeonCrowd = daejeonCrowdCollector.collect();
+            log.info("[SpotInfoBootstrap] 대전 혼잡도 초기 수집 success={} fail={}",
+                daejeonCrowd.success(), daejeonCrowd.fail());
+        } catch (Exception e) {
+            log.error("[SpotInfoBootstrap] 대전 혼잡도 초기 수집 실패", e);
         }
     }
 }

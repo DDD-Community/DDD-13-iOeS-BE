@@ -7,6 +7,8 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
+      # 테스트 서버(db 1)·신버전 서버와 논리 DB 를 분리하기 위해 주입 가능하게 둔다.
+      database: ${REDIS_DATABASE:0}
   datasource:
     url: ${PROD_DB_URL:jdbc:postgresql://postgres:5432/photo}
     username: ${PROD_DB_USERNAME}

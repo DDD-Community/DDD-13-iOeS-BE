@@ -30,7 +30,7 @@ public record SpotAdminCreateRequest(
         @Schema(description = "스팟 설명")
         @Size(max = 500) String comment,
 
-        @Schema(description = "테마 코드 (SS=노을, YS=운설)")
+        @Schema(description = "테마 코드 (SS=노을, YS=윤슬, SL=햇살, NV=야경)")
         @NotNull SpotTheme theme,
 
         @Schema(description = "위도", example = "37.55")

@@ -16,6 +16,7 @@ public record SpotViewportResponse(
     @Schema(description = "스팟 요약 정보")
     public record SpotSummary(
         @Schema(description = "스팟 ID") Long spotId,
+        @Schema(description = "지역 코드") Long regionId,
         @Schema(description = "썸네일 이미지 URL (없으면 null)") String spotImageUrl,
         @Schema(description = "위도") Double latitude,
         @Schema(description = "경도") Double longitude,

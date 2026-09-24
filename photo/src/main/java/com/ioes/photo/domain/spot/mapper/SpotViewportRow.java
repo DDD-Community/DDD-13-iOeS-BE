@@ -9,5 +9,6 @@ public record SpotViewportRow(
     Long id,
     Double latitude,
     Double longitude,
-    Long userId
+    Long userId,
+    Long regionId
 ) {}

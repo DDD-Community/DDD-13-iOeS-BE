@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link SpotImageAdminService} 단위 테스트.
@@ -127,7 +128,7 @@ class SpotImageAdminServiceTest {
             spotImageAdminService.syncImage(SPOT_ID, request);
 
             then(heicImageResizer).should().resize(ORIGINAL_DATA, 400, 400);
-            then(imageResizer).should(org.mockito.Mockito.never()).resize(any(), any(int.class), any(int.class));
+            then(imageResizer).should(never()).resize(any(), any(int.class), any(int.class));
         }
 
         @Test
@@ -146,7 +147,7 @@ class SpotImageAdminServiceTest {
             spotImageAdminService.syncImage(SPOT_ID, request);
 
             then(imageResizer).should().resize(ORIGINAL_DATA, 400, 400);
-            then(heicImageResizer).should(org.mockito.Mockito.never()).resize(any(), any(int.class), any(int.class));
+            then(heicImageResizer).should(never()).resize(any(), any(int.class), any(int.class));
         }
     }
 

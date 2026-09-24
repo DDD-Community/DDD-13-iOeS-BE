@@ -27,7 +27,10 @@ public record MySpotListResponse(
         @Schema(description = "스팟 경도") Double longitude,
         @Schema(description = "사용자 위치 기준 거리 (km), 위치 미전달 시 null") @TruncateDecimal Double distanceKm,
         @Schema(description = "스팟 등록 시각") LocalDateTime createdAt,
-        @Schema(description = "스팟 상태 (PENDING=검수대기, PUBLISHED=공개, REJECTED=반려)") String status,
-        @Schema(description = "북마크 수") long bookmarkCount
+        @Schema(description = "스팟 상태 (DRAFT=나만보기, PENDING=검수중, RE_REVIEW_PENDING=재검토대기, "
+            + "PUBLISHED=공개, REJECTED=반려)", example = "DRAFT") String status,
+        @Schema(description = "노출 여부 (검수 상태와 별개로 지도뷰/리스트에 노출되는지, true=노출, false=비노출)") boolean isReleased,
+        @Schema(description = "북마크 수") long bookmarkCount,
+        @Schema(description = "추천 수(좋아요 수)") long likeCount
     ) {}
 }
