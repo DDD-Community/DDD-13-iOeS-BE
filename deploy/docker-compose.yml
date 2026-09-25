@@ -141,9 +141,6 @@ services:
     mem_limit: 512m
     networks:
       - backend
-    depends_on:
-      app:
-        condition: service_healthy
 
   grafana:
     image: grafana/grafana:11.1.0
