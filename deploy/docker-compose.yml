@@ -26,9 +26,7 @@ services:
       - app_uploads:/var/www/uploads:ro
       # 엣지 레벨 오류 관측을 위해 nginx 로그를 Promtail이 읽을 수 있도록 볼륨에 기록
       - nginx_logs:/var/log/nginx
-    depends_on:
-      app:
-        condition: service_healthy
+    # 컷오버: app-v2 의존성은 docker-compose.v2.yml 에 둔다.
     networks:
       - backend
     healthcheck:
