@@ -188,6 +188,7 @@ services:
     logging: *default-logging
     volumes:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - promtail_data:/var/lib/promtail
       - ./logs:/var/log/app:ro
       # 테스트 서버 로그. 컨테이너가 없으면 빈 디렉토리라 수집 대상이 없을 뿐 문제되지 않는다.
       - ./logs-dev:/var/log/app-dev:ro
@@ -236,4 +237,5 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  promtail_data:
   nginx_logs:
