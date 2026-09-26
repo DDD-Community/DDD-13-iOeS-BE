@@ -13,6 +13,9 @@ services:
     container_name: photo-nginx
     restart: unless-stopped
     logging: *default-logging
+    # 공식 이미지의 access.log/error.log 는 /dev/stdout·stderr 심볼릭 링크라, 빈 볼륨을 처음
+    # 마운트할 때 링크째 복사되어 promtail 이 읽을 수 없다. 기동 시 링크를 지워 실제 파일에 기록한다.
+    command: ["sh", "-c", "find /var/log/nginx -type l -delete && exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
     ports:
       - "80:80"
       - "443:443"
