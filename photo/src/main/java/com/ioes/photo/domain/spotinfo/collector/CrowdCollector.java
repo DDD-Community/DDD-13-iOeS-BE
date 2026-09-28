@@ -3,7 +3,6 @@ package com.ioes.photo.domain.spotinfo.collector;
 import com.ioes.photo.domain.crowdarea.entity.CrowdArea;
 import com.ioes.photo.domain.crowdarea.repository.CrowdAreaRepository;
 import com.ioes.photo.domain.spot.entity.Spot;
-import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
@@ -15,6 +14,7 @@ import com.ioes.photo.global.common.util.NullUtils;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +24,10 @@ import org.springframework.stereotype.Component;
 /**
  * 서울시 실시간 혼잡도 수집기.
  *
- * crowd_area_name 이 매핑된 PUBLISHED 스팟을 순회하며 혼잡도 스냅샷을 저장한다.
+ * crowd_area_name 이 매핑된 스팟(미공개 포함)을 장소별로 묶어 단일 API 호출로 공유한다.
+ * 호출량은 스팟 수와 무관하게 매핑된 장소 수(최대 121곳)로 제한된다.
  * 대전 관광지에 매핑된 스팟은 {@link DaejeonCrowdCollector}가 예측 API 로 수집하므로 제외한다.
- * 스팟 단위 실패는 격리된다.
+ * 장소 단위 실패는 격리된다.
  *
  * @author 김성민
  */
@@ -48,36 +49,45 @@ public class CrowdCollector {
             .findAllByCategory(CrowdArea.CATEGORY_DAEJEON_TOUR).stream()
             .map(CrowdArea::getAreaName)
             .collect(Collectors.toSet());
-        List<Spot> targets = spotRepository
-            .findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED).stream()
+        Map<String, List<Spot>> grouped = spotRepository
+            .findAllByCrowdAreaNameIsNotNull().stream()
             .filter(spot -> !daejeonAreaNames.contains(spot.getCrowdAreaName()))
-            .toList();
+            .collect(Collectors.groupingBy(Spot::getCrowdAreaName));
+
         int success = 0;
         int fail = 0;
-        for (Spot spot : targets) {
+        for (Map.Entry<String, List<Spot>> entry : grouped.entrySet()) {
+            String areaName = entry.getKey();
+            List<Spot> spotsInArea = entry.getValue();
             try {
-                collectOne(spot);
-                success++;
+                applyArea(areaName, spotsInArea);
+                success += spotsInArea.size();
             } catch (Exception e) {
-                log.warn("[CrowdCollector] failed spotId={} areaName={} reason={}",
-                    spot.getId(), spot.getCrowdAreaName(), e.getMessage());
-                fail++;
+                log.warn("[CrowdCollector] failed areaName={} size={} reason={}",
+                    areaName, spotsInArea.size(), e.getMessage());
+                fail += spotsInArea.size();
             }
         }
         return new CollectResult(success, fail);
     }
 
-    private void collectOne(Spot spot) {
-        CrowdStatusResponse response = seoulCrowdApiClient.getCrowdStatus(spot.getCrowdAreaName());
+    private void applyArea(String areaName, List<Spot> spots) {
+        CrowdStatusResponse response = seoulCrowdApiClient.getCrowdStatus(areaName);
         LivePopulation live = extractLive(response);
-        spotInfoUpdateService.upsertCrowd(
-            spot.getId(),
-            CongestionLevel.fromLabel(live.congestionLevel()),
-            live.congestionMessage(),
-            parseNullableInt(live.populationMin()),
-            parseNullableInt(live.populationMax()),
-            parseObservedAt(live.populationTime())
-        );
+        CongestionLevel level = CongestionLevel.fromLabel(live.congestionLevel());
+        Integer populationMin = parseNullableInt(live.populationMin());
+        Integer populationMax = parseNullableInt(live.populationMax());
+        LocalDateTime observedAt = parseObservedAt(live.populationTime());
+        for (Spot spot : spots) {
+            spotInfoUpdateService.upsertCrowd(
+                spot.getId(),
+                level,
+                live.congestionMessage(),
+                populationMin,
+                populationMax,
+                observedAt
+            );
+        }
     }
 
     private LivePopulation extractLive(CrowdStatusResponse response) {

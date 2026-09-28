@@ -23,7 +23,11 @@ public interface SpotRepository extends JpaRepository<Spot, Long> {
 
     List<Spot> findAllByStatus(SpotStatus status);
 
-    List<Spot> findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus status);
+    /**
+     * 혼잡도 수집 대상. 상세 화면이 공개 여부와 무관하게 혼잡도를 노출하므로 상태로 거르지 않는다.
+     * 삭제된 스팟은 엔티티의 {@code @SQLRestriction} 으로 제외된다.
+     */
+    List<Spot> findAllByCrowdAreaNameIsNotNull();
 
     List<Spot> findAllByStatusAndGridNxIsNotNullAndGridNyIsNotNull(SpotStatus status);
 
