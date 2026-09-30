@@ -1,6 +1,5 @@
 package com.ioes.photo.domain.statistics.notion;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.ioes.photo.domain.statistics.dto.StatisticsSnapshot;
 import com.ioes.photo.global.common.util.HttpClientUtils;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 
 /**
  * 운영 지표 스냅샷을 노션 DB에 upsert 한다 (일자 Title 기준).
@@ -52,7 +52,7 @@ public class NotionStatisticsSync {
             headers(), JsonNode.class);
 
         JsonNode results = response.path("results");
-        return results.isArray() && !results.isEmpty() ? results.get(0).path("id").asText(null) : null;
+        return results.isArray() && !results.isEmpty() ? results.get(0).path("id").asString(null) : null;
     }
 
     private Map<String, Object> buildProperties(StatisticsSnapshot s, String date) {
