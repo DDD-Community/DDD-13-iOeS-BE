@@ -7,9 +7,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ioes.photo.domain.statistics.dto.StatisticsSnapshot;
 import com.ioes.photo.global.common.util.HttpClientUtils;
 import java.time.LocalDate;
@@ -19,6 +20,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * {@link NotionStatisticsSync} 단위 테스트 — 노션 호출 없이 upsert 분기/페이로드 검증.
@@ -64,6 +71,25 @@ class NotionStatisticsSyncTest {
 
         verify(httpClientUtils).patch(contains("/pages/page-123"), any(), any(), eq(JsonNode.class));
         verify(httpClientUtils, never()).post(contains("/pages"), any(), any(), eq(JsonNode.class));
+    }
+
+    @Test
+    @DisplayName("실제 RestClient 메시지 컨버터로 노션 응답을 읽어 upsert 한다")
+    void readsResponseThroughRestClientConverter() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        NotionStatisticsSync realSync = new NotionStatisticsSync(
+            new HttpClientUtils(builder.build()), new NotionProperties("token", "db-id"));
+        server.expect(requestTo("https://api.notion.com/v1/databases/db-id/query"))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withSuccess("{\"results\":[{\"id\":\"page-123\"}]}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://api.notion.com/v1/pages/page-123"))
+            .andExpect(method(HttpMethod.PATCH))
+            .andRespond(withSuccess("{\"id\":\"page-123\"}", MediaType.APPLICATION_JSON));
+
+        realSync.upsert(snapshot);
+
+        server.verify();
     }
 
     @SuppressWarnings("unchecked")
