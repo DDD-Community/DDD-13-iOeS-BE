@@ -85,14 +85,23 @@ scrape_configs:
           level:
           type:
 
+  # nginx 공식 이미지는 access/error 로그를 표준 출력/에러로 내보낸다.
+  # 파일 대신 Docker API 로 컨테이너 로그를 직접 읽어, 로그 크기 관리는 Docker 로그 설정이 맡는다.
   - job_name: nginx
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: nginx
-          service_name: nginx
-          __path__: /var/log/nginx/*.log
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 30s
+        filters:
+          - name: name
+            values: [photo-nginx]
+    relabel_configs:
+      - target_label: job
+        replacement: nginx
+      - target_label: service_name
+        replacement: nginx
+      # stdout=access, stderr=error
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label: stream
 
     pipeline_stages:
       # error.log 라인의 [error]/[warn]/[crit] 레벨만 저카디널리티 레이블로 추출한다.
