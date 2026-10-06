@@ -3,7 +3,6 @@ package com.ioes.photo.domain.spotinfo.collector;
 import com.ioes.photo.domain.crowdarea.entity.CrowdArea;
 import com.ioes.photo.domain.crowdarea.repository.CrowdAreaRepository;
 import com.ioes.photo.domain.spot.entity.Spot;
-import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
@@ -23,7 +22,7 @@ import org.springframework.stereotype.Component;
 /**
  * 대전 관광지 집중률 기반 혼잡도 수집기.
  *
- * 대전 관광지(crowd_areas category='대전관광지')에 매핑된 PUBLISHED 스팟을 대상으로,
+ * 대전 관광지(crowd_areas category='대전관광지')에 매핑된 스팟(미공개 포함)을 대상으로,
  * 시군구별 벌크 조회(총 5회) 후 관광지명으로 매칭해 혼잡도 스냅샷을 저장한다.
  * 예측 데이터가 일 단위라 서울(10분)과 달리 하루 1회면 충분하다.
  * 시군구 단위 API 실패는 격리된다(해당 구 관광지만 매칭 실패로 집계).
@@ -48,7 +47,7 @@ public class DaejeonCrowdCollector {
     public CollectResult collect() {
         Set<String> daejeonAreaNames = daejeonAreaNames();
         List<Spot> targets = spotRepository
-            .findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED).stream()
+            .findAllByCrowdAreaNameIsNotNull().stream()
             .filter(spot -> daejeonAreaNames.contains(spot.getCrowdAreaName()))
             .toList();
         if (targets.isEmpty()) {
