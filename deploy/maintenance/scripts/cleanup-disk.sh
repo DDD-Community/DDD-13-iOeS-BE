@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: bash /path/to/deploy/maintenance/scripts/cleanup-disk.sh [--dry-run]
 # EC2 디스크 자동 관리: 사용률 임계치 초과 시 docker 찌꺼기(오래된 앱 이미지/dangling/빌드캐시/중지 컨테이너) 정리
-# - 운영 컨테이너(photo-app/postgres/redis)와 named volume 은 어떤 경우에도 건드리지 않는다.
+# - 운영 컨테이너(photo-app-v2/postgres/redis)와 named volume 은 어떤 경우에도 건드리지 않는다.
 # - Cron: 매일 새벽 4시 (setup-cron.sh 로 등록)
 # - 로그: JSON 한 줄(level/type=maintenance) → Promtail(job=maintenance) → Loki/Grafana
 
@@ -22,7 +22,7 @@ TARGET_MOUNT="${TARGET_MOUNT:-/}"
 LATEST_TAGS="${APP_IMAGE_LATEST_TAGS:-prod-latest dev-latest}"
 LOCK_FILE="${CLEANUP_LOCK_FILE:-/tmp/cleanup-disk.lock}"
 # 반드시 running 상태여야 하는 운영 컨테이너 (하나라도 죽어있으면 정리 중단)
-PROTECTED_CONTAINERS="${PROTECTED_CONTAINERS:-photo-app photo-postgres photo-redis}"
+PROTECTED_CONTAINERS="${PROTECTED_CONTAINERS:-photo-app-v2 photo-postgres photo-redis}"
 
 DRY_RUN="${DRY_RUN:-0}"
 if [[ "${1:-}" == "--dry-run" ]]; then
