@@ -24,8 +24,6 @@ services:
       - ./nginx/well-known:/etc/nginx/well-known:ro
       - ./nginx/html:/etc/nginx/html:ro
       - app_uploads:/var/www/uploads:ro
-      # 엣지 레벨 오류 관측을 위해 nginx 로그를 Promtail이 읽을 수 있도록 볼륨에 기록
-      - nginx_logs:/var/log/nginx
     # 컷오버: app-v2 의존성은 docker-compose.v2.yml 에 둔다.
     networks:
       - backend
@@ -189,7 +187,9 @@ services:
       - ./logs-dev:/var/log/app-dev:ro
       # 신버전(v2) 서버 로그. 위와 같이 컨테이너가 없어도 문제되지 않는다.
       - ./logs-v2:/var/log/app-v2:ro
-      - nginx_logs:/var/log/nginx:ro
+      # nginx 로그는 표준 출력으로 나가므로 Docker API(docker_sd_configs)로 수집한다.
+      # 소켓 접근은 호스트 root 권한과 같다. promtail 은 외부 노출이 없는 내부 컨테이너라 감수한다.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${BACKUP_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs}:/var/log/backup:ro
       - ${MAINTENANCE_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/maintenance/logs}:/var/log/maintenance:ro
     command: -config.file=/etc/promtail/promtail-config.yml
@@ -233,4 +233,3 @@ volumes:
   grafana_data:
   loki_data:
   promtail_data:
-  nginx_logs:
