@@ -46,9 +46,6 @@ services:
       # 기존 도메인으로 이미 배포된 링크는 컷오버 때 pickflow-api.us 블록의 upstream 을
       # app-v2 로 돌려 살린다(구버전 컨테이너를 내리면 그대로 두면 502 가 된다).
       SHARE_BASE_URL: https://api.pickflow-api.us
-      # 노션 지표 동기화는 구버전 서버만 수행한다. 두 서버가 같은 날짜로 upsert 하면
-      # 데이터가 거의 없는 신 DB 집계가 운영 지표를 덮어쓴다(토큰이 비면 스케줄러가 스킵한다).
-      NOTION_TOKEN: ""
     volumes:
       - app_uploads:/app/uploads
       - ./logs-v2:/app/logs
@@ -66,3 +63,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+
+  # 컷오버: 구버전 컨테이너를 내렸으므로 nginx 는 신버전 컨테이너 기동을 기다린다.
+  nginx:
+    depends_on:
+      app-v2:
+        condition: service_healthy
