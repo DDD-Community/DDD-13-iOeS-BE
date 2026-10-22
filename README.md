@@ -107,7 +107,7 @@ http://localhost:8080/api/swagger-ui.html
 ```
 
 - 단위테스트: JUnit5 + Mockito + AssertJ
-- 일부 도메인은 Testcontainers 기반 실제 PostgreSQL/Redis 환경에서 통합테스트 수행
+- 통합테스트: H2 in-memory DB(PostgreSQL 호환 모드) 환경에서 수행
 
 ## 코드 컨벤션
 
