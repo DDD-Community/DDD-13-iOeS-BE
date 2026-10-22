@@ -8,3 +8,13 @@ out/
 ### OS ###
 .DS_Store
 Thumbs.db
+
+### oh-my-claudecode ###
+.omc/
+.claude/
+
+### Local-only (docs/postman/이미지 원본) ###
+docs/
+.postman/
+postman/
+spot_images/
