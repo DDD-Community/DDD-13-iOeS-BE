@@ -30,9 +30,10 @@ import org.springframework.stereotype.Component;
 public class VipsImageResizer {
 
     private static final int JPEG_QUALITY = 85;
-    // vipsthumbnail의 --background 기본값은 검정(0)이라, 투명 PNG를 JPEG로 변환(알파 플래튼)할 때
-    // 검정 배경이 섞여 나온다. 흰 배경으로 명시해 예측 가능한 결과를 보장한다.
-    private static final String BACKGROUND_WHITE = "255 255 255";
+    // vipsthumbnail에는 별도 --background 플래그가 없다. background는 VipsForeignSave 공통 옵션이라
+    // -o 출력 포맷 문자열에 Q와 함께 넣어야 적용된다(배열 대괄호 문법은 파서가 거부해 스칼라로 넘긴다).
+    // 기본값이 검정(0)이라, 흰 배경으로 명시해 투명 PNG를 JPEG로 변환(알파 플래튼)할 때 예측 가능한 결과를 보장한다.
+    private static final String BACKGROUND_WHITE = "255";
     private static final String MSG_INTERRUPTED = "고해상도 썸네일 생성이 중단되었습니다.";
     private static final String MSG_UNAVAILABLE = "libvips(vipsthumbnail)가 설치되지 않아 고해상도 썸네일을 생성할 수 없습니다.";
 
@@ -71,10 +72,9 @@ public class VipsImageResizer {
             ProcessBuilder pb = new ProcessBuilder(
                 vipsCommand.command(),
                 input.path.toString(),
-                "-o", output.path + "[Q=" + JPEG_QUALITY + "]",
+                "-o", output.path + "[Q=" + JPEG_QUALITY + ",background=" + BACKGROUND_WHITE + "]",
                 // ">" 접미사가 없으면 vipsthumbnail이 원본보다 작은 target size를 확대해버린다.
-                "--size", width + "x" + height + ">",
-                "--background", BACKGROUND_WHITE
+                "--size", width + "x" + height + ">"
             );
             // stdout을 파이프로 읽으면 OS 파이프 버퍼가 차 프로세스가 블록될 수 있고,
             // waitFor(timeout)이 그 블록을 끝까지 기다리게 된다. 파일로 리다이렉트해 피한다.
