@@ -51,6 +51,19 @@ app:
       width: 300      # 썸네일 최대 가로 픽셀 (비율 유지) - 아이폰 @3x 마커 기준
       height: 300     # 썸네일 최대 세로 픽셀 (비율 유지)
     presigned-url-expiry-minutes: 60   # Presigned URL 유효 시간(분)
+    resize:
+      # 해상도 상한을 두지 않고도 OOM을 막기 위한 안전장치.
+      # pool-size: 리사이즈 전용 스레드풀 크기 — Tomcat 요청 스레드와 분리해 블라스트 반경을 줄인다.
+      # timeout-seconds: 리사이즈 1건당 최대 대기 시간(초). 초과 시 실패 처리한다.
+      # memory-budget-ratio: JVM 최대 힙(Runtime.maxMemory()) 대비 리사이즈 동시 처리에 허용할 비율.
+      #   예산을 넘는 요청은 먼저 끝난 작업이 release될 때까지 대기한다(거부하지 않음).
+      # vips-fallback-threshold-ratio: 단일 이미지 추정 메모리가 힙의 이 비율을 넘으면
+      #   libvips(vipsthumbnail)로 처리를 위임한다(설치돼 있을 때만). 혼자서도 힙을 위협하는
+      #   고해상도 이미지를 Thumbnailator 경로로 보내지 않기 위한 안전장치.
+      pool-size: 4
+      timeout-seconds: 30
+      memory-budget-ratio: 0.5
+      vips-fallback-threshold-ratio: 0.4
 
   file:
     # 서비스 계층 이미지 상한. 서블릿 max-file-size(60MB)보다 낮아야 FileUtils.validateSize가

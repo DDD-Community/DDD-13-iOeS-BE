@@ -27,6 +27,9 @@ jobs:
         with:
           build-root-directory: photo
 
+      - name: Install libvips (고해상도 썸네일 폴백)
+        run: sudo apt-get update && sudo apt-get install -y libvips-tools
+
       - name: Build & Test
         working-directory: photo
         run: ./gradlew build --no-daemon
