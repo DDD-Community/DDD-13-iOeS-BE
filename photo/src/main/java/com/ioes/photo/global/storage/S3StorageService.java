@@ -61,6 +61,7 @@ public class S3StorageService implements StorageService {
     private final S3Properties s3Properties;
     private final FileProperties fileProperties;
     private final ImageProperties imageProperties;
+    private final PresignedUrlCache presignedUrlCache;
 
     @Override
     public UploadResult upload(MultipartFile file, String key) {
@@ -109,12 +110,20 @@ public class S3StorageService implements StorageService {
         }
 
         // Public 콘텐츠 + CloudFront: 만료 없는 CDN URL
-        if (StoragePathUtils.isPublic(key) && s3Properties.hasCloudFront()) {
+        if (isServedByCloudFront(key)) {
             return "https://" + s3Properties.cloudFrontDomain() + "/" + key;
         }
 
         // Private 콘텐츠 또는 CloudFront 미설정: Presigned URL 동적 생성
         return generatePresignedUrl(key);
+    }
+
+    @Override
+    public String getUrl(Long userId, String key) {
+        if (NullUtils.isNull(userId) || !needsPresignedUrl(key)) {
+            return getUrl(key);
+        }
+        return presignedUrlCache.getOrSign(userId, key, () -> generatePresignedUrl(key));
     }
 
     public byte[] fetchBytes(String key) {
@@ -204,6 +213,14 @@ public class S3StorageService implements StorageService {
                 }
             }
         }
+    }
+
+    private boolean isServedByCloudFront(String key) {
+        return StoragePathUtils.isPublic(key) && s3Properties.hasCloudFront();
+    }
+
+    private boolean needsPresignedUrl(String key) {
+        return NullUtils.isNotBlank(key) && !s3Properties.hasCustomEndpoint() && !isServedByCloudFront(key);
     }
 
     private String generatePresignedUrl(String key) {
