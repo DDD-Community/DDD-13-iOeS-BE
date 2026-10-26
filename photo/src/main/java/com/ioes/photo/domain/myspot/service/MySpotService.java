@@ -102,7 +102,7 @@ public class MySpotService {
         Map<Long, SpotImage> imageMap = loadImageMap(rows.stream().map(MySpotRow::spotId).toList());
 
         List<MySpotItem> items = rows.stream()
-            .map(row -> toMySpotItem(row, imageMap))
+            .map(row -> toMySpotItem(userId, row, imageMap))
             .toList();
 
         boolean hasNext = mySpotMapper.countMySpots(userId)
@@ -141,7 +141,7 @@ public class MySpotService {
         return new CreateMySpotResponse(
             spot.getId(),
             SpotStatus.DRAFT.name(),
-            storageService.getUrl(upload.key())
+            storageService.getUrl(userId, upload.key())
         );
     }
 
@@ -157,7 +157,7 @@ public class MySpotService {
         spot.updateBasic(request.name(), request.comment(), request.theme());
         applyLocationChange(spot, request);
 
-        String imageUrl = applyImageChange(spotId, request, image);
+        String imageUrl = applyImageChange(userId, spotId, request, image);
         return new UpdateMySpotResponse(spotId, spot.getStatus().name(), imageUrl);
     }
 
@@ -195,12 +195,12 @@ public class MySpotService {
         eventPublisher.publishEvent(new SpotCreatedEvent(spot.getId()));
     }
 
-    private String applyImageChange(Long spotId, UpdateMySpotRequest request, MultipartFile image) {
+    private String applyImageChange(Long userId, Long spotId, UpdateMySpotRequest request, MultipartFile image) {
         SpotImage current = spotImageRepository.findById(spotId).orElse(null);
 
         if (image == null || image.isEmpty()) {
             updateRecordedAt(current, request);
-            return resolveImageUrl(current);
+            return resolveImageUrl(userId, current);
         }
 
         // syncImage 가 키를 덮어쓰므로 이전 키를 먼저 확보한다.
@@ -213,7 +213,7 @@ public class MySpotService {
         publishCleanup(previousImageKey);
         publishCleanup(previousThumbnailKey);
 
-        return storageService.getUrl(upload.key());
+        return storageService.getUrl(userId, upload.key());
     }
 
     private void updateRecordedAt(SpotImage image, UpdateMySpotRequest request) {
@@ -357,8 +357,8 @@ public class MySpotService {
             .stream().collect(Collectors.toMap(SpotImage::getSpotId, image -> image));
     }
 
-    private MySpotItem toMySpotItem(MySpotRow row, Map<Long, SpotImage> imageMap) {
-        String imageUrl = resolveImageUrl(imageMap.get(row.spotId()));
+    private MySpotItem toMySpotItem(Long userId, MySpotRow row, Map<Long, SpotImage> imageMap) {
+        String imageUrl = resolveImageUrl(userId, imageMap.get(row.spotId()));
         return new MySpotItem(
             row.spotId(), row.name(), row.theme(), imageUrl,
             row.latitude(), row.longitude(), row.distanceKm(), row.createdAt(),
@@ -367,9 +367,9 @@ public class MySpotService {
         );
     }
 
-    private String resolveImageUrl(SpotImage spotImage) {
+    private String resolveImageUrl(Long userId, SpotImage spotImage) {
         return Optional.ofNullable(spotImage)
-            .map(img -> storageService.getUrl(img.getImageKey()))
+            .map(img -> storageService.getUrl(userId, img.getImageKey()))
             .orElse(null);
     }
 }
