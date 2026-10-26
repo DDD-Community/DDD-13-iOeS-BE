@@ -23,6 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -64,7 +65,7 @@ class UserArchiveServiceIntegrationTest {
         User user = userRepository.save(buildUser());
         given(storageService.upload(any(), anyString()))
             .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
-        given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
+        given(storageService.getUrl(eq(user.getId()), eq(ARCHIVE_KEY))).willReturn(PRESIGNED_URL);
 
         MockMultipartFile imageFile = new MockMultipartFile(
             "archiveImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
@@ -83,7 +84,7 @@ class UserArchiveServiceIntegrationTest {
         User user = userRepository.save(buildUser());
         given(storageService.upload(any(), anyString()))
             .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
-        given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
+        given(storageService.getUrl(eq(user.getId()), eq(ARCHIVE_KEY))).willReturn(PRESIGNED_URL);
 
         MockMultipartFile imageFile = new MockMultipartFile(
             "archiveImage", "photo.jpg", "image/jpeg", "imagedata".getBytes()
@@ -119,7 +120,7 @@ class UserArchiveServiceIntegrationTest {
         given(storageService.upload(any(), anyString()))
             .willReturn(new UploadResult(firstKey, "photo.jpg", 9L, "image/jpeg"))
             .willReturn(new UploadResult(secondKey, "photo.jpg", 9L, "image/jpeg"));
-        given(storageService.getUrl(anyString())).willReturn(PRESIGNED_URL);
+        given(storageService.getUrl(any(), anyString())).willReturn(PRESIGNED_URL);
 
         userArchiveService.updateArchiveImage(user.getId(), imageFile);
         userArchiveService.updateArchiveImage(user.getId(), imageFile);

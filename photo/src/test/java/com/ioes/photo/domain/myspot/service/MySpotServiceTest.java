@@ -130,7 +130,7 @@ class MySpotServiceTest {
             given(mySpotMapper.findMySpots(USER_ID, null, null, 0, 6)).willReturn(List.of(row));
             given(mySpotMapper.countMySpots(USER_ID)).willReturn(1L);
             given(spotImageRepository.findAllBySpotIdIn(List.of(SPOT_ID))).willReturn(List.of(image));
-            given(storageService.getUrl("spots/1/image.jpg")).willReturn("https://cdn.example.com/image.jpg");
+            given(storageService.getUrl(USER_ID, "spots/1/image.jpg")).willReturn("https://cdn.example.com/image.jpg");
 
             MySpotListResponse response = mySpotService.findMySpots(USER_ID, 0, null, null);
 
@@ -721,7 +721,7 @@ class MySpotServiceTest {
         void mapsUploadedImageUrlIntoResult() {
             givenImageUploaded();
             given(spotRepository.save(any(Spot.class))).willReturn(savedSpot(SPOT_ID));
-            given(storageService.getUrl(UPLOADED_KEY)).willReturn("https://cdn/img");
+            given(storageService.getUrl(USER_ID, UPLOADED_KEY)).willReturn("https://cdn/img");
 
             CreateMySpotResponse response = mySpotService.createMySpot(USER_ID, request(), image());
 

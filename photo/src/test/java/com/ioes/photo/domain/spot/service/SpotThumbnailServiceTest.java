@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -77,7 +78,7 @@ class SpotThumbnailServiceTest {
             String result = spotThumbnailService.getThumbnailUrl(image);
 
             assertThat(result).isEqualTo("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
-            then(storageService).should(never()).getUrl(anyString());
+            then(storageService).should(never()).getUrl(any(), anyString());
         }
     }
 
@@ -93,14 +94,14 @@ class SpotThumbnailServiceTest {
             String result = spotThumbnailService.getImageUrl(image);
 
             assertThat(result).isEqualTo("http://tong.visitkorea.or.kr/cms2/website/20/1961920.jpg");
-            then(storageService).should(never()).getUrl(anyString());
+            then(storageService).should(never()).getUrl(any(), anyString());
         }
 
         @Test
         @DisplayName("자사 스토리지 이미지는 storageService.getUrl()로 URL을 조합한다")
         void returnsStorageUrl_whenInternal() {
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/original/202504/abc.jpg");
-            given(storageService.getUrl("prod/public/spots/1/original/202504/abc.jpg"))
+            given(storageService.getUrl(null, "prod/public/spots/1/original/202504/abc.jpg"))
                 .willReturn("https://cdn.example.com/abc.jpg");
 
             String result = spotThumbnailService.getImageUrl(image);

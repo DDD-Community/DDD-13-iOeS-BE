@@ -1,6 +1,7 @@
 package com.ioes.photo.domain.spot.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -87,7 +88,7 @@ class SpotImageSourceTypeIntegrationTest {
 
         assertThat(imageUrl).isEqualTo(EXTERNAL_URL);
         assertThat(thumbnailUrl).isEqualTo(EXTERNAL_URL);
-        then(storageService).should(never()).getUrl(anyString());
+        then(storageService).should(never()).getUrl(any(), anyString());
     }
 
     @Test
