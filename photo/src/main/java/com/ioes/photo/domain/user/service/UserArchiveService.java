@@ -58,14 +58,14 @@ public class UserArchiveService {
             eventPublisher.publishEvent(new StorageCleanupEvent(oldKey));
         }
 
-        return ArchiveImageResponse.of(user.getArchiveName(), storageService.getUrl(result.key()));
+        return ArchiveImageResponse.of(user.getArchiveName(), storageService.getUrl(userId, result.key()));
     }
 
     @Transactional(readOnly = true)
     public ArchiveImageResponse getArchiveImage(Long userId) {
         User user = findUser(userId);
         String url = NullUtils.isNotBlank(user.getArchiveImageKey())
-                ? storageService.getUrl(user.getArchiveImageKey())
+                ? storageService.getUrl(userId, user.getArchiveImageKey())
                 : null;
         return ArchiveImageResponse.of(user.getArchiveName(), url);
     }
@@ -75,7 +75,7 @@ public class UserArchiveService {
         User user = findUser(userId);
         user.updateArchiveName(archiveName);
         String url = NullUtils.isNotBlank(user.getArchiveImageKey())
-                ? storageService.getUrl(user.getArchiveImageKey())
+                ? storageService.getUrl(userId, user.getArchiveImageKey())
                 : null;
         return ArchiveImageResponse.of(archiveName, url);
     }

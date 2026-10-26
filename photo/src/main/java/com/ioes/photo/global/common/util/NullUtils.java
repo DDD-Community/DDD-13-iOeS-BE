@@ -41,6 +41,14 @@ public final class NullUtils {
         return value != null ? value : defaultSupplier.get();
     }
 
+    public static <T> boolean isNull(T value) {
+        return value == null;
+    }
+
+    public static <T> boolean isNotNull(T value) {
+        return value != null;
+    }
+
     public static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }

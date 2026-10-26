@@ -80,7 +80,7 @@ public class SpotQueryService {
         SpotInfo spotInfo = spotInfoRepository.findById(spotId).orElse(null);
 
         String imageUrl = Optional.ofNullable(spotImage)
-            .map(spotThumbnailService::getImageUrl)
+            .map(image -> spotThumbnailService.getImageUrl(userId, image))
             .orElse(null);
 
         boolean isBookmarked = userId != null
@@ -149,7 +149,7 @@ public class SpotQueryService {
         boolean isLiked = userId != null
             && spotLikeRepository.findByUserIdAndSpotId(userId, spotId).isPresent();
         String imageUrl = spotImageRepository.findById(spotId)
-            .map(spotThumbnailService::getImageUrl)
+            .map(image -> spotThumbnailService.getImageUrl(userId, image))
             .orElse(null);
 
         return new SpotPreviewResponse(

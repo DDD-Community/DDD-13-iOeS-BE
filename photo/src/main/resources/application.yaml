@@ -14,6 +14,12 @@ spring:
       # 계층: app.file.max-size(50MB, 서비스 검증) < max-file-size(60MB) < max-request-size(70MB) < nginx /api/(75m)
       max-file-size: 60MB        # 단일 파일 상한. app.file.max-size보다 높게 두어 서비스 계층 검증이 도달 가능하게 함
       max-request-size: 70MB     # 폼 필드 포함 전체 요청 크기
+  data:
+    redis:
+      # 기본값(60초)이면 Redis가 멈췄을 때 이미지 URL을 내리는 요청이 그만큼 붙잡힌다.
+      # 캐시는 없어도 동작하므로 짧게 끊고 새로 서명한다.
+      timeout: 500ms
+      connect-timeout: 1s
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -50,7 +56,7 @@ app:
     thumbnail:
       width: 300      # 썸네일 최대 가로 픽셀 (비율 유지) - 아이폰 @3x 마커 기준
       height: 300     # 썸네일 최대 세로 픽셀 (비율 유지)
-    presigned-url-expiry-minutes: 60   # Presigned URL 유효 시간(분)
+    presigned-url-expiry-minutes: 120   # Presigned URL 유효 시간(분). 캐시 TTL은 이 값의 절반(60분)
     resize:
       # 해상도 상한을 두지 않고도 OOM을 막기 위한 안전장치.
       # pool-size: 리사이즈 전용 스레드풀 크기 — Tomcat 요청 스레드와 분리해 블라스트 반경을 줄인다.

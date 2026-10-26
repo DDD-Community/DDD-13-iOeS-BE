@@ -28,3 +28,8 @@ scrape_configs:
     static_configs:
       - targets:
           - node-exporter:9100
+
+  - job_name: redis-exporter
+    static_configs:
+      - targets:
+          - redis-exporter:9121
