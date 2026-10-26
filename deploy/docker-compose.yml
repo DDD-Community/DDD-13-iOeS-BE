@@ -140,6 +140,25 @@ services:
     networks:
       - backend
 
+  # Redis 상태와 presigned 캐시 키 개수를 프로메테우스로 내보낸다.
+  # 키 이름에 사용자 ID 가 들어가므로 키 목록이나 값은 수집하지 않고 패턴별 개수만 센다.
+  # 논리 DB 0=운영 초기 구성, 1=테스트 서버, 2=app-v2(운영)
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: photo-redis-exporter
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_EXPORTER_COUNT_KEYS: db0=presigned:*,db1=presigned:*,db2=presigned:*
+    mem_limit: 64m
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+
   grafana:
     image: grafana/grafana:11.1.0
     container_name: photo-grafana
