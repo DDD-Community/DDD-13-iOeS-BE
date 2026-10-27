@@ -32,6 +32,10 @@ public class SpotThumbnailService {
     }
 
     public String getImageUrl(SpotImage spotImage) {
+        return getImageUrl(null, spotImage);
+    }
+
+    public String getImageUrl(Long userId, SpotImage spotImage) {
         if (NullUtils.isBlank(spotImage.getImageKey())) {
             return null;
         }
@@ -39,6 +43,6 @@ public class SpotThumbnailService {
         if (spotImage.isExternal()) {
             return spotImage.getImageKey();
         }
-        return storageService.getUrl(spotImage.getImageKey());
+        return storageService.getUrl(userId, spotImage.getImageKey());
     }
 }

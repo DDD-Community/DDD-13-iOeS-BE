@@ -168,6 +168,36 @@
       ],
       "title": "백업 / 디스크정리 로그",
       "type": "logs"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 9,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "native_tool_up{job=\"spring-boot-app\"}",
+          "legendFormat": "{{tool}}"
+        }
+      ],
+      "title": "네이티브 외부 프로그램 상태 (vips / imagemagick)",
+      "type": "stat"
     }
   ],
   "refresh": "30s",
@@ -179,5 +209,5 @@
   "timezone": "Asia/Seoul",
   "title": "Photo App - Overview",
   "uid": "photo-overview",
-  "version": 2
+  "version": 3
 }

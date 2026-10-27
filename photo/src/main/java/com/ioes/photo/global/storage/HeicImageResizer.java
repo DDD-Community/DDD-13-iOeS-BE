@@ -5,7 +5,6 @@ import com.ioes.photo.global.config.image.ImageMagickConfig.ImageMagickCommand;
 import com.ioes.photo.global.error.exception.BusinessException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -77,25 +76,11 @@ public class HeicImageResizer {
             log.debug("HEIC 변환 완료: {}x{} → JPEG {} bytes", width, height, result.length);
             return result;
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
+            throw new BusinessException(StorageErrorCode.THUMBNAIL_GENERATION_FAILED, "HEIC 변환 중 오류: " + e.getMessage());
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new BusinessException(StorageErrorCode.THUMBNAIL_GENERATION_FAILED, "HEIC 변환 중 오류: " + e.getMessage());
-        }
-    }
-
-    private static final class TempFile implements AutoCloseable {
-
-        final Path path;
-
-        TempFile(String prefix, String suffix) throws IOException {
-            this.path = Files.createTempFile(prefix, suffix);
-        }
-
-        @Override
-        public void close() {
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException ignored) {}
         }
     }
 }

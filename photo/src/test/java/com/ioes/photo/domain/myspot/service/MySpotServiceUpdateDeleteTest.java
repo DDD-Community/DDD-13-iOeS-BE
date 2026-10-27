@@ -151,7 +151,7 @@ class MySpotServiceUpdateDeleteTest {
             SpotImage image = SpotImage.create(SPOT_ID, OLD_IMAGE_KEY);
             given(spotRepository.findWithLockById(SPOT_ID)).willReturn(Optional.of(ownedSpot(SpotStatus.DRAFT)));
             given(spotImageRepository.findById(SPOT_ID)).willReturn(Optional.of(image));
-            given(storageService.getUrl(OLD_IMAGE_KEY)).willReturn("https://cdn.example.com/old.jpg");
+            given(storageService.getUrl(USER_ID, OLD_IMAGE_KEY)).willReturn("https://cdn.example.com/old.jpg");
 
             UpdateMySpotResponse response = mySpotService.updateMySpot(USER_ID, SPOT_ID, request(), null);
 
@@ -172,7 +172,7 @@ class MySpotServiceUpdateDeleteTest {
             given(storageProperties.env()).willReturn("dev");
             given(storageService.upload(any(), anyString()))
                 .willReturn(new UploadResult(NEW_IMAGE_KEY, "new.jpg", 100L, "image/jpeg"));
-            given(storageService.getUrl(NEW_IMAGE_KEY)).willReturn("https://cdn.example.com/new.jpg");
+            given(storageService.getUrl(USER_ID, NEW_IMAGE_KEY)).willReturn("https://cdn.example.com/new.jpg");
 
             UpdateMySpotResponse response = mySpotService.updateMySpot(USER_ID, SPOT_ID, request(), imageFile());
 

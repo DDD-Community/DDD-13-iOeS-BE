@@ -53,6 +53,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
@@ -255,7 +256,7 @@ class SpotQueryServiceTest {
             SpotImage image = SpotImage.create(1L, "prod/public/spots/1/original/key.jpg");
             given(spotMapper.findSpotPreview(1L, 37.5, 127.0)).willReturn(row);
             given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
-            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+            given(spotThumbnailService.getImageUrl(any(), eq(image))).willReturn("https://cdn.example.com/original.jpg");
 
             SpotPreviewResponse response = spotQueryService.findSpotPreview(1L, 37.5, 127.0, null);
 
@@ -642,7 +643,7 @@ class SpotQueryServiceTest {
             given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
             given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
             given(spotInfoRepository.findById(1L)).willReturn(Optional.of(info));
-            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+            given(spotThumbnailService.getImageUrl(eq(42L), eq(image))).willReturn("https://cdn.example.com/original.jpg");
             given(savedSpotArchiveRepository.findByUserIdAndSpotId(42L, 1L))
                 .willReturn(Optional.of(SavedSpotArchive.builder().userId(42L).spotId(1L).build()));
 
@@ -760,7 +761,7 @@ class SpotQueryServiceTest {
             given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
             given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
             given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
-            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+            given(spotThumbnailService.getImageUrl(any(), eq(image))).willReturn("https://cdn.example.com/original.jpg");
 
             SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
 
@@ -995,7 +996,7 @@ class SpotQueryServiceTest {
             given(spotRepository.findById(7L)).willReturn(Optional.of(spot));
             given(spotImageRepository.findById(7L)).willReturn(Optional.of(image));
             given(spotInfoRepository.findById(7L)).willReturn(Optional.empty());
-            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+            given(spotThumbnailService.getImageUrl(any(), eq(image))).willReturn("https://cdn.example.com/original.jpg");
 
             SpotDetailResponse response = spotQueryService.findSpotDetail(7L, 42L);
 
@@ -1012,7 +1013,7 @@ class SpotQueryServiceTest {
             given(spotRepository.findById(1L)).willReturn(Optional.of(spot));
             given(spotImageRepository.findById(1L)).willReturn(Optional.of(image));
             given(spotInfoRepository.findById(1L)).willReturn(Optional.empty());
-            given(spotThumbnailService.getImageUrl(image)).willReturn("https://cdn.example.com/original.jpg");
+            given(spotThumbnailService.getImageUrl(any(), eq(image))).willReturn("https://cdn.example.com/original.jpg");
 
             SpotDetailResponse response = spotQueryService.findSpotDetail(1L, null);
 

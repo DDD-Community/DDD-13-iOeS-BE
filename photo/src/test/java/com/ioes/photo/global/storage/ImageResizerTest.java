@@ -1,29 +1,64 @@
 package com.ioes.photo.global.storage;
 
+import com.ioes.photo.global.config.image.ImageProperties;
+import com.ioes.photo.global.config.image.ImageProperties.ResizeProperties;
+import com.ioes.photo.global.config.image.ImageProperties.ThumbnailProperties;
+import com.ioes.photo.domain.storage.error.StorageErrorCode;
 import com.ioes.photo.global.error.exception.BusinessException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.concurrent.Callable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 /**
  * {@link ImageResizer} 단위 테스트.
  *
+ * {@link ImageResizeMemoryGate}, {@link ImageResizeExecutor}는 각각 전담 테스트가 있으므로
+ * 여기서는 mock으로 대체하고, executor는 실제 콜백을 그대로 실행하도록 위임한다.
+ *
  * @author 황제연
  */
+@ExtendWith(MockitoExtension.class)
 @DisplayName("ImageResizer 단위 테스트")
 class ImageResizerTest {
 
-    private static final ImageResizer imageResizer = new ImageResizer();
+    @Mock ImageResizeMemoryGate memoryGate;
+    @Mock ImageResizeExecutor executor;
+    @Mock VipsImageResizer vipsImageResizer;
+
+    private ImageResizer imageResizer;
     private static byte[] testPngBytes;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        ImageProperties imageProperties = new ImageProperties(
+            new ThumbnailProperties(400, 400), 60, new ResizeProperties(4, 30, 0.5, 0.4));
+        imageResizer = new ImageResizer(memoryGate, executor, vipsImageResizer, imageProperties);
+
+        // supports()/outputContentType() 테스트나 입력 검증 단계에서 실패하는 테스트는 이 스텁을 쓰지 않으므로 lenient 처리
+        Mockito.lenient().when(executor.submitAndAwait(any(), any())).thenAnswer(invocation -> {
+            Callable<byte[]> task = invocation.getArgument(0);
+            return task.call();
+        });
+        // 기본값: 임계값 미초과 → 기존 경로(게이트+실행기)를 그대로 탄다
+        Mockito.lenient().when(memoryGate.exceedsVipsFallbackThreshold(anyLong())).thenReturn(false);
+    }
 
     @BeforeAll
     static void createTestImage() throws IOException {
@@ -156,6 +191,41 @@ class ImageResizerTest {
 
             assertThatThrownBy(() -> imageResizer.resize(invalid, 50, 50))
                 .isInstanceOf(BusinessException.class);
+        }
+    }
+
+    // ── vips 위임 ─────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("resize() - vips 위임")
+    class VipsDelegation {
+
+        @Test
+        @DisplayName("임계값을 넘으면 게이트/실행기를 거치지 않고 무조건 vips로 위임한다")
+        void delegatesToVips_whenThresholdExceeded() throws InterruptedException {
+            byte[] vipsResult = "vips-jpeg".getBytes();
+            Mockito.when(memoryGate.exceedsVipsFallbackThreshold(anyLong())).thenReturn(true);
+            Mockito.when(vipsImageResizer.resize(testPngBytes, 50, 50)).thenReturn(vipsResult);
+
+            byte[] result = imageResizer.resize(testPngBytes, 50, 50);
+
+            assertThat(result).isEqualTo(vipsResult);
+            Mockito.verify(executor, Mockito.never()).submitAndAwait(any(), any());
+            Mockito.verify(memoryGate, Mockito.never()).acquire(anyLong());
+            Mockito.verify(memoryGate, Mockito.never()).release(anyLong());
+        }
+
+        @Test
+        @DisplayName("vips가 예외를 던지면(미설치 포함) 그대로 전파하고 기존 경로로 폴백하지 않는다")
+        void propagatesVipsException() {
+            BusinessException vipsException = new BusinessException(
+                StorageErrorCode.THUMBNAIL_GENERATION_FAILED, "vips 실패");
+            Mockito.when(memoryGate.exceedsVipsFallbackThreshold(anyLong())).thenReturn(true);
+            Mockito.when(vipsImageResizer.resize(testPngBytes, 50, 50)).thenThrow(vipsException);
+
+            assertThatThrownBy(() -> imageResizer.resize(testPngBytes, 50, 50))
+                .isSameAs(vipsException);
+            Mockito.verify(executor, Mockito.never()).submitAndAwait(any(), any());
         }
     }
 }

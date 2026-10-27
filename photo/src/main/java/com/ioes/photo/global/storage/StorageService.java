@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
  * - Public 콘텐츠 + CloudFront 설정 시 -> 만료 없는 CloudFront URL 반환
  * - Private 콘텐츠 또는 CloudFront 미설정 시 -> Presigned URL 동적 생성
  * - 개발(MinIO) 환경 -> MinIO 직접 URL 반환
+ * - getUrl(userId, key)는 Presigned URL이 필요한 키에 한해 사용자별로 URL을 캐시해 같은 사진이 같은 URL로 내려가게 한다
  *
  * @author 황제연
  */
@@ -21,6 +22,8 @@ public interface StorageService {
     UploadResult uploadBytes(byte[] data, String key, String contentType);
 
     String getUrl(String key);
+
+    String getUrl(Long userId, String key);
 
     void copy(String sourceKey, String destinationKey);
 

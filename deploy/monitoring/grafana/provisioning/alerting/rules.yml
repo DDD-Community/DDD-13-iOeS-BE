@@ -667,6 +667,60 @@ groups:
           severity: warning
         isPaused: false
 
+      - uid: infra-native-tool-down
+        title: 네이티브 외부 프로그램 응답 없음 (vips/imagemagick)
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              expr: 'min(native_tool_up{job="spring-boot-app"}) by (tool)'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              conditions:
+                - type: query
+                  evaluator:
+                    type: lt
+                    params: [1]
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+        # 앱 자체는 멈추지 않는다(고해상도 썸네일/HEIC 변환만 영향) — app-down과 달리 critical이 아닌
+        # warning. noData는 아직 /actuator/prometheus 자체가 안 걷히는 상황이라 app-down 룰이 먼저 잡는다.
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: vips 또는 ImageMagick이 응답하지 않습니다.
+          description: 'native_tool_up{tool="{{ $labels.tool }}"}가 5분 이상 0입니다. 고해상도 썸네일(vips) 또는 HEIC 변환(ImageMagick)이 실패하고 있을 수 있습니다. 컨테이너에 vips-tools/imagemagick 패키지가 정상 설치돼 있는지 확인하세요.'
+        labels:
+          severity: warning
+        isPaused: false
+
       - uid: infra-maintenance-error
         title: 유지보수 스크립트 실패
         condition: B

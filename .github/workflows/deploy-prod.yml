@@ -80,6 +80,8 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.EC2_DEPLOY_PATH }}/..
+            # 모니터링 설정 변경 감지용 (아래 동기화 단계 참고)
+            PREV_SHA=$(git rev-parse HEAD)
             git fetch origin main
             git checkout -B main FETCH_HEAD
             git reset --hard FETCH_HEAD
@@ -114,8 +116,19 @@ jobs:
             if health_check; then
               # nginx 재시작 (git reset으로 inode가 교체된 conf 파일 반영)
               docker compose up -d --force-recreate nginx
-              # 앱 배포 성공 후 모니터링 스택 동기화 (설정 변경 시 재시작, 신규 시 기동)
+              # 앱 배포 성공 후 모니터링 스택 동기화 (서비스 정의 변경 시 재생성, 신규 시 기동)
               docker compose up -d prometheus grafana loki promtail node-exporter
+              # 설정 파일은 bind mount 라 git reset 으로 inode 가 교체되면 실행 중인 컨테이너는
+              # 이전 파일을 계속 본다. 서비스 정의가 그대로면 compose 가 재생성하지 않으므로,
+              # 이번 배포에서 설정이 바뀐 서비스만 강제 재생성한다.
+              CHANGED=""
+              for svc in prometheus grafana loki promtail; do
+                git diff --quiet "$PREV_SHA" HEAD -- "monitoring/$svc" || CHANGED="$CHANGED $svc"
+              done
+              if [ -n "$CHANGED" ]; then
+                echo "Monitoring config changed:$CHANGED"
+                docker compose up -d --force-recreate --no-deps $CHANGED
+              fi
               docker image prune -f
               exit 0
             fi

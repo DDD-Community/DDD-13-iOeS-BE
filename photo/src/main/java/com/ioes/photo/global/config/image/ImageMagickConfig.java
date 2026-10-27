@@ -31,7 +31,9 @@ public class ImageMagickConfig {
                     log.info("ImageMagick 감지됨: '{}' 명령어로 HEIC 지원 활성화", cmd);
                     return ImageMagickCommand.of(cmd);
                 }
-            } catch (IOException | InterruptedException ignored) {
+            } catch (IOException ignored) {
+                // ImageMagick 미설치 환경 — HEIC 변환 비활성화
+            } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
@@ -51,6 +53,32 @@ public class ImageMagickConfig {
 
         public boolean isPresent() {
             return command != null;
+        }
+
+        // isPresent()는 부팅 시점 캐시, checkAlive()는 매 호출마다 재검사(헬스체크/메트릭용).
+        // waitFor를 먼저 걸어 timeout을 보장한 뒤에만 stdout을 읽는다 — 먼저 읽으면 프로세스가
+        // 멈췄을 때 timeout 없이 readAllBytes()에서 무한정 블록될 수 있다.
+        public boolean checkAlive() {
+            if (command == null) {
+                return false;
+            }
+            try {
+                Process p = new ProcessBuilder(command, "--version")
+                    .redirectErrorStream(true)
+                    .start();
+                boolean finished = p.waitFor(DETECT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                if (!finished) {
+                    p.destroyForcibly();
+                    return false;
+                }
+                String output = new String(p.getInputStream().readAllBytes());
+                return p.exitValue() == 0 && output.contains("ImageMagick");
+            } catch (IOException e) {
+                return false;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
         }
     }
 }

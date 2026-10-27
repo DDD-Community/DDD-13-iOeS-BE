@@ -24,11 +24,7 @@ services:
       - ./nginx/well-known:/etc/nginx/well-known:ro
       - ./nginx/html:/etc/nginx/html:ro
       - app_uploads:/var/www/uploads:ro
-      # 엣지 레벨 오류 관측을 위해 nginx 로그를 Promtail이 읽을 수 있도록 볼륨에 기록
-      - nginx_logs:/var/log/nginx
-    depends_on:
-      app:
-        condition: service_healthy
+    # 컷오버: app-v2 의존성은 docker-compose.v2.yml 에 둔다.
     networks:
       - backend
     healthcheck:
@@ -143,8 +139,24 @@ services:
     mem_limit: 512m
     networks:
       - backend
+
+  # Redis 상태와 presigned 캐시 키 개수를 프로메테우스로 내보낸다.
+  # 키 이름에 사용자 ID 가 들어가므로 키 목록이나 값은 수집하지 않고 패턴별 개수만 센다.
+  # 논리 DB 0=운영 초기 구성, 1=테스트 서버, 2=app-v2(운영)
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: photo-redis-exporter
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_EXPORTER_COUNT_KEYS: db0=presigned:*,db1=presigned:*,db2=presigned:*
+    mem_limit: 64m
+    networks:
+      - backend
     depends_on:
-      app:
+      redis:
         condition: service_healthy
 
   grafana:
@@ -188,12 +200,15 @@ services:
     logging: *default-logging
     volumes:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - promtail_data:/var/lib/promtail
       - ./logs:/var/log/app:ro
       # 테스트 서버 로그. 컨테이너가 없으면 빈 디렉토리라 수집 대상이 없을 뿐 문제되지 않는다.
       - ./logs-dev:/var/log/app-dev:ro
       # 신버전(v2) 서버 로그. 위와 같이 컨테이너가 없어도 문제되지 않는다.
       - ./logs-v2:/var/log/app-v2:ro
-      - nginx_logs:/var/log/nginx:ro
+      # nginx 로그는 표준 출력으로 나가므로 Docker API(docker_sd_configs)로 수집한다.
+      # 소켓 접근은 호스트 root 권한과 같다. promtail 은 외부 노출이 없는 내부 컨테이너라 감수한다.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${BACKUP_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/backup/logs}:/var/log/backup:ro
       - ${MAINTENANCE_LOGS_HOST_PATH:-/home/ubuntu/DDD-13-iOeS-BE/deploy/maintenance/logs}:/var/log/maintenance:ro
     command: -config.file=/etc/promtail/promtail-config.yml
@@ -236,4 +251,4 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
-  nginx_logs:
+  promtail_data:

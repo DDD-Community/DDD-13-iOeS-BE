@@ -86,7 +86,7 @@ class UserArchiveServiceTest {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(null)));
             given(storageService.upload(any(), anyString()))
                 .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
-            given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
+            given(storageService.getUrl(USER_ID, ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
 
             ArchiveImageResponse response = userArchiveService.updateArchiveImage(USER_ID, imageFile());
 
@@ -103,7 +103,7 @@ class UserArchiveServiceTest {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(oldKey)));
             given(storageService.upload(any(), anyString()))
                 .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
-            given(storageService.getUrl(anyString())).willReturn(PRESIGNED_URL);
+            given(storageService.getUrl(any(), anyString())).willReturn(PRESIGNED_URL);
 
             userArchiveService.updateArchiveImage(USER_ID, imageFile());
 
@@ -123,7 +123,7 @@ class UserArchiveServiceTest {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(null)));
             given(storageService.upload(any(), anyString()))
                 .willReturn(new UploadResult(ARCHIVE_KEY, "photo.jpg", 9L, "image/jpeg"));
-            given(storageService.getUrl(anyString())).willReturn(PRESIGNED_URL);
+            given(storageService.getUrl(any(), anyString())).willReturn(PRESIGNED_URL);
 
             userArchiveService.updateArchiveImage(USER_ID, imageFile());
 
@@ -154,7 +154,7 @@ class UserArchiveServiceTest {
         @DisplayName("archiveImageKey가 있으면 보관함 이름과 Presigned URL을 반환한다")
         void shouldReturnPresignedUrl_whenKeyExists() {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(ARCHIVE_KEY)));
-            given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
+            given(storageService.getUrl(USER_ID, ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
 
             ArchiveImageResponse response = userArchiveService.getArchiveImage(USER_ID);
 
@@ -171,7 +171,7 @@ class UserArchiveServiceTest {
 
             assertThat(response.archiveName()).isEqualTo(DEFAULT_NAME);
             assertThat(response.archiveImageUrl()).isNull();
-            then(storageService).should(times(0)).getUrl(anyString());
+            then(storageService).should(times(0)).getUrl(any(), anyString());
         }
 
         @Test
@@ -197,7 +197,7 @@ class UserArchiveServiceTest {
         void shouldReturnUpdatedName_whenImageExists() {
             String newName = "제주 여행 스팟";
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(buildUser(ARCHIVE_KEY)));
-            given(storageService.getUrl(ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
+            given(storageService.getUrl(USER_ID, ARCHIVE_KEY)).willReturn(PRESIGNED_URL);
 
             ArchiveImageResponse response = userArchiveService.updateArchiveName(USER_ID, newName);
 

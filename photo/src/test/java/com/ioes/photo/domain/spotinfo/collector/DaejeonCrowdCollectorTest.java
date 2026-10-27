@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verify;
 import com.ioes.photo.domain.crowdarea.entity.CrowdArea;
 import com.ioes.photo.domain.crowdarea.repository.CrowdAreaRepository;
 import com.ioes.photo.domain.spot.entity.Spot;
-import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
@@ -54,7 +53,7 @@ class DaejeonCrowdCollectorTest {
         givenDaejeonAreas("유성온천지구");
         Spot daejeon = mockSpot(1L, "유성온천지구");
         Spot seoul = mockSpot(2L, "광화문·덕수궁");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(daejeon, seoul));
         givenRates(item("유성온천지구", "20260902", "84.95"));
 
@@ -73,7 +72,7 @@ class DaejeonCrowdCollectorTest {
     void usesNearestBaseYmd() {
         givenDaejeonAreas("유성온천지구");
         Spot daejeon = mockSpot(1L, "유성온천지구");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(daejeon));
         givenRates(
             item("유성온천지구", "20260903", "90.00"),
@@ -91,7 +90,7 @@ class DaejeonCrowdCollectorTest {
     void matchesRateBySuffixStrippedName() {
         givenDaejeonAreas("보라매공원(대전)");
         Spot daejeon = mockSpot(1L, "보라매공원(대전)");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(daejeon));
         givenRates(item("보라매공원", "20260902", "35.00"));
 
@@ -108,7 +107,7 @@ class DaejeonCrowdCollectorTest {
         givenDaejeonAreas("유성온천지구", "노고산");
         Spot matched = mockSpot(1L, "유성온천지구");
         Spot unmatched = mockSpot(2L, "노고산");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(matched, unmatched));
         givenRates(item("유성온천지구", "20260902", "40.00"));
 
@@ -123,7 +122,7 @@ class DaejeonCrowdCollectorTest {
     void isolatesPerSignguFailure() {
         givenDaejeonAreas("유성온천지구");
         Spot daejeon = mockSpot(1L, "유성온천지구");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(daejeon));
         // anyString 스텁이 던지는 상태에서 given()으로 재스터빙하면 스텁이 실행되므로 willReturn 선행형을 쓴다.
         given(daejeonCrowdApiClient.getCnctrRates(anyString()))
@@ -143,7 +142,7 @@ class DaejeonCrowdCollectorTest {
     void skipsWhenNoTargets() {
         givenDaejeonAreas("유성온천지구");
         Spot seoul = mockSpot(1L, "광화문·덕수궁");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(seoul));
 
         CollectResult result = collector.collect();

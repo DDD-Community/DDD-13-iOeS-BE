@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import com.ioes.photo.domain.crowdarea.entity.CrowdArea;
 import com.ioes.photo.domain.crowdarea.repository.CrowdAreaRepository;
 import com.ioes.photo.domain.spot.entity.Spot;
-import com.ioes.photo.domain.spot.enums.SpotStatus;
 import com.ioes.photo.domain.spot.repository.SpotRepository;
 import com.ioes.photo.domain.spotinfo.service.CollectResult;
 import com.ioes.photo.domain.spotinfo.service.SpotInfoUpdateService;
@@ -53,7 +52,7 @@ class CrowdCollectorTest {
     void allSuccess() {
         Spot a = mockSpot(1L, "광화문·덕수궁");
         Spot b = mockSpot(2L, "강남역");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(a, b));
         given(seoulCrowdApiClient.getCrowdStatus(anyString()))
             .willReturn(crowdResponse("보통"));
@@ -67,13 +66,14 @@ class CrowdCollectorTest {
     }
 
     @Test
-    @DisplayName("개별 스팟 API 실패는 격리되어 다음 스팟 처리를 막지 않는다")
-    void isolatesPerSpotFailure() {
+    @DisplayName("장소 API 실패는 격리되어 해당 장소 스팟만 실패로 집계된다")
+    void isolatesPerAreaFailure() {
         Spot a = mockSpot(1L, "광화문·덕수궁");
-        Spot b = mockSpot(2L, "실패장소");
-        Spot c = mockSpot(3L, "강남역");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
-            .willReturn(List.of(a, b, c));
+        Spot b = mockSpotWithoutId("실패장소");
+        Spot c = mockSpotWithoutId("실패장소");
+        Spot d = mockSpot(4L, "강남역");
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
+            .willReturn(List.of(a, b, c, d));
         given(seoulCrowdApiClient.getCrowdStatus("광화문·덕수궁"))
             .willReturn(crowdResponse("여유"));
         given(seoulCrowdApiClient.getCrowdStatus("실패장소"))
@@ -84,15 +84,35 @@ class CrowdCollectorTest {
         CollectResult result = crowdCollector.collect();
 
         assertThat(result.success()).isEqualTo(2);
-        assertThat(result.fail()).isEqualTo(1);
+        assertThat(result.fail()).isEqualTo(2);
         verify(spotInfoUpdateService, times(2)).upsertCrowd(
             any(), any(), any(), any(), any(), any());
     }
 
     @Test
+    @DisplayName("같은 장소에 매핑된 스팟들은 API 를 한 번만 호출하고 결과를 공유한다")
+    void callsApiOncePerArea() {
+        Spot a = mockSpot(1L, "강남역");
+        Spot b = mockSpot(2L, "강남역");
+        Spot c = mockSpot(3L, "강남역");
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
+            .willReturn(List.of(a, b, c));
+        given(seoulCrowdApiClient.getCrowdStatus("강남역"))
+            .willReturn(crowdResponse("붐빔"));
+
+        CollectResult result = crowdCollector.collect();
+
+        assertThat(result.success()).isEqualTo(3);
+        verify(seoulCrowdApiClient, times(1)).getCrowdStatus("강남역");
+        verify(spotInfoUpdateService).upsertCrowd(eq(1L), eq(CongestionLevel.CROWDED), any(), any(), any(), any());
+        verify(spotInfoUpdateService).upsertCrowd(eq(2L), eq(CongestionLevel.CROWDED), any(), any(), any(), any());
+        verify(spotInfoUpdateService).upsertCrowd(eq(3L), eq(CongestionLevel.CROWDED), any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("대상 스팟이 없으면 API를 호출하지 않는다")
     void skipsWhenNoTargets() {
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of());
 
         CollectResult result = crowdCollector.collect();
@@ -113,7 +133,7 @@ class CrowdCollectorTest {
         Spot seoul = mockSpot(1L, "광화문·덕수궁");
         Spot daejeon = mock(Spot.class);
         given(daejeon.getCrowdAreaName()).willReturn("유성온천지구");
-        given(spotRepository.findAllByStatusAndCrowdAreaNameIsNotNull(SpotStatus.PUBLISHED))
+        given(spotRepository.findAllByCrowdAreaNameIsNotNull())
             .willReturn(List.of(seoul, daejeon));
         given(seoulCrowdApiClient.getCrowdStatus("광화문·덕수궁"))
             .willReturn(crowdResponse("보통"));
@@ -127,6 +147,12 @@ class CrowdCollectorTest {
     private Spot mockSpot(long id, String areaName) {
         Spot spot = mock(Spot.class);
         given(spot.getId()).willReturn(id);
+        given(spot.getCrowdAreaName()).willReturn(areaName);
+        return spot;
+    }
+
+    private Spot mockSpotWithoutId(String areaName) {
+        Spot spot = mock(Spot.class);
         given(spot.getCrowdAreaName()).willReturn(areaName);
         return spot;
     }
